@@ -1,0 +1,189 @@
+{
+  "stages": [
+    "transactions",
+    "statements",
+    "invoices"
+  ],
+  "items": [
+    {
+      "key": "T-45678901",
+      "title": "Transaction 45678901",
+      "total": 1500,
+      "placement": {
+        "stage": "transactions"
+      },
+      "color": "#5265cc"
+    },
+    {
+      "key": "T-89012345",
+      "title": "Transaction 89012345",
+      "total": 500,
+      "placement": {
+        "stage": "transactions"
+      },
+      "color": "#a88c48"
+    },
+    {
+      "key": "CB-2233445",
+      "title": "Client Balance",
+      "placement": {
+        "edge": "top"
+      },
+      "color": "#298c98"
+    },
+    {
+      "key": "S-56789012",
+      "title": "Statement 56789012",
+      "total": 1000,
+      "placement": {
+        "stage": "statements"
+      },
+      "color": "#298c98"
+    },
+    {
+      "key": "S-12345678",
+      "title": "Statement 12345678",
+      "placement": {
+        "stage": "statements"
+      },
+      "color": "#688670"
+    },
+    {
+      "key": "I-67890123",
+      "title": "Invoice 67890123",
+      "total": 1000,
+      "placement": {
+        "stage": "invoices"
+      },
+      "color": "#bc6e90"
+    },
+    {
+      "key": "I-23456789",
+      "title": "Invoice 23456789",
+      "placement": {
+        "stage": "invoices"
+      },
+      "color": "#bd8546"
+    },
+    {
+      "key": "I-34567890",
+      "title": "Invoice 34567890",
+      "placement": {
+        "stage": "invoices"
+      },
+      "color": "#8170b4"
+    },
+    {
+      "key": "UNALLOCATED",
+      "title": "Unallocated",
+      "color": "#64778d",
+      "placement": {
+        "edge": "bottom"
+      }
+    },
+    {
+      "key": "SOMEWHERE",
+      "title": "Unpaid",
+      "color": "#b87960",
+      "placement": {
+        "edge": "bottom"
+      }
+    },
+    {
+      "key": "WrittenOff",
+      "title": "Written Off",
+      "color": "#a56876",
+      "placement": {
+        "edge": "bottom"
+      }
+    },
+    {
+      "key": "BadDebt",
+      "title": "Bad Debt",
+      "color": "#ac5e85",
+      "placement": {
+        "edge": "bottom"
+      }
+    }
+  ],
+  "transfers": [
+    {
+      "key": "allocation-0",
+      "from": "CB-2233445",
+      "to": "S-56789012",
+      "amount": 250
+    },
+    {
+      "key": "allocation-1",
+      "from": "T-45678901",
+      "to": "S-56789012",
+      "amount": 500
+    },
+    {
+      "key": "allocation-2",
+      "from": "T-45678901",
+      "to": "S-12345678",
+      "amount": 300
+    },
+    {
+      "key": "allocation-3",
+      "from": "S-56789012",
+      "to": "I-67890123",
+      "amount": 100
+    },
+    {
+      "key": "allocation-4",
+      "from": "S-12345678",
+      "to": "I-23456789",
+      "amount": 200
+    },
+    {
+      "key": "allocation-5",
+      "from": "S-12345678",
+      "to": "I-34567890",
+      "amount": 100
+    },
+    {
+      "key": "allocation-6",
+      "from": "T-45678901",
+      "to": "UNALLOCATED",
+      "amount": 700
+    },
+    {
+      "key": "allocation-7",
+      "from": "SOMEWHERE",
+      "to": "I-23456789",
+      "amount": 250
+    },
+    {
+      "key": "allocation-8",
+      "from": "SOMEWHERE",
+      "to": "I-34567890",
+      "amount": 700
+    },
+    {
+      "key": "allocation-9",
+      "from": "T-89012345",
+      "to": "S-56789012",
+      "amount": 250
+    },
+    {
+      "key": "allocation-10",
+      "from": "T-89012345",
+      "to": "UNALLOCATED",
+      "amount": 250
+    },
+    {
+      "key": "allocation-11",
+      "from": "WrittenOff",
+      "to": "I-34567890",
+      "amount": 50
+    },
+    {
+      "key": "allocation-12",
+      "from": "BadDebt",
+      "to": "I-67890123",
+      "amount": 900
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@local/flow-diagram",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A standalone React flow diagram with four-sided nodes and controlled selection.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/flow-diagram.js"
+    },
+    "./style.css": "./dist/style.css"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "build": "node scripts/build.mjs",
+    "preview": "node scripts/serve.mjs"
+  },
+  "peerDependencies": {
+    "react": ">=18.2.0",
+    "react-dom": ">=18.2.0"
+  },
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.3",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "rollup": "^4.65.1",
+    "typescript": "5.9.3"
+  }
+}
