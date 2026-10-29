@@ -276,7 +276,7 @@ export function FlowDiagram<I = unknown, T = unknown>(props: FlowDiagramProps<I,
     } }}>
     <span className="flow-sr-only" id={helpId}>Use arrow keys to inspect items and transfers. Enter or Space activates the focused subject. Escape dismisses details. Selection is controlled by the surrounding application.</span>
     {!model.items.size ? <div role="group" aria-label={accessibleName} className="flow-empty">No flow data</div> : !scene ? <div className="flow-measuring" aria-label={accessibleName} style={{ height: plotHeight }}/> :
-            <div className="flow-scroll" data-flow-scroll="">
+            <div className={`flow-scroll${scene.width > measurement.width ? ' flow-scroll--overflow' : ''}`} data-flow-scroll="">
       <svg ref={svg} role="group" aria-label={accessibleName} width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`} className="flow-canvas" style={{ font: measurement.font, cursor: active?.modality === 'pointer' ? 'pointer' : undefined }} data-top-band={scene.topBand} data-bottom-band={scene.bottomBand} data-crossings={scene.diagnostics.crossings} data-obstacle-collisions={scene.diagnostics.obstacleCollisions} onPointerMove={pointerMove} onPointerLeave={() => { if (active?.modality === 'pointer' && !active.pinned)
                 setInspection(null); suppressed.current = null; }} onPointerDown={e => { if (e.button === 0) {
                 input.current = 'pointer';
