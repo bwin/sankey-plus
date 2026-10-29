@@ -14,6 +14,8 @@ node scripts/serve.mjs
 
 Open **http://127.0.0.1:5178/**. The server binds only to the local machine. Set `PORT` to use another port.
 
+All seven examples are directly available as tabs. Left/Right arrows switch tabs; Home/End select the first/last example. The tabs wrap on narrow screens.
+
 To develop from source:
 
 ```sh
@@ -30,6 +32,8 @@ npm run build
 ```
 
 Node 22 was used for verification. React 19.2 was used for the demo; the library declares React/React DOM 18.2 or later as peer dependencies.
+
+The working project has a local Git repository. Commit `23293a1` preserves the implementation before the demo-tab and interaction review; later commits record the changes separately. Use `git log --oneline` to inspect the history. Dependencies and generated builds are ignored. The downloadable ZIP contains source and compiled output, but not the local `.git` history.
 
 ## Integration
 
@@ -153,8 +157,10 @@ Tooltip placement, viewport clamping, dismissal and accessible association are i
 
 - Inspecting a node keeps that node, all directly incoming/outgoing transfers, and every node those transfers touch strong. Everything else fades. This is one hop, not recursive traversal or all transfers between highlighted neighbors.
 - Inspecting a transfer keeps only that transfer and its two endpoint nodes strong.
+- Visible node and transfer labels activate their own subject. Node labels take priority over ribbons passing behind them; hidden labels do not create invisible click targets.
 - Pointer movement inspects; leaving clears pointer inspection. Touch taps activate and pin details; dragging cancels activation. Tapping outside dismisses details.
 - One roving tab stop enters the diagram. Arrow keys move through items then transfers in input order; Home/End jump to the ends. Enter/Space activate once. Escape dismisses inspection. Tab leaves normally.
+- Keyboard focus works after pointer use, including clicks on empty chart space. Keyboard/touch details follow the inspected subject when resizing or scrolling changes its position.
 - Activation calls the relevant handler. It never changes selection internally. The host may select, navigate, open a panel, or ignore the click.
 - Selection uses a persistent solid contrast outline, including when its fill fades during unrelated inspection. Keyboard focus uses a dashed indicator. Escape does not change selection. A selected key removed from the graph is ignored without a callback.
 
@@ -210,6 +216,8 @@ Provide `color` on items/transfers as needed. Otherwise nodes receive a stable p
 ## Actual implementation screenshots
 
 These captures come from the running implementation, not design mockups.
+
+![All examples available as tabs above the original allocation dataset](screenshots/08-all-example-tabs.jpg)
 
 ![Complete flow with three stages, multiple top/bottom nodes, mixed-role relays, custom labels and partial totals](screenshots/01-complete-flow.jpg)
 

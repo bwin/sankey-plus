@@ -125,24 +125,28 @@ export function FlowDiagram<I = unknown, T = unknown>(props: FlowDiagramProps<I,
     useEffect(() => { if (inspection && !exists(inspection.subject))
         setInspection(null); if (keyboardFocus && !exists(keyboardFocus))
         setKeyboardFocus(null); setRoving(i => Math.min(i, Math.max(0, model.subjects.length - 1))); }, [model]);
+    function repositionInspection() {
+        setInspection(old => {
+            if (!old || old.modality === 'pointer') return null;
+            const box = controls.current.get(identity(old.subject))?.getBoundingClientRect();
+            if (!box) return null;
+            const anchor = { x: box.right, y: box.top + box.height / 2 };
+            return Math.abs(anchor.x - old.anchor.x) + Math.abs(anchor.y - old.anchor.y) < .5 ? old : { ...old, anchor };
+        });
+    }
+    // Resizing/reflow can move a focused subject without scrolling the page.
+    useBrowserLayoutEffect(() => { repositionInspection(); }, [scene]);
     useEffect(() => {
         const outside = (e: globalThis.PointerEvent) => { if (!root.current?.contains(e.target as Node)) {
             setInspection(null);
             suppressed.current = null;
         } };
-        const reposition = () => {
-            setInspection(old => {
-                if (!old)
-                    return null;
-                if (old.modality === 'pointer')
-                    return null;
-                const box = controls.current.get(identity(old.subject))?.getBoundingClientRect();
-                return box ? { ...old, anchor: { x: box.right, y: box.top + box.height / 2 } } : null;
-            });
-        };
+        // Tab is dispatched on the previous control, before focus enters us.
+        const keyboard = () => { input.current = 'keyboard'; };
         document.addEventListener('pointerdown', outside);
-        window.addEventListener('scroll', reposition, true);
-        return () => { document.removeEventListener('pointerdown', outside); window.removeEventListener('scroll', reposition, true); };
+        document.addEventListener('keydown', keyboard, true);
+        window.addEventListener('scroll', repositionInspection, true);
+        return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', keyboard, true); window.removeEventListener('scroll', repositionInspection, true); };
     }, []);
     const locate = (event: {
         clientX: number;

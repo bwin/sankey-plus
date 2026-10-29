@@ -6,7 +6,7 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 - Strict TypeScript checking passes for source, demo and tests.
 - Library and demo builds pass. The library keeps React/React DOM external and emits declarations and a stylesheet.
-- **41 tests pass, 0 fail** using `node scripts/test.mjs` (updated 29 October 2026).
+- **43 tests pass, 0 fail** using `node scripts/test.mjs` (updated 29 October 2026).
 - Tests cover declared/derived totals; original object and metadata preservation; invalid identifiers, quantities, placements, endpoints and cycles; zero nodes; one-hop emphasis; transfer emphasis; shared stage axes; inward edge faces; reversed bottom ports; containment; obstacle clearance; simple fan-out/fan-in; stable route identity after transfer-order changes; measured/truncated labels; wrapped two-line labels; conditional bands; parallel-transfer hit testing; determinism and input immutability.
 - The full fixture is tested at requested widths 1440, 960, 600 and 360 pixels. Its routes clear unrelated bars and labels. At narrow widths a local wider canvas may be used for route clearance.
 - The original allocation data is also tested at 1440, 1311, 960, 600 and 360 pixels with custom two-line labels. Statements retain their shared axis; Bad Debt and Written Off stay left of their invoice targets; all unrelated bar/label collision checks pass.
@@ -15,12 +15,18 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 - Added a regression for coincident horizontal runs when several destinations share a wrapped row. Top and bottom twelve-destination fans now check pairwise ribbon-envelope separation, centerline crossings, label/bar clearance and unchanged canvas width at 353, 600, 960, 1151 and 1440 pixels, with both equal and unequal amounts. This caught the original overlap even though its centerline crossing count was zero.
 - Added a regression for the two inputs into Outcome B in the full fixture, with custom two-line labels at 600, 960, 1126 and 1440 pixels. Process B and Carry-in retain their upper/lower destination ports and have no centerline crossing or sampled ribbon overlap. Top and bottom variants also cover three unequal input amounts at 600, 960 and 1440 pixels, including reversed transfer input order. All cases clear unrelated bars and labels.
 - Wrapped bundles now verify a 4-pixel gap between adjacent vertical and horizontal runs and across sampled points around their shared bend. Source ports remain touching. Top and bottom cases cover equal and unequal amounts at 600, 960, 1126 and 1440 pixels. Existing pairwise separation and clearance tests still pass.
+- Label hit-testing regressions verify that a node name wins over a ribbon beneath it, visible labels on thin transfers activate their transfer, and hidden labels create no extra click target.
 - A 100-node/300-transfer DAG produces finite SVG paths, preserves every identity and clears unrelated bars/labels. The final local Node test took about 0.73 seconds for this case; this is a single-machine geometry measurement, not a browser frame-rate guarantee. This dense graph has crossings, as expected.
 
 ## Browser checks
 
 | Check | Observed result |
 | --- | --- |
+| All example tabs (29 October review) | All seven examples are exposed as tabs. ArrowRight, Home and End move focus and selection together; one tab is tabbable. The tabs wrap within a 390-pixel viewport. Captures: `screenshots/08-all-example-tabs.jpg`, `screenshots/09-example-tabs-mobile.jpg`. |
+| Complete example sweep (29 October review) | All seven examples checked at desktop (1414-pixel chart host) and phone (353-pixel chart host) sizes. No page-width overflow or unrelated node/label collisions. Every nonempty diagram retains one tab stop. Complex graphs retain crossings; simple fans have none. |
+| Keyboard entry after pointer use (29 October review) | Before the fix, clicking empty chart space then Tab focused Available with no focus marker or tooltip. After the fix, the same sequence shows its dashed indicator and node details. |
+| Pinned tooltip on resize (29 October review) | Before the fix, resizing left Process A's details at the old anchor. After the fix, its tooltip follows the new node position with the expected 16-pixel offset in both axes. |
+| Node-label activation (29 October review) | Before the fix, clicking Available selected Available → Allocated. After the fix, the same label click invokes the node handler and selects Available. |
 | Node pointer activation | One callback; the host can select the clicked node. |
 | Node keyboard activation | Enter/Space each activate once. Process A inspection leaves exactly 7 nodes and 6 transfers strong. |
 | Transfer activation | One transfer callback; that transfer and exactly its 2 endpoints stay strong. |

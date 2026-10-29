@@ -159,6 +159,23 @@ test('hit testing prefers bars and retains distinct parallel transfer identities
     for (const f of scene.transfers)
         assert.deepEqual(hitTest(scene, pointAt(f.route, .5)), { kind: 'transfer', key: f.key });
 });
+
+test('clicking a node label selects that node instead of a ribbon underneath', () => {
+    const scene = layoutGraph(resolveGraph(base), { width: 900 });
+    const label = scene.items.find(n => n.key === 'a')!.label;
+    assert.deepEqual(hitTest(scene, { x: label.x + label.w / 2, y: label.y + label.h / 2 }), { kind: 'item', key: 'a' });
+});
+
+test('visible transfer labels are clickable beyond thin strokes; hidden labels are not', () => {
+    const graph = { ...base, transfers: [{ ...base.transfers[0], amount: 1 }] };
+    const scene = layoutGraph(resolveGraph(graph), { width: 900 });
+    const transfer = scene.transfers[0], label = transfer.label;
+    const point = { x: label.x + label.w / 2, y: label.y + .5 };
+    assert.ok(distanceToRoute(point, transfer.route) > 5, 'point is outside the thin ribbon hit corridor');
+    assert.deepEqual(hitTest(scene, point), { kind: 'transfer', key: transfer.key });
+    transfer.labelHidden = true;
+    assert.equal(hitTest(scene, point), null);
+});
 test('text is measured, clipped to two lines and remains inside the canvas', () => {
     const labels = new Map([['item:a', ['This is a particularly long title', 'Second line', 'Third line']], ['transfer:ab', []]]);
     const scene = layoutGraph(resolveGraph(base), { width: 360, labels, measureText: s => s.length * 9 });

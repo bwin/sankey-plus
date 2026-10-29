@@ -554,13 +554,20 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }
     return scene;
 }
-/** Painted bars win, then a real ribbon hit, then the nearest thin hit corridor. */
+/** Bars and visible labels win, then a real ribbon hit or thin hit corridor. */
 export function hitTest(scene: Scene, point: Point) {
     for (let i = scene.items.length - 1; i >= 0; i--) {
         const n = scene.items[i];
         if (point.x >= n.x - 2 && point.x <= n.x + n.w + 2 && point.y >= n.y - 2 && point.y <= n.y + n.h + 2)
             return { kind: 'item' as const, key: n.key };
     }
+    const onLabel = (box: TextBox) => box.w > 0 && box.h > 0 && point.x >= box.x && point.x <= box.x + box.w && point.y >= box.y && point.y <= box.y + box.h;
+    // Labels are painted above ribbons. Clicking a node's name must not activate
+    // a transfer that happens to pass underneath it.
+    for (let i = scene.items.length - 1; i >= 0; i--)
+        if (onLabel(scene.items[i].label)) return { kind: 'item' as const, key: scene.items[i].key };
+    for (let i = scene.transfers.length - 1; i >= 0; i--)
+        if (!scene.transfers[i].labelHidden && onLabel(scene.transfers[i].label)) return { kind: 'transfer' as const, key: scene.transfers[i].key };
     let best: {
         key: string;
         distance: number;
