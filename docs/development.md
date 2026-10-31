@@ -1,0 +1,74 @@
+# Development and benchmarks
+
+[Back to README](../README.md)
+
+## Run the demo
+
+The ZIP includes the compiled demo. With Node.js installed, preview it without installing packages:
+
+```sh
+node scripts/serve.mjs
+```
+
+Open **http://127.0.0.1:5178/**. The server binds only to the local machine. Set `PORT` to use another port.
+
+Beside the node/link counts, “Ready in ~… ms” shows approximate elapsed time from the demo update to a completed diagram and a paint opportunity. It includes chunk scheduling and frame waits, excludes downloads, and is not a CPU-only benchmark. Example, size and label changes refresh it; hover and selection do not. This observer belongs to the demo, with no extra library prop.
+
+To develop from the GitHub repository:
+
+```sh
+git clone https://github.com/bwin/sankey-plus.git
+cd sankey-plus
+npm ci
+npm run dev
+```
+
+The development command builds once and starts the server. After editing, run `npm run build` in another terminal and refresh the browser. There is no hot reload or file watcher.
+
+```sh
+npm run typecheck
+npm test
+npm run build
+```
+
+To measure layout performance:
+
+```sh
+npm run stress
+npm run stress -- --runs 20 --output .tests/stress.json
+npm run benchmark
+npm run benchmark -- --case stress-100-300 --profile .tests/stress.cpuprofile
+```
+
+`stress` measures the deterministic **100-node / 300-link** fixture: four stages of 25 nodes, with four forward links per node to the next stage (indices wrap within that stage). Amounts are 10–13 units. `benchmark` also measures desktop/mobile regression fixtures, the four-sided example and wrapped fan-out. The shared generator is in `fixtures/stress.ts`.
+
+Reports include the first calculation, median/min/max of ten subsequent calculations, scene dimensions, crossings and obstacle collisions. Timings cover data validation and layout at 1440 px for the stress case; compilation, React rendering and browser painting are excluded. CPU profiling adds overhead, so compare unprofiled runs for timings. [performance guide](performance.md) records the measured optimization results and limitations. These commands require a development checkout with dependencies installed; they are not included in the npm library.
+
+The Stress test demo uses that same graph with the normal interactive renderer, custom two-line labels and responsive sizing. It grows vertically to fit all nodes; dense crossings are expected. Its layout can differ from the timing fixture because browser font measurement, container width and label settings affect geometry. Disable “Custom labels and tooltip” and select 1440 px in a sufficiently wide host for a closer visual comparison.
+
+Node 22 was used for verification. React 19.2 was used for the demo; the library declares React/React DOM 18.2 or later as peer dependencies.
+
+
+
+## Source map
+
+| File | Responsibility |
+| --- | --- |
+| `src/types.ts` | Public types and structured errors |
+| `src/model.ts` | Validation, adjacency, totals, one-hop emphasis |
+| `src/layout.ts` | Stage geometry, packing, ports and route allocation |
+| `src/layout-task.ts` | Cooperative main-thread scheduling and cancellation |
+| `src/paths.ts` | Curves, obstacle routing and hit-test geometry |
+| `src/presentation.ts` | Quantity formatting and accessible descriptions |
+| `src/SankeyDiagram.tsx` | Rendering, interactions, selection and tooltip |
+| `src/style.css` | Appearance and theme tokens |
+| `demo/fixtures.ts` | Generic examples and routing demonstrations |
+| `demo/distribution.json` | Medium-complexity distribution example |
+| `demo/feature-demo.json` | Full neutral example, including mixed-role edge nodes |
+| `tests/core.test.ts` | Data, geometry and emphasis regressions |
+
+`dist/` contains the compiled library, declarations and stylesheet. `demo-dist/` contains a self-contained browser build. Build/test scripts use TypeScript and Rollup in-process; no native compiler subprocess is needed.
+
+## Working conventions
+
+Follow [AGENTS.md](https://github.com/bwin/sankey-plus/blob/main/AGENTS.md), including focused commits for independent changes. [Verification](verification.md) records observed behavior and testing limits. The npm package includes the library and guides; development scripts and the demo require a repository checkout.

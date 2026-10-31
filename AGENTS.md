@@ -15,7 +15,8 @@
 - `src/layout-task.ts`: cooperative scheduling. Keep the synchronous benchmark and chunked component on the same iterator; preserve cancellation and complete-scene commits. Chunk checkpoints belong at phase/item boundaries, not in React render.
 - `src/presentation.ts` and `src/SankeyDiagram.tsx`: formatting, measured labels, rendering and interaction.
 - `demo/`: interactive examples. `fixtures/stress.ts` is shared by the demo, regression test and benchmark; do not create divergent copies.
-- `tests/`: repeatable geometry/data regressions. `screenshots/` and `VERIFICATION.md`: actual browser observations and their limits.
+- `tests/`: repeatable geometry/data regressions. `screenshots/` and `docs/verification.md`: actual browser observations and their limits.
+- Keep the README concise: installation, a minimal example, one overview screenshot and links. Put detailed guidance in `docs/`; update the example catalog when adding demo tabs.
 
 ## Behavior to preserve
 
@@ -40,7 +41,7 @@ npm run benchmark
 
 - `npm run build` checks TypeScript and builds both the library and demo. Build/test scripts invoke TypeScript and Rollup in-process.
 - Add focused regressions for behavioral bugs. For routing changes, check actual rendered output at desktop and narrow widths in addition to geometry tests. Record what was verified without implying untested browser/platform coverage.
-- Profile before optimizing. Compare unprofiled first-call and warm timings; keep fixture creation, compilation and rendering outside layout timing. See `PERFORMANCE.md` for methodology and benchmark arguments. In PowerShell, use `npm.cmd` if the `npm.ps1` shim strips forwarded `--` arguments.
+- Profile before optimizing. Compare unprofiled first-call and warm timings; keep fixture creation, compilation and rendering outside layout timing. See `docs/performance.md` for methodology and benchmark arguments. In PowerShell, use `npm.cmd` if the `npm.ps1` shim strips forwarded `--` arguments.
 - Keep generated `dist/`, `demo-dist/`, `.tests/` and `node_modules/` out of Git. Store CPU profiles and temporary reports under `.tests/`.
 - Make focused, independently reviewable commits: separate performance work, routing fixes, examples and repository guidance. Preserve unrelated user changes.
 - Keep README/API examples aligned with implementation. Distinguish changes committed to Git from versions actually published to npm.
