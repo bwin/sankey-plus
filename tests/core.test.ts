@@ -277,6 +277,29 @@ for (const edge of ['top', 'bottom'] as const) test(`${edge} multi-row fan-out k
     }
 });
 
+for (const edge of ['top', 'bottom'] as const) test(`${edge} inputs retain their destination slots when their source wraps`, () => {
+    const graph: SankeyGraph = edge === 'bottom' ? full : { ...full, nodes: full.nodes.map(n => ({ ...n, placement: n.placement.edge ? { edge: n.placement.edge === 'top' ? 'bottom' : 'top' } : n.placement })) };
+    const model = resolveGraph(graph);
+    const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));
+    const wrapped = new Set<boolean>();
+    for (const width of [1440, 1200, 1151, 1126, 960, 600]) {
+        const scene = layoutGraph(model, { width, labels });
+        const recoveryNode = scene.nodes.find(n => n.key === 'recovery')!;
+        const carryNode = scene.nodes.find(n => n.key === 'carry-in')!;
+        const destination = scene.nodes.find(n => n.key === 'outcome-c')!;
+        const recovery = scene.links.find(f => f.key === 'recovery-outcome')!;
+        const carry = scene.links.find(f => f.key === 'carry-outcome-c')!;
+        wrapped.add(recoveryNode.row > 0);
+        assert.ok(recoveryNode.x > carryNode.x, 'rightmost source stays rightmost');
+        assert.equal(recovery.end.x, destination.x, 'connection stays on the incoming face');
+        assert.ok(edge === 'bottom' ? recovery.end.y > carry.end.y : recovery.end.y < carry.end.y, `${width}px input order`);
+        const boundary = edge === 'bottom' ? recovery.end.y + recovery.width / 2 : recovery.end.y - recovery.width / 2;
+        assert.ok(Math.abs(boundary - (edge === 'bottom' ? destination.y + destination.h : destination.y)) < 1e-6, `${width}px input remains at the ${edge} of the bar`);
+        assert.equal(scene.diagnostics.obstacleCollisions, 0, `${width}px bar and label clearance`);
+    }
+    assert.deepEqual(wrapped, new Set([false, true]), 'exercise both wrapped and unwrapped sources');
+});
+
 test('side and bottom inputs into Outcome B stay separate across viewport widths', () => {
     const model = resolveGraph(full);
     const labels = new Map(full.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));

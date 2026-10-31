@@ -194,6 +194,8 @@ Top/bottom nodes are horizontal quantitative bars with full labels, facts and in
 
 Simple fan-out and fan-in use ordered ports. Bottom arrivals reverse vertical source order: a lower main source enters a shared bottom bar to the left of an upper source. Wrapped simple fan-out reserves separate vertical corridors and horizontal lanes. Row spacing grows with the combined ribbon widths and lane gaps, including unequal amounts and two-line labels. Destinations farther right turn closer to the preceding row; destinations farther left turn closer to their own row. This keeps their horizontal runs and connecting bends separate.
 
+Inputs from edge nodes use their source bars' horizontal positions to order their destination slots. A detour needed for a wrapped row does not change that order: a rightmost bottom source still enters below its left-hand neighbor, with the mirrored rule for top sources.
+
 Parallel wrapped links use a consistent 4 CSS-pixel gap on the vertical runs, around their shared turn and on the horizontal runs. The bends use shared centers and different radii so adjacent curves nest smoothly. Links still touch at their source ports; the first bend gradually opens the gap without changing ribbon widths or inflating the node's total. The group switches to these bends together when space and obstacle clearance allow it; constrained layouts retain the ordinary routing fallback.
 
 When a main-stage link and a top/bottom link enter the same node, the main-stage curve can reach its final entry height earlier and finish horizontally. This prevents a late curve from crossing the vertical input and then crossing back again. The existing top/main/bottom port order stays intact. A bounded pass accepts the alternative only when sampled ribbon overlap decreases, no new crossing pair appears, and obstacle clearance does not worsen. It also checks for newly overlapping ribbon pairs, with a small tolerance for sampling noise and shared endpoints.
@@ -262,6 +264,10 @@ With several destinations in each wrapped row, the horizontal lanes remain separ
 In this updated complete example, the two green inputs into Outcome B no longer cross each other. Process B reaches its upper entry height before Carry-in turns toward the lower entry. The same routing rule handles inputs from above.
 
 ![Separate side and bottom inputs into Outcome B](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/06-separated-convergence.jpg)
+
+Recovery keeps the bottommost incoming slot on Outcome C even when it wraps into a second bottom row.
+
+![Wrapped Recovery input retains its lower destination slot](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/15-wrapped-recovery.png)
 
 See `VERIFICATION.md` for checks performed and verification limits.
 

@@ -324,7 +324,6 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }
     const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: f.amount * scale, color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
     const positions = new Map(links.map((f, i) => [f.key, i]));
-    const approach = (n: NodeGeometry) => n.corridor ?? n.x + n.w / 2;
     const portGroups: {
         node: NodeGeometry;
         out: boolean;
@@ -334,6 +333,11 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         for (const out of [true, false]) {
             const connectedLinks = links.filter(f => (out ? f.from : f.to) === n.key);
             const opposite = (f: LinkGeometry) => byKey.get(out ? f.to : f.from)!;
+            // Incoming edge links retain their source's left-to-right order when
+            // rows wrap. A detour corridor is not the source position: sorting by
+            // it can move a rightmost bottom input above its neighboring input.
+            // Outgoing fan-out still follows its reserved corridor order.
+            const approach = (v: NodeGeometry) => out ? v.corridor ?? v.x + v.w / 2 : v.x + v.w / 2;
             connectedLinks.sort((a, b) => {
                 const aa = opposite(a), bb = opposite(b);
                 let order = 0;
