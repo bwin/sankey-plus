@@ -6,10 +6,12 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Optional graph default units, separate declared/automatic node balances, consistent graph/link conversion rates and converted quantitative widths. Labels and tooltips retain per-unit amounts and show combined default-unit totals and rate equations.
 - World trade example with exporting/importing countries, top reserve releases, bottom inventory outflows, balanced totals per good, commodity colors and illustrative USD-billion formatting.
 
 ### Changed
 
+- Node labels support multiple lines and reserve room for all unit balances; custom label arrays are no longer capped at two lines.
 - Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
 - Spread fan curves gradually along both axes and reserve more arrival space in wrapped rows. Try broad edge curves before elbow-like detours while preserving ribbon separation and label clearance.
 

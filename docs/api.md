@@ -12,7 +12,7 @@
 | `onNodeClick` | Receives node facts and the activation event. |
 | `onLinkClick` | Receives link facts and the activation event. |
 | `formatAmount` | Formats quantities with facts, field name and surface. |
-| `getLabel` | Returns plain text, up to two lines, or `null` to omit a label. |
+| `getLabel` | Returns plain text, an array of lines, or `null` to omit a label. |
 | `renderTooltip` | Returns non-interactive React content or `null`. |
 | `plotHeight` | Preferred central region height; default 336 CSS pixels. Edge bands add height. |
 | `className` | Host styling, including the four theme tokens below. |

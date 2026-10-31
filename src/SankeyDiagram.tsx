@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
 import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
 import { runInChunks } from './layout-task.js';
-import { identity, presentation, same, subjectName } from './presentation.js';
+import { defaultLabel, identity, presentation, same, showConverted, subjectName } from './presentation.js';
 import type { SankeyActivationEvent, SankeyDiagramProps, SankeySubject, SankeyPresentation } from './types.js';
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 type Inspection = {
@@ -26,7 +26,16 @@ function DefaultDetails({ view }: {
     view: SankeyPresentation;
 }) {
     return <><strong className="flow-tip-title">{view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`}</strong>
-    <dl>{view.kind === 'node' ? <><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></> : <><dt>Amount</dt><dd>{view.text.amount}</dd></>}</dl></>;
+    {view.kind === 'node' ? <>
+        {view.text.totals.map((row, index) => <div className="flow-tip-balance" key={row.unit ?? ''}>
+            {row.unit && <strong>{row.unit} <span className="flow-tip-source">{view.totals[index].totalSource}</span></strong>}
+            <dl><dt>Total</dt><dd>{row.total}</dd><dt>Incoming</dt><dd>{row.incoming}</dd><dt>Outgoing</dt><dd>{row.outgoing}</dd></dl>
+        </div>)}
+        {showConverted(view) && <div className="flow-tip-balance flow-tip-combined"><strong>Combined in {view.converted!.unit}</strong><dl><dt>Total</dt><dd>{view.text.converted!.total}</dd><dt>Incoming</dt><dd>{view.text.converted!.incoming}</dd><dt>Outgoing</dt><dd>{view.text.converted!.outgoing}</dd></dl></div>}
+    </> : <>
+        <dl><dt>Amount</dt><dd>{view.text.amount}</dd>{view.converted && view.converted.unit !== view.unit && <><dt>Equivalent</dt><dd>{view.text.convertedAmount}</dd></>}</dl>
+        {view.text.conversionRates.length > 0 && <div className="flow-tip-rates"><strong>Conversion rates</strong>{view.text.conversionRates.map((rate, index) => <div key={index}>{rate}</div>)}</div>}
+    </>}</>;
 }
 function Details({ id, anchor, children, theme }: {
     id: string;
@@ -118,8 +127,8 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         const result = new Map<string, readonly string[]>();
         for (const subject of model.subjects) {
             const view = presentation(model, subject, formatAmount, 'label');
-            const value = getLabel ? getLabel(view) : view.kind === 'node' ? view.node.title : view.text.amount;
-            result.set(`${subject.kind}:${subject.key}`, value === null ? [] : typeof value === 'string' ? (value ? [value] : []) : value.slice(0, 2));
+            const value = getLabel ? getLabel(view) : defaultLabel(view);
+            result.set(`${subject.kind}:${subject.key}`, value === null ? [] : typeof value === 'string' ? (value ? [value] : []) : [...value]);
         }
         return result;
     }, [model, formatAmount, getLabel]);

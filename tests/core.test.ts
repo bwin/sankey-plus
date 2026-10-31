@@ -180,10 +180,10 @@ test('visible link labels are clickable beyond thin strokes; hidden labels are n
     link.labelHidden = true;
     assert.equal(hitTest(scene, point), null);
 });
-test('text is measured, clipped to two lines and remains inside the canvas', () => {
+test('text is measured, keeps all lines and truncates horizontally', () => {
     const labels = new Map([['node:a', ['This is a particularly long title', 'Second line', 'Third line']], ['link:ab', []]]);
     const scene = layoutGraph(resolveGraph(base), { width: 360, labels, measureText: s => s.length * 9 });
-    assert.equal(scene.nodes[0].label.lines.length, 2);
+    assert.equal(scene.nodes[0].label.lines.length, 3);
     assert.ok(scene.nodes[0].label.lines[0].endsWith('…'));
     assert.equal(scene.links[0].label.lines.length, 0);
 });

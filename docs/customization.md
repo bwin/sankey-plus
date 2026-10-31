@@ -37,7 +37,7 @@
 />
 ```
 
-Labels use measured text, truncation and at most two lines. Link labels avoid bars and other labels; a label with no suitable space is hidden until its link is inspected. Tooltips and accessible descriptions retain the full information. Units are presentation only: there is no conversion or normalization of currencies/units.
+Labels use measured text and horizontal truncation. Arrays retain all lines, including per-unit balances and a converted total; layout reserves additional vertical space for longer node labels. Link labels avoid bars and other labels; a label with no suitable space is hidden until its link is inspected. Tooltips and accessible descriptions retain the full information. See [units and conversion](units.md) for native amounts, converted widths, `text.totals`, `text.converted` and conversion-rate equations. Custom callbacks own their content: use those structured fields when showing a multi-unit node instead of only `text.total`.
 
 For links, the tooltip context already includes both original nodes as `view.fromNode` and `view.toNode`, including their typed `meta`, `placement`, `color` and optional declared `total`. These are also available to label/amount formatters and `onLinkClick`. A missing `node.total` means it is derived; do not treat it as zero. The demo's custom link tooltip shows both endpoints, their placement, declared totals when present, and metadata notes. Try **Input A → Process A** in Distribution.
 

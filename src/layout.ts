@@ -63,7 +63,7 @@ const LANE_GAP = 4;
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 function fitted(lines: readonly string[], width: number, measure: (s: string) => number): string[] {
-    return lines.slice(0, 2).map(line => {
+    return lines.map(line => {
         if (measure(line) <= width)
             return line;
         const chars = Array.from(line);
@@ -143,7 +143,9 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     const step = (width - 2 * PAD - BAR) / slots;
     const axis = (index: number) => stages.length === 1 && !leftExtra && !rightExtra ? width / 2 - BAR / 2 : PAD + (index + leftExtra) * step;
     const maxCount = Math.max(0, ...stages.map(s => s.length));
-    const centralHeight = Math.max(plotHeight, maxCount * (lineHeight * 2 + GAP));
+    const labelHeight = (n: typeof edges[number]) => label('node', n.node.key, n.node.title).length * lineHeight;
+    const expandedStages = stages.map(stage => stage.some(n => labelHeight(n) > lineHeight * 2));
+    const centralHeight = Math.max(plotHeight, maxCount * (lineHeight * 2 + GAP), ...stages.map((stage, i) => expandedStages[i] ? sum(stage.map(n => Math.max(lineHeight * 2, labelHeight(n)) + GAP)) + GAP : 0));
     const geomTotal = (n: typeof edges[number]) => Math.max(n.total, n.incoming, n.outgoing);
     let scale = Infinity;
     for (const stage of stages) {
@@ -200,20 +202,33 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                 wrappedFans.push({ keys: targets.map(n => n.node.key), origin: lo });
             }
     }
+    // Extra balance lines need real row space. Keep quantitative bar heights
+    // intact and reduce only the common scale when their text footprints need it.
+    for (let col = 0; col < stages.length; col++) if (expandedStages[col]) {
+        const stage = stages[col], available = centralHeight - (stage.length + 1) * GAP;
+        const used = (valueScale: number) => sum(stage.map(n => Math.max(geomTotal(n) * valueScale, 3, labelHeight(n))));
+        if (used(scale) > available) {
+            let lo = 0, hi = scale;
+            for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (used(mid) <= available) lo = mid; else hi = mid; }
+            scale = lo;
+        }
+    }
     scale = Math.max(Number.MIN_VALUE, scale);
     const widestEdge = Math.max(0, ...edges.map(n => geomTotal(n) * scale));
     const mainLabelLimit = Math.max(48, Math.min(160, (step - BAR - widestEdge - 40) / 2));
     const nodes: NodeGeometry[] = [];
     for (let col = 0; col < stages.length; col++) {
         const stage = stages[col], sizes = stage.map(n => n.total ? geomTotal(n) * scale : 3);
-        const spacing = Math.max(GAP, (centralHeight - sum(sizes)) / (stage.length + 1));
+        const footprints = stage.map((n, i) => expandedStages[col] ? Math.max(sizes[i], labelHeight(n)) : sizes[i]);
+        const spacing = Math.max(GAP, (centralHeight - sum(footprints)) / (stage.length + 1));
         let y = spacing;
         for (let i = 0; i < stage.length; i++) {
             yield;
             const n = stage[i], x = axis(col), h = sizes[i], raw = label('node', n.node.key, n.node.title);
             const lines = fitted(raw, mainLabelLimit, measure), anchor = col === 0 ? 'start' : 'end';
-            nodes.push({ key: n.node.key, index: model.graph.nodes.indexOf(n.node), x, y, w: BAR, h, color: nodeColor(n.node.key, n.node.color), stage: model.stages[col], row: 0, zero: n.total === 0, lo: x, hi: x + BAR, preferred: x, footprint: BAR, label: labelBox(lines, anchor === 'start' ? x + BAR + 8 : x - 8, y + h / 2, anchor, measure, lineHeight) });
-            y += h + spacing;
+            const barY = y + (footprints[i] - h) / 2;
+            nodes.push({ key: n.node.key, index: model.graph.nodes.indexOf(n.node), x, y: barY, w: BAR, h, color: nodeColor(n.node.key, n.node.color), stage: model.stages[col], row: 0, zero: n.total === 0, lo: x, hi: x + BAR, preferred: x, footprint: BAR, label: labelBox(lines, anchor === 'start' ? x + BAR + 8 : x - 8, barY + h / 2, anchor, measure, lineHeight) });
+            y += footprints[i] + spacing;
         }
     }
     const byKey = new Map(nodes.map(n => [n.key, n]));
@@ -282,7 +297,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     }
     yield;
     const maxRibbon = Math.max(0, ...model.graph.links.map(f => amount(f) * scale));
-    const clearance = 72 + maxRibbon / 2, baseRowPitch = Math.max(86, lineHeight * 2 + BAR + maxRibbon + 32);
+    const edgeLabelHeight = Math.max(lineHeight * 2, ...nodes.filter(n => n.edge).map(n => n.label.h));
+    const clearance = 72 + maxRibbon / 2, baseRowPitch = Math.max(86, edgeLabelHeight + BAR + maxRibbon + 32);
     const rowPitches = {
         top: rows.top.map((_, index) => index ? baseRowPitch : 0),
         bottom: rows.bottom.map((_, index) => index ? baseRowPitch : 0),
@@ -298,7 +314,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         for (let row = 1; row < rows[side].length; row++) {
             const targets = members.filter(n => n.row === row).sort((a, b) => b.x - a.x || a.index - b.index);
             if (targets.length < 2) continue;
-            let cursor = BAR + 10 + lineHeight * 2 + 8;
+            let cursor = BAR + 10 + edgeLabelHeight + 8;
             let widest = 0;
             for (const node of targets) {
                 const thickness = model.nodes.get(node.key)!.incoming * scale;
@@ -316,7 +332,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     for (const side of ['top', 'bottom'] as const)
         for (let row = 1; row < rows[side].length; row++)
             rowOffsets[side][row] = rowOffsets[side][row - 1] + rowPitches[side][row];
-    const band = (side: 'top' | 'bottom') => rows[side].length ? clearance + BAR + lineHeight * 2 + 12 + rowOffsets[side].at(-1)! : 0;
+    const band = (side: 'top' | 'bottom') => rows[side].length ? clearance + BAR + Math.max(lineHeight * 2, ...rows[side].flat().map(n => n.label.h)) + 12 + rowOffsets[side].at(-1)! : 0;
     const topBand = band('top'), bottomBand = band('bottom'), centralTop = PAD + topBand, height = PAD + topBand + centralHeight + bottomBand + PAD;
     for (const n of nodes) {
         if (!n.edge) {

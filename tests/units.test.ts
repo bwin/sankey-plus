@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { resolveGraph } from '../src/model.js';
 import { layoutGraph } from '../src/layout.js';
+import { intersects } from '../src/paths.js';
 import { defaultLabel, presentation, subjectName } from '../src/presentation.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode, type SankeyAmountContext } from '../src/types.js';
 
@@ -118,6 +119,28 @@ test('conversion overflow and underflow cannot produce nonfinite or zero-width l
         error({ ...graph, links: [{ ...graph.links[0], amount, conversionRates: [{ from: 'EUR', to: 'USD', rate }] }] }, 'invalid-number');
     }
 });
+
+test('multi-line balance labels reserve row space without inflating quantitative bars', () => {
+    const g: SankeyGraph = { stages: ['a'], nodes: [1, 1000, 2, 3].map((total, i) => ({ key: `n${i}`, title: `Balance ${i}`, total, placement: { stage: 'a' } })), links: [] };
+    const labels = new Map(g.nodes.map(n => [`node:${n.key}`, [n.title, '10 EUR', '20 USD', '30 GBP', 'Σ 68.5 USD']]));
+    const scene = layoutGraph(resolveGraph(g), { width: 600, plotHeight: 200, labels });
+    for (const a of scene.nodes) {
+        assert.equal(a.label.lines.length, 5);
+        assert.ok(a.label.y >= 0 && a.label.y + a.label.h <= scene.height);
+        for (const b of scene.nodes.filter(n => n.key !== a.key)) assert.equal(intersects(a.label, b.label), false);
+    }
+    approx(scene.nodes[1].h / scene.nodes[0].h, 1000);
+});
+
+for (const edge of ['top', 'bottom'] as const)
+    test(`wrapped ${edge} balance labels retain all lines and fit edge bands`, () => {
+        const g: SankeyGraph = { stages: ['a'], nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' } }, ...Array.from({ length: 5 }, (_, i) => ({ key: `n${i}`, title: `Balance ${i}`, placement: { edge } }))], links: Array.from({ length: 5 }, (_, i) => ({ key: `l${i}`, from: 'a', to: `n${i}`, amount: 1 })) };
+        const labels = new Map(g.nodes.map(n => [`node:${n.key}`, [n.title, '10 EUR', '20 USD', '30 GBP', 'Σ 68.5 USD']]));
+        const scene = layoutGraph(resolveGraph(g), { width: 360, labels });
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (const n of scene.nodes) { assert.equal(n.label.lines.length, 5); assert.ok(n.label.y >= 0 && n.label.y + n.label.h <= scene.height); }
+        for (const a of scene.nodes.filter(n => n.edge)) for (const b of scene.nodes.filter(n => n.edge && n.key !== a.key)) assert.equal(intersects(a.label, b.label), false);
+    });
 
 for (const edge of ['top', 'bottom'] as const) for (const reverse of [false, true])
     test(`converted ${edge} ${reverse ? 'inflows' : 'outflows'} match pre-normalized geometry`, () => {
