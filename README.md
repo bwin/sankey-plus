@@ -46,6 +46,19 @@ npm test
 npm run build
 ```
 
+To measure layout performance:
+
+```sh
+npm run stress
+npm run stress -- --runs 20 --output .tests/stress.json
+npm run benchmark
+npm run benchmark -- --case stress-100-300 --profile .tests/stress.cpuprofile
+```
+
+`stress` measures the deterministic **100-node / 300-link** fixture: four stages of 25 nodes, with four forward links per node to the next stage (indices wrap within that stage). Amounts are 10–13 units. `benchmark` also measures desktop/mobile regression fixtures, the four-sided example and wrapped fan-out. The shared generator is in `fixtures/stress.ts`.
+
+Reports include the first calculation, median/min/max of ten subsequent calculations, scene dimensions, crossings and obstacle collisions. Timings cover data validation and layout at 1440 px for the stress case; compilation, React rendering and browser painting are excluded. CPU profiling adds overhead, so compare unprofiled runs for timings. [PERFORMANCE.md](PERFORMANCE.md) records the measured optimization results and limitations. These commands require a development checkout with dependencies installed; they are not included in the npm library.
+
 Node 22 was used for verification. React 19.2 was used for the demo; the library declares React/React DOM 18.2 or later as peer dependencies.
 
 The working project has a local Git repository. Commit `23293a1` preserves the implementation before the demo-tab and interaction review; later commits record the changes separately. Use `git log --oneline` to inspect the history. Dependencies and generated builds are ignored. The downloadable ZIP contains source and compiled output, but not the local `.git` history.

@@ -30,6 +30,8 @@
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
+    "stress": "node scripts/benchmark-layout.mjs --case stress-100-300",
+    "benchmark": "node scripts/benchmark-layout.mjs",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/serve.mjs"
   },

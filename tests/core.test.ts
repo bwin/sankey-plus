@@ -5,7 +5,7 @@ import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { crossings, distanceToRoute, distanceToSegment, inflate, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode } from '../src/types.js';
-import { stressGraph } from './stress-fixture.js';
+import { stressGraph } from '../fixtures/stress.js';
 const full = JSON.parse(readFileSync(new URL('../../demo/feature-demo.json', import.meta.url), 'utf8')) as SankeyGraph;
 const base: SankeyGraph = { stages: ['a', 'b'], nodes: [{ key: 'a', title: 'Available', total: 1000, placement: { stage: 'a' } }, { key: 'b', title: 'Allocated', placement: { stage: 'b' } }], links: [{ key: 'ab', from: 'a', to: 'b', amount: 500 }] };
 const error = (graph: SankeyGraph, code: SankeyIssueCode) => assert.throws(() => resolveGraph(graph), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === code));

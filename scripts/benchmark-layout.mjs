@@ -16,7 +16,7 @@ compile('tsconfig.test.json');
 const modules = path.resolve(project, option('--modules') ?? '.tests/src');
 const { resolveGraph } = await import(pathToFileURL(path.join(modules, 'model.js')).href);
 const { layoutGraph } = await import(pathToFileURL(path.join(modules, 'layout.js')).href);
-const { stressGraph } = await import(pathToFileURL(path.join(project, '.tests/tests/stress-fixture.js')).href);
+const { stressGraph } = await import(pathToFileURL(path.join(project, '.tests/fixtures/stress.js')).href);
 const readGraph = async name => JSON.parse(await readFile(path.join(project, 'demo', name), 'utf8'));
 const allocations = JSON.parse(await readFile(path.join(project, 'tests/fixtures/original-allocations.json'), 'utf8'));
 const full = await readGraph('feature-demo.json');
