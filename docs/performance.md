@@ -26,7 +26,7 @@ The first stress calculation took 789.0 ms before and 230.1 ms after in these No
 
 In the desktop app's Chromium-based browser, alternating baseline and optimized stress calculations gave **658.8 ms → 87.1 ms** medians (7.6× faster). First calls took **703.2 ms → 164.8 ms**; subsequent ranges were 612.7–707.3 ms and 83.2–119.5 ms. The browser was given a turn between whole calculations; each layout itself remained synchronous.
 
-![Browser geometry benchmark](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/12-layout-performance.png)
+![Browser geometry benchmark](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/12-layout-performance.png)
 
 ## Profile findings and changes
 

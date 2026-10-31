@@ -37,10 +37,10 @@ The routing search is bounded. Pathological custom graphs may still need a large
 
 Wrapped destinations use separate lanes and nested bends:
 
-![Wrapped fan-out with separate lanes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/07-consistent-bundle-curves.jpg)
+![Wrapped fan-out with separate lanes](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/07-consistent-bundle-curves.jpg)
 
 A wrapped source keeps its destination slot; Recovery enters below Carry-in:
 
-![Recovery on a second bottom row](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/15-wrapped-recovery.png)
+![Recovery on a second bottom row](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/15-wrapped-recovery.png)
 
 See [performance](performance.md) for cooperative scheduling and [verification](verification.md) for tested cases and remaining limits.

@@ -29,6 +29,8 @@
 
 ## Development and verification
 
+Work on `dev` (or feature branches merged into `dev`). `master` is the default branch and represents the latest npm release; do not push ordinary development or documentation updates directly to it. Release preparation belongs on `dev`, followed by a release merge into `master`. Return to `dev` after releasing. CI checks both branches, but only `master` deploys the live demo.
+
 From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits.
 
 ```sh

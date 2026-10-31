@@ -21,7 +21,7 @@ All examples share custom labels/tooltips, node/link activation, host-controlled
 
 ## Explicit stages
 
-The [Stages fixture](https://github.com/bwin/sankey-plus/blob/main/demo/stages.json) deliberately interleaves nodes from different stages in its node array. The stage array still fixes the three columns:
+The [Stages fixture](https://github.com/bwin/sankey-plus/blob/master/demo/stages.json) deliberately interleaves nodes from different stages in its node array. The stage array still fixes the three columns:
 
 ```ts
 stages: ['collect', 'prepare', 'deliver']
@@ -29,17 +29,17 @@ stages: ['collect', 'prepare', 'deliver']
 
 Within Prepare, `prepare-b` appears before `prepare-a`, so B stays above A. The gold 100-unit `bypass` link goes directly from Collect A to Deliver A without shifting either stage. Stage keys identify columns; they do not create built-in headings. Same-stage and backward links are invalid. See [stages and order](api.md#stages-and-order).
 
-![Stages with shared columns and a gold link skipping the middle stage](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/18-stages.jpg)
+![Stages with shared columns and a gold link skipping the middle stage](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/18-stages.jpg)
 
 ## Fan-in
 
-The [Fan-in fixture](https://github.com/bwin/sankey-plus/blob/main/demo/fan-in.json) sends 600, 250 and 150 units from three stage nodes to one bottom node. Combined derives its 1,000-unit total from these incoming links. The lowest source arrives at the leftmost slot on the horizontal destination bar; the upper sources arrive farther right, keeping the turns from crossing. This complements the existing fan-out examples.
+The [Fan-in fixture](https://github.com/bwin/sankey-plus/blob/master/demo/fan-in.json) sends 600, 250 and 150 units from three stage nodes to one bottom node. Combined derives its 1,000-unit total from these incoming links. The lowest source arrives at the leftmost slot on the horizontal destination bar; the upper sources arrive farther right, keeping the turns from crossing. This complements the existing fan-out examples.
 
-![Three unequal inputs converging on one bottom destination](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/19-fan-in.jpg)
+![Three unequal inputs converging on one bottom destination](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/19-fan-in.jpg)
 
 ## Parallel links
 
-The [Parallel links fixture](https://github.com/bwin/sankey-plus/blob/main/demo/parallel-links.json) uses the same `from` and `to` for three links. Each has its own unique `key`, amount and color:
+The [Parallel links fixture](https://github.com/bwin/sankey-plus/blob/master/demo/parallel-links.json) uses the same `from` and `to` for three links. Each has its own unique `key`, amount and color:
 
 ```ts
 links: [
@@ -51,8 +51,8 @@ links: [
 
 Inspect a node to emphasize all three links. Inspect a single ribbon to emphasize only it and its two endpoints. Click a ribbon or use the external selection control to select it; the demo includes each amount in the selection labels to distinguish these links. They are not aggregated into one transfer.
 
-![Parallel links with the 150-unit ribbon selected independently](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/20-parallel-links.jpg)
+![Parallel links with the 150-unit ribbon selected independently](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/20-parallel-links.jpg)
 
-Examples live in [demo/fixtures.ts](https://github.com/bwin/sankey-plus/blob/main/demo/fixtures.ts), with JSON scene files beside it.
+Examples live in [demo/fixtures.ts](https://github.com/bwin/sankey-plus/blob/master/demo/fixtures.ts), with JSON scene files beside it.
 
-![Four-sided flow](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/01-complete-flow.jpg)
+![Four-sided flow](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/01-complete-flow.jpg)

@@ -13,6 +13,7 @@ To develop from the GitHub repository:
 ```sh
 git clone https://github.com/bwin/sankey-plus.git
 cd sankey-plus
+git switch dev
 npm ci
 npm run dev
 ```
@@ -46,11 +47,11 @@ Node 22 was used for verification. React 19.2 was used for the demo; the library
 
 ## Automatic demo deployment
 
-[The demo workflow](https://github.com/bwin/sankey-plus/blob/main/.github/workflows/demo.yml) runs on pushes to `main` and can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, runs the tests, builds the library/demo and uploads only `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed.
+[The demo workflow](https://github.com/bwin/sankey-plus/blob/master/.github/workflows/demo.yml) checks pushes to `dev` and `master`, plus pull requests targeting `master`. It can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, runs the tests, builds the library/demo and, on `master` only, uploads `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed. Development branches run checks without publishing the demo.
 
-The repository's Pages publishing source is **GitHub Actions**. The `github-pages` environment receives the deployment; only that job has Pages write and identity-token permissions. No personal access token or npm publishing secret is stored in the workflow. Generated files stay out of Git.
+The repository's Pages publishing source is **GitHub Actions**. The `github-pages` environment accepts only `master` deployments; only that job has Pages write and identity-token permissions. No personal access token or npm publishing secret is stored in the workflow. Generated files stay out of Git.
 
-The live demo tracks `main` independently of npm releases. Its relative asset URLs work under the `/sankey-plus/` project path. Updates to the library package still require a separate npm release.
+The live demo tracks `master`, the latest released version. Its relative asset URLs work under the `/sankey-plus/` project path. Updates to the library package still require a separate npm release.
 
 ## Source organization
 
@@ -73,7 +74,7 @@ The live demo tracks `main` independently of npm releases. Its relative asset UR
 
 ## Working conventions
 
-Follow [AGENTS.md](https://github.com/bwin/sankey-plus/blob/main/AGENTS.md), including focused commits for independent changes. [Verification](verification.md) records observed behavior and testing limits.
+Follow [AGENTS.md](https://github.com/bwin/sankey-plus/blob/master/AGENTS.md), including focused commits for independent changes. [Verification](verification.md) records observed behavior and testing limits.
 
 ## npm package contents
 

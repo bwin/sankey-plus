@@ -1,15 +1,17 @@
-name: Deploy demo
+name: Check and deploy demo
 
 on:
   push:
-    branches: [main]
+    branches: [dev, master]
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: github-pages
+  group: demo-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -28,11 +30,13 @@ jobs:
       - run: npm test
       - run: npm run build
       - uses: actions/upload-pages-artifact@v4
+        if: github.ref == 'refs/heads/master'
         with:
           path: demo-dist
 
   deploy:
     needs: build
+    if: github.ref == 'refs/heads/master'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

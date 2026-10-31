@@ -4,7 +4,7 @@
 
 **[Live demo →](https://bwin.github.io/sankey-plus/)**
 
-![Distribution chart at 960 pixels wide, with partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/21-distribution-chart-960.jpg)
+![Distribution chart at 960 pixels wide, with partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/21-distribution-chart-960.jpg)
 
 ## Quick start
 
@@ -45,14 +45,14 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 
 | Guide | Covers |
 | --- | --- |
-| [Getting started](https://github.com/bwin/sankey-plus/blob/main/docs/getting-started.md) | Integration, click handlers, selection and sizing |
-| [API reference](https://github.com/bwin/sankey-plus/blob/main/docs/api.md) | Props, graph data, stages, callback contexts and validation |
-| [Customization](https://github.com/bwin/sankey-plus/blob/main/docs/customization.md) | Labels, endpoint tooltips, formatting and themes |
-| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/main/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
-| [Examples](https://github.com/bwin/sankey-plus/blob/main/docs/examples.md) | What each interactive demo demonstrates |
-| [Development](https://github.com/bwin/sankey-plus/blob/main/docs/development.md) | Local setup, tests, builds and stress commands |
+| [Getting started](https://github.com/bwin/sankey-plus/blob/master/docs/getting-started.md) | Integration, click handlers, selection and sizing |
+| [API reference](https://github.com/bwin/sankey-plus/blob/master/docs/api.md) | Props, graph data, stages, callback contexts and validation |
+| [Customization](https://github.com/bwin/sankey-plus/blob/master/docs/customization.md) | Labels, endpoint tooltips, formatting and themes |
+| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/master/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
+| [Examples](https://github.com/bwin/sankey-plus/blob/master/docs/examples.md) | What each interactive demo demonstrates |
+| [Development](https://github.com/bwin/sankey-plus/blob/master/docs/development.md) | Local setup, tests, builds and stress commands |
 
-Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](https://github.com/bwin/sankey-plus/blob/main/docs/performance.md) and [verification](https://github.com/bwin/sankey-plus/blob/main/docs/verification.md) for measurements and tested coverage. These guides describe the repository; npm releases may lag behind `main`.
+Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](https://github.com/bwin/sankey-plus/blob/master/docs/performance.md) and [verification](https://github.com/bwin/sankey-plus/blob/master/docs/verification.md) for measurements and tested coverage. `master` contains the latest npm release; ongoing development happens on `dev`.
 
 ## Run the demo locally
 
