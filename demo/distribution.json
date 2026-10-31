@@ -1,0 +1,28 @@
+{
+  "stages": ["inputs", "processing", "results"],
+  "nodes": [
+    { "key": "input-a", "title": "Input A", "total": 1000, "placement": { "stage": "inputs" }, "color": "#5265cc" },
+    { "key": "input-b", "title": "Input B", "total": 650, "placement": { "stage": "inputs" }, "color": "#c58a29" },
+    { "key": "supplement", "title": "Supplement", "total": 200, "placement": { "edge": "top" }, "color": "#3589ac" },
+    { "key": "process-a", "title": "Process A", "total": 900, "placement": { "stage": "processing" }, "color": "#168e9d" },
+    { "key": "process-b", "title": "Process B", "placement": { "stage": "processing" }, "color": "#8170b4" },
+    { "key": "result-a", "title": "Result A", "total": 700, "placement": { "stage": "results" }, "color": "#d76c91" },
+    { "key": "result-b", "title": "Result B", "placement": { "stage": "results" }, "color": "#688670" },
+    { "key": "unused", "title": "Unused", "placement": { "edge": "bottom" }, "color": "#64778d" },
+    { "key": "deferred", "title": "Deferred", "placement": { "edge": "bottom" }, "color": "#ba6750" }
+  ],
+  "links": [
+    { "key": "supplement-a", "from": "supplement", "to": "process-a", "amount": 150 },
+    { "key": "input-a-process-a", "from": "input-a", "to": "process-a", "amount": 350 },
+    { "key": "input-a-process-b", "from": "input-a", "to": "process-b", "amount": 300 },
+    { "key": "input-b-process-a", "from": "input-b", "to": "process-a", "amount": 250 },
+    { "key": "input-b-process-b", "from": "input-b", "to": "process-b", "amount": 250 },
+    { "key": "input-a-unused", "from": "input-a", "to": "unused", "amount": 150 },
+    { "key": "process-a-result-a", "from": "process-a", "to": "result-a", "amount": 500 },
+    { "key": "process-a-result-b", "from": "process-a", "to": "result-b", "amount": 150 },
+    { "key": "process-b-result-a", "from": "process-b", "to": "result-a", "amount": 100 },
+    { "key": "process-b-result-b", "from": "process-b", "to": "result-b", "amount": 350 },
+    { "key": "process-a-deferred", "from": "process-a", "to": "deferred", "amount": 100 },
+    { "key": "process-b-deferred", "from": "process-b", "to": "deferred", "amount": 100 }
+  ]
+}

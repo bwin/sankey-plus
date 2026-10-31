@@ -246,7 +246,7 @@ test('100 nodes and 300 links produce finite geometry without input changes', ()
 });
 
 for (const width of [1440, 1311, 960, 600, 360]) test(`original allocations at ${width}px clear neighboring labels`, () => {
-    const graph = JSON.parse(readFileSync(new URL('../../demo/allocations.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const graph = JSON.parse(readFileSync(new URL('../../tests/fixtures/original-allocations.json', import.meta.url), 'utf8')) as SankeyGraph;
     const model = resolveGraph(graph);
     const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));
     const scene = layoutGraph(model, { width, labels });

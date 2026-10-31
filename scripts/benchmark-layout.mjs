@@ -18,7 +18,7 @@ const { resolveGraph } = await import(pathToFileURL(path.join(modules, 'model.js
 const { layoutGraph } = await import(pathToFileURL(path.join(modules, 'layout.js')).href);
 const { stressGraph } = await import(pathToFileURL(path.join(project, '.tests/tests/stress-fixture.js')).href);
 const readGraph = async name => JSON.parse(await readFile(path.join(project, 'demo', name), 'utf8'));
-const allocations = await readGraph('allocations.json');
+const allocations = JSON.parse(await readFile(path.join(project, 'tests/fixtures/original-allocations.json'), 'utf8'));
 const full = await readGraph('feature-demo.json');
 const fan = { stages: ['a'], nodes: [{ key: 'a', title: 'Process', placement: { stage: 'a' } }, ...Array.from({ length: 12 }, (_, i) => ({ key: `d${i}`, title: `Destination ${i + 1}`, placement: { edge: 'bottom' } }))], links: Array.from({ length: 12 }, (_, i) => ({ key: `f${i}`, from: 'a', to: `d${i}`, amount: 100 })) };
 const cases = [

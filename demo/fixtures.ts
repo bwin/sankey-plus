@@ -1,8 +1,8 @@
 import type { SankeyGraph } from '../src/index.js';
 import full from './feature-demo.json';
-import allocationData from './allocations.json';
+import distributionData from './distribution.json';
 export const fullGraph = full as SankeyGraph;
-export const allocations = allocationData as SankeyGraph;
+export const distribution = distributionData as SankeyGraph;
 export function fanOut(edge: 'top' | 'bottom' = 'bottom', count = 3): SankeyGraph {
     return { stages: ['process'], nodes: [{ key: 'process', title: 'Process', total: count * 100, placement: { stage: 'process' }, color: '#298c98' }, ...Array.from({ length: count }, (_, i) => ({ key: `dest-${i}`, title: `Destination ${i + 1}`, placement: { edge }, color: ['#688670', '#a88c48', '#8170b4'][i % 3] }))], links: Array.from({ length: count }, (_, i) => ({ key: `branch-${i}`, from: 'process', to: `dest-${i}`, amount: 100 })) };
 }
@@ -13,7 +13,7 @@ export const examples: {
     description: string;
     graph: SankeyGraph;
 }[] = [
-    { key: 'allocations', name: 'Allocations', description: 'Transactions, statements and invoices, with balances above and below.', graph: allocations },
+    { key: 'distribution', name: 'Distribution', description: 'Two inputs, shared processing and partial totals, with a supplement above and deferred flow below.', graph: distribution },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },
     { key: 'top', name: 'Top fan-out', description: 'The same routing rule, reflected above the main sequence.', graph: fanOut('top') },

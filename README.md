@@ -2,7 +2,7 @@
 
 `@bwin/sankey-plus` is an interactive React + TypeScript Sankey component with four-sided node placement, partial allocations and controlled selection. SVG drawing, layout, routing, hit testing and interactions are implemented in this package. Runtime dependencies are React and React DOM only.
 
-The default demo includes the supplied transaction, statement and invoice data, including Client Balance above and Unallocated, Unpaid, Written Off and Bad Debt below. The component has no business-domain logic.
+The default Distribution demo combines two inputs, shared processing, partial totals, a supplement above, and unused/deferred flow below. Its nine nodes and twelve links use generic labels; the component has no business-domain logic.
 
 ## Installation
 
@@ -217,8 +217,8 @@ Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palet
 | `src/presentation.ts` | Quantity formatting and accessible descriptions |
 | `src/SankeyDiagram.tsx` | Rendering, interactions, selection and tooltip |
 | `src/style.css` | Appearance and theme tokens |
-| `demo/fixtures.ts` | Original allocations and behavior examples |
-| `demo/allocations.json` | Supplied transaction, statement and invoice dataset |
+| `demo/fixtures.ts` | Generic examples and routing demonstrations |
+| `demo/distribution.json` | Medium-complexity distribution example |
 | `demo/feature-demo.json` | Full neutral example, including mixed-role edge nodes |
 | `tests/core.test.ts` | Data, geometry and emphasis regressions |
 
@@ -228,7 +228,7 @@ Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palet
 
 These captures come from the running implementation, not design mockups.
 
-![All examples available as tabs above the original allocation dataset](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/08-all-example-tabs.jpg)
+![Generic distribution example with shared stages and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/13-distribution.png)
 
 ![Complete flow with three stages, multiple top/bottom nodes, mixed-role relays, custom labels and partial totals](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/01-complete-flow.jpg)
 
