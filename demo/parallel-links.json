@@ -1,0 +1,12 @@
+{
+  "stages": ["input", "output"],
+  "nodes": [
+    { "key": "source", "title": "Source", "placement": { "stage": "input" }, "color": "#5265cc" },
+    { "key": "destination", "title": "Destination", "placement": { "stage": "output" }, "color": "#168e9d" }
+  ],
+  "links": [
+    { "key": "main", "from": "source", "to": "destination", "amount": 300, "color": "#168e9d" },
+    { "key": "secondary", "from": "source", "to": "destination", "amount": 150, "color": "#c58a29" },
+    { "key": "small", "from": "source", "to": "destination", "amount": 50, "color": "#8170b4" }
+  ]
+}

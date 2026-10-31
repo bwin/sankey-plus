@@ -1,0 +1,14 @@
+{
+  "stages": ["inputs"],
+  "nodes": [
+    { "key": "input-a", "title": "Input A", "placement": { "stage": "inputs" }, "color": "#5265cc" },
+    { "key": "input-b", "title": "Input B", "placement": { "stage": "inputs" }, "color": "#c58a29" },
+    { "key": "input-c", "title": "Input C", "placement": { "stage": "inputs" }, "color": "#8170b4" },
+    { "key": "combined", "title": "Combined", "placement": { "edge": "bottom" }, "color": "#168e9d" }
+  ],
+  "links": [
+    { "key": "a-combined", "from": "input-a", "to": "combined", "amount": 600, "color": "#5265cc" },
+    { "key": "b-combined", "from": "input-b", "to": "combined", "amount": 250, "color": "#c58a29" },
+    { "key": "c-combined", "from": "input-c", "to": "combined", "amount": 150, "color": "#8170b4" }
+  ]
+}
