@@ -1,0 +1,49 @@
+# Working on Sankey Plus
+
+## Project
+
+- Package: `@bwin/sankey-plus`. Public React component: `SankeyDiagram`; public data types use the `Sankey` prefix and `nodes`/`links` terminology.
+- Author and copyright holder: **Benjamin Winkler | bwin**. License: MIT.
+- Keep the library and examples use-case agnostic. Domain-specific historical data belongs in regression fixtures, not component logic.
+- Runtime dependencies are React and React DOM. Layout, SVG rendering and hit testing are implemented here; avoid introducing a charting framework for routine fixes.
+
+## Source boundaries
+
+- `src/types.ts` and `src/index.ts`: public contract and exports. Keep implementation-only options internal.
+- `src/model.ts`: input validation, adjacency, totals and one-hop emphasis.
+- `src/layout.ts` and `src/paths.ts`: deterministic geometry, port order, routing and collision checks. These modules must remain independent of React and the DOM.
+- `src/presentation.ts` and `src/SankeyDiagram.tsx`: formatting, measured labels, rendering and interaction.
+- `demo/`: interactive examples. `fixtures/stress.ts` is shared by the demo, regression test and benchmark; do not create divergent copies.
+- `tests/`: repeatable geometry/data regressions. `screenshots/` and `VERIFICATION.md`: actual browser observations and their limits.
+
+## Behavior to preserve
+
+- Inputs are immutable. A declared total may exceed transferred amounts, but cannot be less than either incoming or outgoing sums. All ribbon widths and quantitative bars use one common scale.
+- Main-stage nodes retain their shared vertical axis and input order. Top/bottom nodes use their inward face in both directions; reserve edge space only when nodes occupy that edge.
+- Wrapping must preserve intended port order, separate simple fan ribbons and keep unrelated bars/labels clear. Test mirrored top and bottom cases and both incoming and outgoing directions when changing routing.
+- Inspecting a node emphasizes itself, its incident links and their endpoints only. Inspecting a link emphasizes it and its two endpoints. Selection is controlled by the host, independent of inspection, and visually distinct even when faded.
+- Preserve keyboard activation, visible-label hit testing, native wheel scrolling and container-local horizontal overflow.
+- Arbitrary graphs may retain crossings. Do not hide collision diagnostics, reduce search budgets or change geometry merely to improve benchmark numbers.
+
+## Development and verification
+
+From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits.
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npm run stress
+npm run benchmark
+```
+
+- `npm run build` checks TypeScript and builds both the library and demo. Build/test scripts invoke TypeScript and Rollup in-process.
+- Add focused regressions for behavioral bugs. For routing changes, check actual rendered output at desktop and narrow widths in addition to geometry tests. Record what was verified without implying untested browser/platform coverage.
+- Profile before optimizing. Compare unprofiled first-call and warm timings; keep fixture creation, compilation and rendering outside layout timing. See `PERFORMANCE.md` for methodology and benchmark arguments. In PowerShell, use `npm.cmd` if the `npm.ps1` shim strips forwarded `--` arguments.
+- Keep generated `dist/`, `demo-dist/`, `.tests/` and `node_modules/` out of Git. Store CPU profiles and temporary reports under `.tests/`.
+- Make focused, independently reviewable commits: separate performance work, routing fixes, examples and repository guidance. Preserve unrelated user changes.
+- Keep README/API examples aligned with implementation. Distinguish changes committed to Git from versions actually published to npm.
+
+## Shared agent guidance
+
+Maintain project instructions here. `CLAUDE.md` imports this file; do not duplicate these rules there.
