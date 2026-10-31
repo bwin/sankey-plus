@@ -1,9 +1,10 @@
-import type { SankeyGraph } from '../src/index.js';
+import type { SankeyGraph, SankeyDiagramProps } from '../src/index.js';
 import full from './feature-demo.json';
 import distributionData from './distribution.json';
 import stagesData from './stages.json';
 import fanInData from './fan-in.json';
 import parallelData from './parallel-links.json';
+import tradeData from './trade.json';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
@@ -16,9 +17,19 @@ export const examples: {
     name: string;
     description: string;
     graph: SankeyGraph;
+    formatAmount?: (value: number) => string;
+    getLabel?: SankeyDiagramProps['getLabel'];
+    plotHeight?: number;
 }[] = [
     { key: 'distribution', name: 'Distribution', description: 'Two inputs, shared processing and partial totals, with a supplement above and deferred flow below.', graph: distribution },
     { key: 'stages', name: 'Stages', description: 'Collect → Prepare → Deliver. Node order keeps Prepare B above Prepare A; the gold 100-unit link skips Prepare without moving either column.', graph: stagesData as SankeyGraph },
+    {
+        key: 'trade', name: 'World trade',
+        description: 'Exporting countries → global totals by good → importing countries. Illustrative annual values in USD billions; colors identify goods. Not actual trade statistics.',
+        graph: tradeData as SankeyGraph, plotHeight: 420,
+        formatAmount: value => `$${value.toLocaleString('en-US')} bn`,
+        getLabel: view => view.kind === 'link' ? view.text.amount : [view.node.title, `${view.text.total} ${view.node.placement.stage === 'global-goods' ? 'global' : view.node.placement.stage === 'exporters' ? 'exports' : 'imports'}`],
+    },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },
     { key: 'fanin', name: 'Fan-in', description: 'Three unequal inputs share one bottom destination. Reversed arrival order keeps the ribbons separate; the total is derived as 1,000.', graph: fanInData as SankeyGraph },

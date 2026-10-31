@@ -1,0 +1,43 @@
+{
+  "stages": ["exporters", "global-goods", "importers"],
+  "nodes": [
+    { "key": "export-brazil", "title": "Brazil", "placement": { "stage": "exporters" }, "color": "#64748b", "meta": { "note": "Grain and energy exports in this illustrative dataset." } },
+    { "key": "export-australia", "title": "Australia", "placement": { "stage": "exporters" }, "color": "#64748b", "meta": { "note": "Energy exports in this illustrative dataset." } },
+    { "key": "export-us", "title": "United States", "placement": { "stage": "exporters" }, "color": "#64748b", "meta": { "note": "Grain, energy and electronics exports in this illustrative dataset." } },
+    { "key": "export-germany", "title": "Germany", "placement": { "stage": "exporters" }, "color": "#64748b", "meta": { "note": "Machinery and electronics exports in this illustrative dataset." } },
+    { "key": "export-china", "title": "China", "placement": { "stage": "exporters" }, "color": "#64748b", "meta": { "note": "Machinery and electronics exports in this illustrative dataset." } },
+    { "key": "grain", "title": "Grain", "placement": { "stage": "global-goods" }, "color": "#c59338", "meta": { "note": "Global grain total for the countries shown. Exports and imports both sum to $100 bn; flows are aggregated, not bilateral routes." } },
+    { "key": "energy", "title": "Energy", "placement": { "stage": "global-goods" }, "color": "#258e80", "meta": { "note": "Global energy total for the countries shown. Exports and imports both sum to $160 bn; flows are aggregated, not bilateral routes." } },
+    { "key": "machinery", "title": "Machinery", "placement": { "stage": "global-goods" }, "color": "#5278c5", "meta": { "note": "Global machinery total for the countries shown. Exports and imports both sum to $240 bn; flows are aggregated, not bilateral routes." } },
+    { "key": "electronics", "title": "Electronics", "placement": { "stage": "global-goods" }, "color": "#9b6ab5", "meta": { "note": "Global electronics total for the countries shown. Exports and imports both sum to $300 bn; flows are aggregated, not bilateral routes." } },
+    { "key": "import-china", "title": "China", "placement": { "stage": "importers" }, "color": "#64748b", "meta": { "note": "Grain imports in this illustrative dataset." } },
+    { "key": "import-india", "title": "India", "placement": { "stage": "importers" }, "color": "#64748b", "meta": { "note": "Grain, energy and machinery imports in this illustrative dataset." } },
+    { "key": "import-japan", "title": "Japan", "placement": { "stage": "importers" }, "color": "#64748b", "meta": { "note": "Grain, energy and electronics imports in this illustrative dataset." } },
+    { "key": "import-germany", "title": "Germany", "placement": { "stage": "importers" }, "color": "#64748b", "meta": { "note": "Energy, machinery and electronics imports in this illustrative dataset." } },
+    { "key": "import-us", "title": "United States", "placement": { "stage": "importers" }, "color": "#64748b", "meta": { "note": "Machinery and electronics imports in this illustrative dataset." } }
+  ],
+  "links": [
+    { "key": "brazil-grain", "from": "export-brazil", "to": "grain", "amount": 60, "color": "#c59338" },
+    { "key": "us-grain", "from": "export-us", "to": "grain", "amount": 40, "color": "#c59338" },
+    { "key": "brazil-energy", "from": "export-brazil", "to": "energy", "amount": 40, "color": "#258e80" },
+    { "key": "australia-energy", "from": "export-australia", "to": "energy", "amount": 60, "color": "#258e80" },
+    { "key": "us-energy", "from": "export-us", "to": "energy", "amount": 60, "color": "#258e80" },
+    { "key": "germany-machinery", "from": "export-germany", "to": "machinery", "amount": 130, "color": "#5278c5" },
+    { "key": "china-machinery", "from": "export-china", "to": "machinery", "amount": 110, "color": "#5278c5" },
+    { "key": "us-electronics", "from": "export-us", "to": "electronics", "amount": 80, "color": "#9b6ab5" },
+    { "key": "germany-electronics", "from": "export-germany", "to": "electronics", "amount": 40, "color": "#9b6ab5" },
+    { "key": "china-electronics", "from": "export-china", "to": "electronics", "amount": 180, "color": "#9b6ab5" },
+    { "key": "grain-china", "from": "grain", "to": "import-china", "amount": 45, "color": "#c59338" },
+    { "key": "grain-india", "from": "grain", "to": "import-india", "amount": 30, "color": "#c59338" },
+    { "key": "grain-japan", "from": "grain", "to": "import-japan", "amount": 25, "color": "#c59338" },
+    { "key": "energy-india", "from": "energy", "to": "import-india", "amount": 60, "color": "#258e80" },
+    { "key": "energy-japan", "from": "energy", "to": "import-japan", "amount": 50, "color": "#258e80" },
+    { "key": "energy-germany", "from": "energy", "to": "import-germany", "amount": 50, "color": "#258e80" },
+    { "key": "machinery-india", "from": "machinery", "to": "import-india", "amount": 70, "color": "#5278c5" },
+    { "key": "machinery-germany", "from": "machinery", "to": "import-germany", "amount": 80, "color": "#5278c5" },
+    { "key": "machinery-us", "from": "machinery", "to": "import-us", "amount": 90, "color": "#5278c5" },
+    { "key": "electronics-japan", "from": "electronics", "to": "import-japan", "amount": 70, "color": "#9b6ab5" },
+    { "key": "electronics-germany", "from": "electronics", "to": "import-germany", "amount": 100, "color": "#9b6ab5" },
+    { "key": "electronics-us", "from": "electronics", "to": "import-us", "amount": 130, "color": "#9b6ab5" }
+  ]
+}

@@ -4,10 +4,14 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
-- Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
-- Spread fan curves gradually along both axes and reserve more arrival space in wrapped rows. Try broad edge curves before elbow-like detours while preserving ribbon separation and label clearance.
+### Added
+
+- World trade example with exporting/importing countries, balanced global totals per good, commodity colors and illustrative USD-billion formatting.
 
 ### Changed
+
+- Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
+- Spread fan curves gradually along both axes and reserve more arrival space in wrapped rows. Try broad edge curves before elbow-like detours while preserving ribbon separation and label clearance.
 
 - Node/link inspection fades paint and labels over 120 ms, respecting reduced motion. Tooltips and selection/focus outlines remain instant.
 - Demo link tooltips use aligned two-column rows: transfer details and amount above source and destination details, without the click-to-select hint.

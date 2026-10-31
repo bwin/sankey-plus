@@ -1,18 +1,19 @@
-import { useState, type KeyboardEvent } from 'react';
+import { useCallback, useState, type KeyboardEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SankeyDiagram, type SankeySubject, type SankeyPresentation, type SankeyNode, type SankeyLink, type SankeyGraph } from '../src/index.js';
 import { examples } from './fixtures.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 const format = (value: number) => `${value.toLocaleString('en-US')} units`;
-const linkName = (link: SankeyLink, graph: SankeyGraph) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${format(link.amount)}`;
+const nodeName = (node: SankeyNode, graph: SankeyGraph) => graph.nodes.some(other => other.key !== node.key && other.title === node.title) ? `${node.title} · ${node.placement.stage ?? node.placement.edge}` : node.title;
+const linkName = (link: SankeyLink, graph: SankeyGraph, formatAmount = format) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${formatAmount(link.amount)}`;
 const title = (view: SankeyPresentation) => view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`;
 const labels = (view: SankeyPresentation) => view.kind === 'node' ? [view.node.title, `${view.text.total} total`] : view.text.amount;
-function EndpointDetails({ node, label }: { node: SankeyNode; label: string }) {
+function EndpointDetails({ node, label, formatAmount }: { node: SankeyNode; label: string; formatAmount: (value: number) => string }) {
     const note = node.meta && typeof node.meta === 'object' && 'note' in node.meta && typeof node.meta.note === 'string' ? node.meta.note : null;
-    return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {format(node.total)}</span>}{note && <span>{note}</span>}</div>;
+    return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {formatAmount(node.total)}</span>}{note && <span>{note}</span>}</div>;
 }
-const details = (view: SankeyPresentation) => view.kind === 'node' ? <>
+const details = (view: SankeyPresentation, formatAmount = format) => view.kind === 'node' ? <>
     <span className="detail-eyebrow">NODE DETAILS</span>
     <strong className="flow-tip-title">{title(view)}</strong>
     <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl>
@@ -23,16 +24,18 @@ const details = (view: SankeyPresentation) => view.kind === 'node' ? <>
             <dl className="detail-amount"><dt>Amount</dt><dd>{view.text.amount}</dd></dl>
         </div>
         <div className="detail-endpoints">
-            <EndpointDetails node={view.fromNode} label="Source"/>
-            <EndpointDetails node={view.toNode} label="Destination"/>
+            <EndpointDetails node={view.fromNode} label="Source" formatAmount={formatAmount}/>
+            <EndpointDetails node={view.toNode} label="Destination" formatAmount={formatAmount}/>
         </div>
 </>;
 function App() {
     const [example, setExample] = useState('distribution'), [selection, setSelection] = useState<SankeySubject | null>(null), [viewport, setViewport] = useState('auto');
     const [clicksSelect, setClicksSelect] = useState(true), [custom, setCustom] = useState(true), [events, setEvents] = useState(0), [last, setLast] = useState('No clicks yet');
     const current = examples.find(e => e.key === example)!, graph = current.graph;
+    const formatAmount = current.formatAmount ?? format;
+    const customDetails = useCallback((view: SankeyPresentation) => details(view, formatAmount), [formatAmount]);
     const { hostRef, readyMs } = useExampleTiming(`${example}:${viewport}:${custom}`);
-    const selectedName = selection?.kind === 'node' ? graph.nodes.find(n => n.key === selection.key)?.title : selection?.kind === 'link' ? (() => { const f = graph.links.find(f => f.key === selection.key); return f ? linkName(f, graph) : undefined; })() : undefined;
+    const selectedName = selection?.kind === 'node' ? (() => { const n = graph.nodes.find(n => n.key === selection.key); return n ? nodeName(n, graph) : undefined; })() : selection?.kind === 'link' ? (() => { const f = graph.links.find(f => f.key === selection.key); return f ? linkName(f, graph, formatAmount) : undefined; })() : undefined;
     const clicked = (subject: SankeySubject, name: string) => { setEvents(n => n + 1); setLast(`${subject.kind === 'node' ? 'Node' : 'Link'} clicked: ${name}`); if (clicksSelect)
         setSelection(subject); };
     const chooseExample = (key: string) => { setExample(key); setSelection(null); };
@@ -49,11 +52,11 @@ function App() {
     <section className="workspace"><div className="workspace-toolbar"><div className="example-tabs" role="tablist" aria-label="Examples">{examples.map((e, index) => <button key={e.key} id={`example-tab-${e.key}`} role="tab" aria-selected={example === e.key} aria-controls="example-panel" tabIndex={example === e.key ? 0 : -1} onClick={() => chooseExample(e.key)} onKeyDown={event => navigateExamples(event, index)}>{e.name}</button>)}</div><label className="viewport-control">Canvas<select aria-label="Canvas width" value={viewport} onChange={e => setViewport(e.target.value)}><option value="auto">Fit container</option>{[1440, 960, 600, 360, 260].map(n => <option key={n} value={n}>{n} px</option>)}</select></label></div>
       <div role="tabpanel" id="example-panel" aria-labelledby={`example-tab-${example}`}>
       <div className="chart-heading"><div><h2>{current.name}</h2><p>{current.description}</p></div><span className="interaction-hint"><span />Hover to trace · click to select</span></div>
-      <div className={`canvas-stage${example === 'distribution' ? ' canvas-stage--dark' : ''}`}><div ref={hostRef} className="canvas-host" style={{ width: viewport === 'auto' ? '100%' : `${viewport}px`, maxWidth: '100%' }} data-demo-host=""><SankeyDiagram className={example === 'distribution' ? 'distribution-dark' : undefined} graph={graph} accessibleName={`${current.name} diagram`} plotHeight={336} selection={selection} formatAmount={format} getLabel={custom ? labels : undefined} renderTooltip={custom ? details : undefined} onNodeClick={f => clicked({ kind: 'node', key: f.node.key }, f.node.title)} onLinkClick={f => clicked({ kind: 'link', key: f.link.key }, linkName(f.link, graph))}/></div></div>
+      <div className={`canvas-stage${example === 'distribution' ? ' canvas-stage--dark' : ''}`}><div ref={hostRef} className="canvas-host" style={{ width: viewport === 'auto' ? '100%' : `${viewport}px`, maxWidth: '100%' }} data-demo-host=""><SankeyDiagram className={example === 'distribution' ? 'distribution-dark' : undefined} graph={graph} accessibleName={`${current.name} diagram`} plotHeight={current.plotHeight ?? 336} selection={selection} formatAmount={formatAmount} getLabel={custom ? current.getLabel ?? labels : undefined} renderTooltip={custom ? customDetails : undefined} onNodeClick={f => clicked({ kind: 'node', key: f.node.key }, nodeName(f.node, graph))} onLinkClick={f => clicked({ kind: 'link', key: f.link.key }, linkName(f.link, graph, formatAmount))}/></div></div>
       <footer className="chart-footer"><div className="selected-summary"><span className="selection-icon"/><span>Selected</span><b data-selected-name="">{selectedName ?? 'Nothing selected'}</b></div><button className="clear-button" onClick={() => setSelection(null)} disabled={!selection}>Clear selection</button></footer>
       </div>
     </section>
-    <section className="integration-panel"><div><h3>Controlled by the host</h3><p>Choose a selection here or attach your own click action.</p></div><label className="select-control">Selection<select aria-label="External selection" value={selection ? JSON.stringify(selection) : ''} onChange={e => setSelection(e.target.value ? JSON.parse(e.target.value) : null)}><option value="">None</option><optgroup label="Nodes">{graph.nodes.map(n => <option key={n.key} value={JSON.stringify({ kind: 'node', key: n.key })}>{n.title}</option>)}</optgroup><optgroup label="Links">{graph.links.map(f => <option key={f.key} value={JSON.stringify({ kind: 'link', key: f.key })}>{linkName(f, graph)}</option>)}</optgroup></select></label><div className="toggles"><label><input type="checkbox" checked={clicksSelect} onChange={e => setClicksSelect(e.target.checked)}/>Clicks update selection</label><label><input type="checkbox" checked={custom} onChange={e => setCustom(e.target.checked)}/>Custom labels and tooltip</label></div></section>
+    <section className="integration-panel"><div><h3>Controlled by the host</h3><p>Choose a selection here or attach your own click action.</p></div><label className="select-control">Selection<select aria-label="External selection" value={selection ? JSON.stringify(selection) : ''} onChange={e => setSelection(e.target.value ? JSON.parse(e.target.value) : null)}><option value="">None</option><optgroup label="Nodes">{graph.nodes.map(n => <option key={n.key} value={JSON.stringify({ kind: 'node', key: n.key })}>{nodeName(n, graph)}</option>)}</optgroup><optgroup label="Links">{graph.links.map(f => <option key={f.key} value={JSON.stringify({ kind: 'link', key: f.key })}>{linkName(f, graph, formatAmount)}</option>)}</optgroup></select></label><div className="toggles"><label><input type="checkbox" checked={clicksSelect} onChange={e => setClicksSelect(e.target.checked)}/>Clicks update selection</label><label><input type="checkbox" checked={custom} onChange={e => setCustom(e.target.checked)}/>Custom labels and tooltip</label></div></section>
     <div className="event-line" role="status" aria-live="polite"><span className="event-count" data-click-count="">{events}</span><span data-last-event="">{last}</span><span className="keyboard-help">Tab into the diagram · arrow keys to explore · Enter to activate</span></div>
   </main>;
 }
