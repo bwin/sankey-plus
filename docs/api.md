@@ -17,7 +17,7 @@
 | `plotHeight` | Preferred central region height; default 336 CSS pixels. Edge bands add height. |
 | `className` | Host styling, including the four theme tokens below. |
 
-A node has `key`, `title`, and exactly one placement: `{stage: 'stage-key'}` or `{edge: 'top' | 'bottom'}`. It can have `total`, `color`, and `meta`. A link has `key`, `from`, `to`, and `amount`, plus optional `color` and `meta`.
+A node has `key`, `title`, and exactly one placement: `{stage: 'stage-key'}` or `{edge: 'top' | 'bottom'}`. It can have `total` or per-unit `totals`, `color`, and `meta`. A link has `key`, `from`, `to`, and `amount`, plus optional `unit`, `conversionRates`, `color` and `meta`. The graph can provide `defaultUnit` and shared `conversionRates`. See [units and conversion](units.md).
 
 ## Stages and order
 
@@ -27,21 +27,21 @@ Links between stage nodes may skip columns, but must always move to a later stag
 
 ## Quantities
 
-Quantities must be finite. Link amounts must be positive. A declared total must be non-negative and at least its incoming and outgoing sums independently. Without a declared total, the total is `max(incoming, outgoing)`. All quantitative bar lengths and ribbon widths share one scale. Incoming plus outgoing is never the required total for a relay.
+Quantities must be finite. Link amounts must be positive. Each declared unit balance must be non-negative and at least its incoming and outgoing sums independently. Without a declaration, its total is `max(incoming, outgoing)`. Converted per-unit totals are summed for node size; all bars and ribbons share one scale. Incoming plus outgoing is never the required total for a relay within one unit. [Multi-unit semantics and examples](units.md) explain partial declarations and conversions.
 
 Keys are unique within each kind. Parallel links need different keys. Invalid data, unknown endpoints, backward/same-stage links and directed cycles throw `SankeyInputError`. Its `issues` include diagnostic codes and affected keys. Mixed-role edge nodes must fit between their main-stage sources and targets. Use a host error boundary for invalid external data.
 
 ## Callback context
 
-Node contexts expose the original `node`, resolved `total`, `incoming`, `outgoing`, `totalSource` (declared/derived), and incoming/outgoing link arrays. Link contexts expose the original `link`, `fromNode` and `toNode`; endpoint totals are the optional declared values on those original nodes. Resolved node facts are not nested inside link contexts.
+Node contexts expose the original `node`, scalar `total`/`incoming`/`outgoing` in the layout `unit`, `totalSource` (declared/derived/mixed), per-unit `totals`, optional default-unit `converted` summary, and incoming/outgoing link arrays. Link contexts expose the original `link`, `fromNode`, `toNode`, resolved `unit`, `layoutAmount`, optional `converted` amount and `conversionRates`. Endpoint totals are the optional declared values on those original nodes. Resolved node facts are not nested inside link contexts.
 
-Presentation contexts also contain formatted `text`: total/incoming/outgoing for a node, or amount for a link. The amount formatter receives `field` and `surface` (label, tooltip or accessible). Metadata stays typed independently through `SankeyGraph<NodeMeta, LinkMeta>` and the callback types.
+Presentation contexts contain formatted `text`: total/incoming/outgoing, per-unit `totals` and optional `converted` for nodes; amount, optional `convertedAmount` and conversion-rate equations for links. The amount formatter receives `field`, `unit`, `isConverted` and `surface` (label, tooltip or accessible). Metadata stays typed independently through `SankeyGraph<NodeMeta, LinkMeta>` and the callback types.
 
 Click handlers receive facts plus a React mouse or keyboard activation event. Selection is a separate controlled prop; callbacks do not change it internally. See [getting started](getting-started.md) for a working selection example.
 
 ## Validation errors
 
-`SankeyInputError.issues` contains `code`, `message`, and optional `nodeKey` / `linkKey`. Codes are `invalid-key`, `invalid-title`, `duplicate-key`, `unknown-endpoint`, `unknown-stage`, `invalid-placement`, `invalid-number`, `total-too-small`, `backward-stage-link`, `cycle`, and `incompatible-placement`.
+`SankeyInputError.issues` contains `code`, `message`, and optional `nodeKey` / `linkKey`. Codes are `invalid-key`, `invalid-title`, `duplicate-key`, `unknown-endpoint`, `unknown-stage`, `invalid-placement`, `invalid-number`, `total-too-small`, `backward-stage-link`, `cycle`, `incompatible-placement`, `invalid-unit`, `invalid-rate`, `conflicting-rate`, `missing-conversion`, and `incompatible-totals`.
 
 Use a React error boundary around diagrams backed by external data. Error boundaries catch validation failures during rendering and layout failures forwarded from the asynchronous calculation. Validate the structural shape of untrusted JSON before treating it as a `SankeyGraph`.
 

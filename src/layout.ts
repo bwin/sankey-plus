@@ -131,6 +131,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     };
     const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
+    const amount = (link: { key: string }) => model.links.get(link.key)!.layoutAmount;
     const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
     const stages = model.stages.map(s => [...model.nodes.values()].filter(n => n.node.placement.stage === s));
     const edges = [...model.nodes.values()].filter(n => n.node.placement.edge);
@@ -191,7 +192,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                 if (needed <= available)
                     continue;
                 const strip = available * .55, labelWidth = Math.min(Math.max(...textWidths), available - strip);
-                const traffic = sum(links.map(f => f.amount));
+                const traffic = sum(links.map(amount));
                 const channelWidth = Math.max(8, strip - labelWidth / 2 - 10 - Math.max(0, links.length - 2) * LANE_GAP);
                 scale = Math.min(scale, channelWidth / traffic);
                 for (const n of targets)
@@ -227,8 +228,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             if (other && !other.edge) {
                 const members = nodes.filter(v => v.stage === other.stage && !v.edge);
                 const right = Math.max(other.x + BAR, ...members.map(v => v.label.x + v.label.w));
-                sx += right * f.amount;
-                sw += f.amount;
+                sx += right * amount(f);
+                sw += amount(f);
                 routeLo = Math.max(routeLo, right + 8);
             }
         }
@@ -237,8 +238,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             if (other && !other.edge) {
                 const members = nodes.filter(v => v.stage === other.stage && !v.edge);
                 const left = Math.min(other.x, ...members.map(v => v.label.x));
-                tx += left * f.amount;
-                tw += f.amount;
+                tx += left * amount(f);
+                tw += amount(f);
                 routeHi = Math.min(routeHi, left - 8);
             }
         }
@@ -280,7 +281,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         }
     }
     yield;
-    const maxRibbon = Math.max(0, ...model.graph.links.map(f => f.amount * scale));
+    const maxRibbon = Math.max(0, ...model.graph.links.map(f => amount(f) * scale));
     const clearance = 72 + maxRibbon / 2, baseRowPitch = Math.max(86, lineHeight * 2 + BAR + maxRibbon + 32);
     const rowPitches = {
         top: rows.top.map((_, index) => index ? baseRowPitch : 0),
@@ -328,7 +329,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         n.label = labelBox(n.label.lines, n.x + n.w / 2, n.edge === 'top' ? n.y - 10 - n.label.h / 2 : n.y + BAR + 10 + n.label.h / 2, 'middle', measure, lineHeight);
         if (n.row) {
             const nearer = rows[n.edge].slice(0, n.row).flat().filter(o => o.x + o.w > n.lo && o.x < n.hi);
-            const traffic = Math.max(...[...model.nodes.get(n.key)!.incomingLinks, ...model.nodes.get(n.key)!.outgoingLinks].map(f => f.amount * scale), 0);
+            const traffic = Math.max(...[...model.nodes.get(n.key)!.incomingLinks, ...model.nodes.get(n.key)!.outgoingLinks].map(f => amount(f) * scale), 0);
             const first = nearer.length ? Math.min(...nearer.map(o => o.x + o.w / 2 - o.footprint / 2)) : n.x;
             n.corridor = Math.max(PAD + traffic / 2, first - traffic / 2 - 10);
         }
@@ -341,7 +342,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             cursor += traffic + LANE_GAP;
         }
     }
-    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: f.amount * scale, color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
+    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: amount(f) * scale, color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
     const positions = new Map(links.map((f, i) => [f.key, i]));
     const portGroups: {
         node: NodeGeometry;
