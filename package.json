@@ -20,9 +20,11 @@
     "./style.css": "./dist/style.css"
   },
   "files": [
-    "dist",
-    "src",
-    "docs",
+    "dist/sankey-plus.js",
+    "dist/style.css",
+    "dist/index.d.ts",
+    "dist/SankeyDiagram.d.ts",
+    "dist/types.d.ts",
     "README.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"

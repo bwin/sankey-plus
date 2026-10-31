@@ -26,6 +26,12 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 - Label hit-testing regressions verify that a node name wins over a ribbon beneath it, visible labels on thin transfers activate their transfer, and hidden labels create no extra click target.
 - A 100-node/300-link DAG produces finite SVG paths and clears unrelated bars/labels. After profiling and optimization on 31 October, its Node median improved from 745.4 ms to 124.4 ms; a Chromium geometry benchmark improved from 658.8 ms to 87.1 ms. Five benchmark scenes and 40 additional layouts matched the original implementation exactly. Crossing and obstacle diagnostics are retained. See [performance guide](performance.md) for methodology, reproduction and limitations.
 
+## Package contents (31 October 2026)
+
+The local archive was reduced from 32 files / 106.9 kB compressed / 440.9 kB unpacked to 9 files / 27.5 kB compressed / 95.9 kB unpacked. These are before/after builds of the repository, not a comparison with the published npm release. Source, guides, internal declarations and the library source map are excluded. The runtime remains unminified and behavior is unchanged.
+
+The actual tarball was extracted into an isolated consumer package. Its README example passed strict TypeScript checking using all three packaged declaration files; runtime imports, the stylesheet export and React server rendering passed. The library/demo build passed. No npm release was made as part of this check.
+
 ## Browser checks
 
 | Check | Observed result |

@@ -36,7 +36,7 @@ function sourcePlugin() {
 export async function build() {
   compile('tsconfig.json');
   const library=await rollup({input:path.join(project,'src/index.ts'),external:['react','react-dom','react/jsx-runtime'],plugins:[sourcePlugin()]});
-  await library.write({file:path.join(project,'dist/sankey-plus.js'),format:'es',sourcemap:true});await library.close();compile('tsconfig.lib.json');
+  await library.write({file:path.join(project,'dist/sankey-plus.js'),format:'es',sourcemap:false});await library.close();compile('tsconfig.lib.json');
   const demo=await rollup({input:path.join(project,'demo/main.tsx'),plugins:[sourcePlugin(),nodeResolve({extensions:['.js','.ts','.tsx','.json'],browser:true}),commonjs()]});
   await demo.write({file:path.join(project,'demo-dist/demo.js'),format:'es',sourcemap:true});await demo.close();
   await fs.copyFile(path.join(project,'demo/index.html'),path.join(project,'demo-dist/index.html'));

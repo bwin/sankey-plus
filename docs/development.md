@@ -50,7 +50,7 @@ Node 22 was used for verification. React 19.2 was used for the demo; the library
 
 
 
-## Source map
+## Source organization
 
 | File | Responsibility |
 | --- | --- |
@@ -71,4 +71,19 @@ Node 22 was used for verification. React 19.2 was used for the demo; the library
 
 ## Working conventions
 
-Follow [AGENTS.md](https://github.com/bwin/sankey-plus/blob/main/AGENTS.md), including focused commits for independent changes. [Verification](verification.md) records observed behavior and testing limits. The npm package includes the library and guides; development scripts and the demo require a repository checkout.
+Follow [AGENTS.md](https://github.com/bwin/sankey-plus/blob/main/AGENTS.md), including focused commits for independent changes. [Verification](verification.md) records observed behavior and testing limits.
+
+## npm package contents
+
+The npm archive contains the compiled JavaScript, stylesheet, the three public declaration files, README and license notices. Source files, guides, internal declarations, development scripts and the demo stay in the repository. README guide links point to GitHub so they also work from the installed package and npm page.
+
+The library bundle omits source maps; use a repository checkout and the demo build for source-map debugging. The demo still emits its map. This trims download and installed size without changing the runtime code or layout behavior.
+
+Build before checking the archive:
+
+```sh
+npm run build
+npm pack --dry-run
+```
+
+When public declarations gain new relative imports, include their dependencies in `package.json`'s `files` list and verify a consumer against the packed archive.

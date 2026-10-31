@@ -43,14 +43,14 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 
 | Guide | Covers |
 | --- | --- |
-| [Getting started](docs/getting-started.md) | Integration, click handlers, selection and sizing |
-| [API reference](docs/api.md) | Props, graph data, stages, callback contexts and validation |
-| [Customization](docs/customization.md) | Labels, endpoint tooltips, formatting and themes |
-| [Layout and interaction](docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
-| [Examples](docs/examples.md) | What each interactive demo demonstrates |
-| [Development](docs/development.md) | Local setup, tests, builds and stress commands |
+| [Getting started](https://github.com/bwin/sankey-plus/blob/main/docs/getting-started.md) | Integration, click handlers, selection and sizing |
+| [API reference](https://github.com/bwin/sankey-plus/blob/main/docs/api.md) | Props, graph data, stages, callback contexts and validation |
+| [Customization](https://github.com/bwin/sankey-plus/blob/main/docs/customization.md) | Labels, endpoint tooltips, formatting and themes |
+| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/main/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
+| [Examples](https://github.com/bwin/sankey-plus/blob/main/docs/examples.md) | What each interactive demo demonstrates |
+| [Development](https://github.com/bwin/sankey-plus/blob/main/docs/development.md) | Local setup, tests, builds and stress commands |
 
-Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](docs/performance.md) and [verification](docs/verification.md) for measurements and tested coverage. These guides describe the repository; npm releases may lag behind `main`.
+Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](https://github.com/bwin/sankey-plus/blob/main/docs/performance.md) and [verification](https://github.com/bwin/sankey-plus/blob/main/docs/verification.md) for measurements and tested coverage. These guides describe the repository; npm releases may lag behind `main`.
 
 ## Run the demo locally
 
