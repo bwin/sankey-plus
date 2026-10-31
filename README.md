@@ -113,6 +113,8 @@ Available retains a total of 1,000 while transferring only 700. Unconnected capa
 
 Keep inputs immutable and supply a new graph reference when data changes. Stable data and presentation callback references avoid unnecessary layout work. The host needs an actual available width; flex/grid parents should allow shrinking with `min-width: 0`.
 
+The component computes layout on the main thread in cooperative chunks, targeting 8 ms of work before yielding through a timer task. Checkpoints are between layout phases, nodes, routes and comparisons; individual geometry helpers can exceed that target. Initial layout shows “Preparing diagram…” and sets `aria-busy`. A resize retains the last complete scene while the replacement is calculated. Changed inputs and unmounting cancel unfinished work, and only complete results are committed. No worker or bundler configuration is required. Validation, presentation callbacks and the final React/SVG render are still synchronous.
+
 ## Public interface
 
 `src/types.ts` contains the full generic contract. Node and link metadata types are independent and retained in all callback contexts.
@@ -243,6 +245,7 @@ Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palet
 | `src/types.ts` | Public types and structured errors |
 | `src/model.ts` | Validation, adjacency, totals, one-hop emphasis |
 | `src/layout.ts` | Stage geometry, packing, ports and route allocation |
+| `src/layout-task.ts` | Cooperative main-thread scheduling and cancellation |
 | `src/paths.ts` | Curves, obstacle routing and hit-test geometry |
 | `src/presentation.ts` | Quantity formatting and accessible descriptions |
 | `src/SankeyDiagram.tsx` | Rendering, interactions, selection and tooltip |

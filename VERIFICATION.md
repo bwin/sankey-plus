@@ -10,7 +10,8 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 - Package rename checked on 31 October 2026: the manifest and lockfile agree on `@bwin/sankey-plus`; strict typechecking and library/demo builds pass; importing `FlowDiagram` and `FlowInputError` through the scoped package name succeeds. All declared exports exist, and `npm pack --dry-run --ignore-scripts` produces the expected `bwin-sankey-plus-1.0.0.tgz` manifest. This was a local packaging check, not a registry publication.
 - Strict TypeScript checking passes for source, demo and tests.
 - Library and demo builds pass. The library keeps React/React DOM external and emits declarations and a stylesheet.
-- **50 tests pass, 0 fail** using `node scripts/test.mjs` (updated 31 October 2026).
+- **55 tests pass, 0 fail** using `node scripts/test.mjs` (updated 31 October 2026).
+- Cooperative layout checks verify exact synchronous/chunked geometry, input immutability, event-loop progress, cancellation before/between slices, iterator cleanup and error propagation. Nine complete scenes also matched the pre-chunking implementation exactly.
 - Wrapped source ordering checks cover Recovery and a mirrored top-edge fixture at 1440, 1200, 1151, 1126, 960 and 600 pixels with two-line labels. Both wrapped and unwrapped rows retain the outermost incoming slot on Outcome C and clear unrelated bars/labels.
 - Tests cover declared/derived totals; original object and metadata preservation; invalid identifiers, quantities, placements, endpoints and cycles; zero nodes; one-hop emphasis; transfer emphasis; shared stage axes; inward edge faces; reversed bottom ports; containment; obstacle clearance; simple fan-out/fan-in; stable route identity after transfer-order changes; measured/truncated labels; wrapped two-line labels; conditional bands; parallel-transfer hit testing; determinism and input immutability.
 - The full fixture is tested at requested widths 1440, 960, 600 and 360 pixels. Its routes clear unrelated bars and labels. At narrow widths a local wider canvas may be used for route clearance.
@@ -27,6 +28,8 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 | Check | Observed result |
 | --- | --- |
+| Chunked layout (31 October) | Stress test exposes `aria-busy=true` and “Preparing diagram…” before its geometry is ready. Switching to Partial allocation finishes with only that graph's two nodes. Layout computation is deferred out of React rendering. |
+| Link endpoint tooltip (31 October) | Distribution's Input A → Process A tooltip shows both source/destination nodes, stages, declared totals (1,000 / 900 units) and their metadata notes. Existing `fromNode`/`toNode` fields are used without an API change. |
 | Distribution replacement (31 October) | Generic 9-node/12-link default example renders at the container width and at 360 px. No page overflow or obstacle collisions at the narrow width. The original allocation graph remains a regression fixture. Screenshot: `screenshots/13-distribution.png`. |
 | Stress demo and command (31 October) | All 100 nodes / 300 links render in the new tab. At 979 px and a 360 px host, obstacle collisions are zero and page width is unchanged; the narrow chart uses a 678 px local canvas. Dense crossings remain expected. `npm run stress` and the two-run JSON-output variant execute successfully. Screenshot: `screenshots/14-stress-test.png`. |
 | Wrapped Recovery (31 October) | At a 960 px canvas, Recovery occupies the second bottom row. Its ribbon ends at the lowest incoming slot on Outcome C, directly below Carry-in, with zero unrelated obstacle collisions. Screenshot: `screenshots/15-wrapped-recovery.png`. |
@@ -65,4 +68,4 @@ Browser checks used the demo's actual controls and rendered DOM. They were perfo
 - Touch tap/drag handling is implemented but has not been verified on physical touch hardware.
 - Accessible names, roles, pressed state, focus and keyboard behavior were inspected. A human screen-reader audit has not been performed.
 - React 18 compatibility is declared but the demo was exercised with React 19.2. Cross-browser Safari/Firefox and a production framework integration were not tested.
-- Initial layout is synchronous. The 100/300 stress case is an initial performance envelope, not a claim of smooth live re-layout for much larger graphs. Hover and selection do not recompute geometry when graph/presentation inputs remain stable.
+- Layout now yields in coarse main-thread chunks. Individual helpers, validation, callbacks and final SVG rendering remain synchronous. The 100/300 stress case is not a claim of smooth live re-layout for much larger graphs. Hover and selection do not recompute geometry when graph/presentation inputs remain stable.

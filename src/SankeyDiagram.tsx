@@ -1,7 +1,8 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
-import { hitTest, layoutGraph, type TextBox } from './layout.js';
+import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
+import { runInChunks } from './layout-task.js';
 import { identity, presentation, same, subjectName } from './presentation.js';
 import type { SankeyActivationEvent, SankeyDiagramProps, SankeySubject, SankeyPresentation } from './types.js';
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
@@ -115,10 +116,24 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         return result;
     }, [model, formatAmount, getLabel]);
     const names = useMemo(() => new Map(model.subjects.map(s => [identity(s), subjectName(presentation(model, s, formatAmount, 'accessible'))])), [model, formatAmount]);
-    const scene = useMemo(() => measurement.width > 0 ? layoutGraph(model, { width: measurement.width, plotHeight, labels, measureText, lineHeight: measurement.lineHeight }) : null, [model, measurement, plotHeight, labels, measureText]);
+    const layoutRequest = useMemo(() => ({ model, options: { width: measurement.width, plotHeight, labels, measureText, lineHeight: measurement.lineHeight } }), [model, measurement, plotHeight, labels, measureText]);
+    const [layoutResult, setLayoutResult] = useState<({ request: typeof layoutRequest } & ({ scene: Scene } | { error: unknown })) | null>(null);
+    useEffect(() => {
+        if (layoutRequest.options.width <= 0 || !layoutRequest.model.nodes.size) return;
+        const controller = new AbortController();
+        runInChunks(layoutGraphSteps(layoutRequest.model, layoutRequest.options), controller.signal).then(
+            scene => { if (!controller.signal.aborted) setLayoutResult({ request: layoutRequest, scene }); },
+            error => { if (!controller.signal.aborted) setLayoutResult({ request: layoutRequest, error }); },
+        );
+        return () => controller.abort();
+    }, [layoutRequest]);
+    // Keep a completed scene during resize so focus and scrolling survive. Never
+    // pair another graph's geometry with the current graph's facts or callbacks.
+    const scene = layoutResult?.request.model === model && 'scene' in layoutResult ? layoutResult.scene : null;
+    const pending = model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
     const exists = (s: SankeySubject | null | undefined) => !!s && (s.kind === 'node' ? model.nodes.has(s.key) : model.links.has(s.key));
     const selected = exists(selection) ? selection! : null;
-    const active = inspection && exists(inspection.subject) ? inspection : null;
+    const active = scene && inspection && exists(inspection.subject) ? inspection : null;
     const strong = useMemo(() => emphasis(model, active?.subject ?? null), [model, active?.subject.kind, active?.subject.key]);
     const activeView = active ? presentation(model, active.subject, formatAmount, 'tooltip') : null;
     const tooltip = activeView ? (renderTooltip ? renderTooltip(activeView) : <DefaultDetails view={activeView}/>) : null;
@@ -268,14 +283,15 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         const rank = (key: string) => active?.subject.kind === 'link' && active.subject.key === key ? 2 : selected?.kind === 'link' && selected.key === key ? 1 : 0;
         return rank(a.key) - rank(b.key);
     }) : [];
-    return <div ref={root} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) {
+    if (layoutResult?.request === layoutRequest && 'error' in layoutResult) throw layoutResult.error;
+    return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) {
         setKeyboardFocus(null);
         setInspection(null);
         suppressed.current = null;
         input.current = 'keyboard';
     } }}>
     <span className="flow-sr-only" id={helpId}>Use arrow keys to inspect nodes and links. Enter or Space activates the focused subject. Escape dismisses details. Selection is controlled by the surrounding application.</span>
-    {!model.nodes.size ? <div role="group" aria-label={accessibleName} className="flow-empty">No flow data</div> : !scene ? <div className="flow-measuring" aria-label={accessibleName} style={{ height: plotHeight }}/> :
+    {!model.nodes.size ? <div role="group" aria-label={accessibleName} className="flow-empty">No flow data</div> : !scene ? <div role="status" className="flow-measuring" aria-label={accessibleName} style={{ height: plotHeight }}>Preparing diagram…</div> :
             <div className={`flow-scroll${scene.width > measurement.width ? ' flow-scroll--overflow' : ''}`} data-flow-scroll="">
       <svg ref={svg} role="group" aria-label={accessibleName} width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`} className="flow-canvas" style={{ font: measurement.font, cursor: active?.modality === 'pointer' ? 'pointer' : undefined }} data-top-band={scene.topBand} data-bottom-band={scene.bottomBand} data-crossings={scene.diagnostics.crossings} data-obstacle-collisions={scene.diagnostics.obstacleCollisions} onPointerMove={pointerMove} onPointerLeave={() => { if (active?.modality === 'pointer' && !active.pinned)
                 setInspection(null); suppressed.current = null; }} onPointerDown={e => { if (e.button === 0) {

@@ -12,6 +12,7 @@
 - `src/types.ts` and `src/index.ts`: public contract and exports. Keep implementation-only options internal.
 - `src/model.ts`: input validation, adjacency, totals and one-hop emphasis.
 - `src/layout.ts` and `src/paths.ts`: deterministic geometry, port order, routing and collision checks. These modules must remain independent of React and the DOM.
+- `src/layout-task.ts`: cooperative scheduling. Keep the synchronous benchmark and chunked component on the same iterator; preserve cancellation and complete-scene commits. Chunk checkpoints belong at phase/item boundaries, not in React render.
 - `src/presentation.ts` and `src/SankeyDiagram.tsx`: formatting, measured labels, rendering and interaction.
 - `demo/`: interactive examples. `fixtures/stress.ts` is shared by the demo, regression test and benchmark; do not create divergent copies.
 - `tests/`: repeatable geometry/data regressions. `screenshots/` and `VERIFICATION.md`: actual browser observations and their limits.

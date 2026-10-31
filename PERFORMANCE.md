@@ -50,6 +50,12 @@ node scripts/benchmark-layout.mjs --case stress-100-300 --profile .tests/layout.
 
 The script compiles current source before timing, shares the stress fixture with the regression test, and reports first-call, median, range, diagnostics and scene hashes. Open a `.cpuprofile` in browser developer tools for a sampling profile. Profiling adds overhead; use an unprofiled run for timings. `--modules <directory>` can select a separately compiled baseline's `model.js` and `layout.js` for comparison.
 
+## Cooperative component layout
+
+The component now runs the same layout iterator in main-thread chunks, targeting 8 ms between timer-task yields. It defers the first step, abandons superseded work and commits only complete scenes. Recursive width retries use the same checkpoints. Nine additional stress/full/original-fixture scenes at 360, 960 and 1440 px matched the pre-chunking implementation exactly. Tests verify timer progress during calculation, cancellation and error propagation.
+
+`npm run stress` and `npm run benchmark` continue to drain that iterator synchronously to measure CPU work consistently; those numbers exclude scheduling delays. Chunking improves opportunities for input and painting, and can increase elapsed time. On a local Node check, three stress runs took 289–311 ms across 18–19 chunks; longest chunks were 12–17 ms. These are coarse scheduling observations, not browser render times or a hard per-chunk limit.
+
 ## Remaining limitation
 
-Layout still executes synchronously on the main thread. An 87 ms warm calculation can still miss frames; final React/SVG rendering adds work. These optimizations reduce the pause but do not provide the responsiveness isolation of chunked calculation or a worker. Graph topology, viewport size, labels and obstacle searches affect time as well as node/link counts.
+Layout still executes on the main thread. A single geometry helper, input validation, custom presentation callbacks and final React/SVG rendering can block it. Coarse chunking does not guarantee a frame budget or the isolation of a worker. Graph topology, viewport size, labels and obstacle searches affect time as well as node/link counts.
