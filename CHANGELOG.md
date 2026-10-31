@@ -4,6 +4,10 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+### Changed
+
+- Demo link tooltips show source and destination details in two columns below full-width link details, without the click-to-select hint.
+
 ## [1.1.0] - 2026-10-31
 
 ### Added

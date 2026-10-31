@@ -17,10 +17,12 @@ const details = (view: SankeyPresentation) => <>
     <strong className="flow-tip-title">{title(view)}</strong>
     {view.kind === 'node' ? <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl> : <>
         <dl><dt>Amount</dt><dd>{view.text.amount}</dd></dl>
-        <EndpointDetails node={view.fromNode} label="Source"/>
-        <EndpointDetails node={view.toNode} label="Destination"/>
+        <div className="detail-endpoints">
+            <EndpointDetails node={view.fromNode} label="Source"/>
+            <EndpointDetails node={view.toNode} label="Destination"/>
+        </div>
     </>}
-    <p className="detail-note">{view.kind === 'node' ? `${view.incomingLinks.length} incoming · ${view.outgoingLinks.length} outgoing` : 'Click to select this link'}</p>
+    {view.kind === 'node' && <p className="detail-note">{view.incomingLinks.length} incoming · {view.outgoingLinks.length} outgoing</p>}
 </>;
 function App() {
     const [example, setExample] = useState('distribution'), [selection, setSelection] = useState<SankeySubject | null>(null), [viewport, setViewport] = useState('auto');
