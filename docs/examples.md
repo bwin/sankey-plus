@@ -9,6 +9,7 @@
 | Distribution | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata. |
 | Stages | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare. |
 | World trade | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors. |
+| Currencies | Separate EUR/USD/GBP balances, declared and automatic totals, a combined USD valuation, rate equations, top reserve and bottom retained funds. |
 | Four-sided flow | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps. |
 | Fan-out / Top fan-out | Separate ordered turns below and above the main sequence. |
 | Fan-in | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total. |
@@ -50,6 +51,18 @@ Exports ($800 bn) plus reserves released ($50 bn) equal imports ($810 bn) plus i
 Inspect Energy to emphasize its exporters, reserve source, importers and seven incident links. Inspect a reserve or inventory link to read why it enters or leaves the annual flow in the endpoint descriptions. These are aggregate flows: the example does not claim which exporter supplies a particular importer. Turning custom labels off retains currency formatting while using the component's default presentation.
 
 ![World trade with reserve releases above and inventory outflows below](../screenshots/33-trade-inventories.jpg)
+
+## Currencies
+
+The [Currencies fixture](../demo/currencies.json) has 8 nodes and 11 links. It uses invented rates of **1 EUR = 1.10 USD** and **1 GBP = 1.25 USD**, supplied on the receipt links. The graph's default unit is USD; links without a unit inherit it. Rates value the flows without exchanging the currency at either endpoint.
+
+Treasury declares `totals: { EUR: 'auto', USD: 600, GBP: 'auto' }`. It shows 1,000 EUR, 600 USD and 200 GBP separately, plus a combined total of 1,950 USD. Incoming and outgoing flows each total 1,850 USD, leaving 100 USD of declared capacity unallocated. Euro receipts also declares more than it transfers: 1,200 EUR versus 1,000 EUR. Suppliers, Operations and Retained funds derive all their balances from links.
+
+Inspect a EUR or GBP link to see its native amount, USD equivalent, conversion rate and both endpoint descriptions. Inspect Treasury to see which balances are declared or derived. Turning custom presentation off still displays per-unit labels, combined totals and conversion equations using the library defaults. The top reserve releases USD; the bottom node retains three separate currency balances. [Unit semantics and the public interface](units.md).
+
+![Currency balances with USD-equivalent widths](../screenshots/34-currency-balances.jpg)
+
+![Native amount, equivalent value and rate in the link tooltip](../screenshots/35-currency-tooltip.jpg)
 
 ## Fan-in
 

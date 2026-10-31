@@ -5,6 +5,7 @@ import stagesData from './stages.json';
 import fanInData from './fan-in.json';
 import parallelData from './parallel-links.json';
 import tradeData from './trade.json';
+import currenciesData from './currencies.json';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
@@ -17,7 +18,7 @@ export const examples: {
     name: string;
     description: string;
     graph: SankeyGraph;
-    formatAmount?: (value: number) => string;
+    formatAmount?: (value: number, context?: { unit?: string }) => string;
     getLabel?: SankeyDiagramProps['getLabel'];
     plotHeight?: number;
 }[] = [
@@ -36,6 +37,7 @@ export const examples: {
             return [view.node.title, `${view.text.total} ${role}`];
         },
     },
+    { key: 'currencies', name: 'Currencies', description: 'Separate EUR, USD and GBP balances; widths use USD equivalents. Treasury mixes declared and automatic totals. Illustrative rates: 1 EUR = 1.10 USD · 1 GBP = 1.25 USD.', graph: currenciesData as SankeyGraph, plotHeight: 440 },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },
     { key: 'fanin', name: 'Fan-in', description: 'Three unequal inputs share one bottom destination. Reversed arrival order keeps the ribbons separate; the total is derived as 1,000.', graph: fanInData as SankeyGraph },

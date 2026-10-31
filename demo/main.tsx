@@ -4,28 +4,33 @@ import { SankeyDiagram, type SankeySubject, type SankeyPresentation, type Sankey
 import { examples } from './fixtures.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
-const format = (value: number) => `${value.toLocaleString('en-US')} units`;
+const format = (value: number, context?: { unit?: string }) => `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${context?.unit ?? 'units'}`;
 const nodeName = (node: SankeyNode, graph: SankeyGraph) => graph.nodes.some(other => other.key !== node.key && other.title === node.title) ? `${node.title} · ${node.placement.stage ?? node.placement.edge}` : node.title;
-const linkName = (link: SankeyLink, graph: SankeyGraph, formatAmount = format) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${formatAmount(link.amount)}`;
+const linkName = (link: SankeyLink, graph: SankeyGraph, formatAmount = format) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${formatAmount(link.amount, { unit: link.unit ?? graph.defaultUnit })}`;
 const title = (view: SankeyPresentation) => view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`;
-const labels = (view: SankeyPresentation) => view.kind === 'node' ? [view.node.title, `${view.text.total} total`] : view.text.amount;
-function EndpointDetails({ node, label, formatAmount }: { node: SankeyNode; label: string; formatAmount: (value: number) => string }) {
+const hasCombined = (view: Extract<SankeyPresentation, { kind: 'node' }>) => !!view.converted && (view.totals.length > 1 || view.totals[0]?.unit !== view.converted.unit);
+const labels = (view: SankeyPresentation) => view.kind === 'node'
+    ? [view.node.title, ...view.text.totals.map(row => `${row.total}${row.unit ? '' : ' total'}`), ...(hasCombined(view) ? [`Σ ${view.text.converted!.total}`] : [])]
+    : view.converted && view.converted.unit !== view.unit ? [view.text.amount, `= ${view.text.convertedAmount}`] : view.text.amount;
+function EndpointDetails({ node, label, formatAmount, defaultUnit }: { node: SankeyNode; label: string; formatAmount: typeof format; defaultUnit?: string }) {
     const note = node.meta && typeof node.meta === 'object' && 'note' in node.meta && typeof node.meta.note === 'string' ? node.meta.note : null;
-    return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {formatAmount(node.total)}</span>}{note && <span>{note}</span>}</div>;
+    return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {formatAmount(node.total, { unit: defaultUnit })}</span>}{Object.entries(node.totals ?? {}).map(([unit, total]) => <span key={unit}>{total === 'auto' ? `${unit}: automatic` : `Declared: ${formatAmount(total, { unit })}`}</span>)}{note && <span>{note}</span>}</div>;
 }
-const details = (view: SankeyPresentation, formatAmount = format) => view.kind === 'node' ? <>
+const details = (view: SankeyPresentation, formatAmount = format, defaultUnit?: string) => view.kind === 'node' ? <>
     <span className="detail-eyebrow">NODE DETAILS</span>
     <strong className="flow-tip-title">{title(view)}</strong>
-    <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl>
+    {view.text.totals.map((row, index) => <div className="flow-tip-balance" key={row.unit ?? ''}>{row.unit && <strong>{row.unit} <span className="flow-tip-source">{view.totals[index].totalSource}</span></strong>}<dl><dt>Total</dt><dd>{row.total}</dd><dt>Incoming</dt><dd>{row.incoming}</dd><dt>Outgoing</dt><dd>{row.outgoing}</dd></dl></div>)}
+    {hasCombined(view) && <div className="flow-tip-balance flow-tip-combined"><strong>Combined in {view.converted!.unit}</strong><dl><dt>Total</dt><dd>{view.text.converted!.total}</dd><dt>Incoming</dt><dd>{view.text.converted!.incoming}</dd><dt>Outgoing</dt><dd>{view.text.converted!.outgoing}</dd></dl></div>}
     <p className="detail-note">{view.incomingLinks.length} incoming · {view.outgoingLinks.length} outgoing</p>
 </> : <>
         <div className="detail-transfer">
             <div><span className="detail-eyebrow">TRANSFER DETAILS</span><strong className="flow-tip-title">{title(view)}</strong></div>
-            <dl className="detail-amount"><dt>Amount</dt><dd>{view.text.amount}</dd></dl>
+            <dl className="detail-amount"><dt>Amount</dt><dd>{view.text.amount}</dd>{view.converted && view.converted.unit !== view.unit && <><dt>Equivalent</dt><dd>{view.text.convertedAmount}</dd></>}</dl>
         </div>
+        {view.text.conversionRates.length > 0 && <div className="flow-tip-rates"><span className="detail-eyebrow">CONVERSION RATES</span>{view.text.conversionRates.map((rate, i) => <div key={i}>{rate}</div>)}</div>}
         <div className="detail-endpoints">
-            <EndpointDetails node={view.fromNode} label="Source" formatAmount={formatAmount}/>
-            <EndpointDetails node={view.toNode} label="Destination" formatAmount={formatAmount}/>
+            <EndpointDetails node={view.fromNode} label="Source" formatAmount={formatAmount} defaultUnit={defaultUnit}/>
+            <EndpointDetails node={view.toNode} label="Destination" formatAmount={formatAmount} defaultUnit={defaultUnit}/>
         </div>
 </>;
 function App() {
@@ -33,7 +38,7 @@ function App() {
     const [clicksSelect, setClicksSelect] = useState(true), [custom, setCustom] = useState(true), [events, setEvents] = useState(0), [last, setLast] = useState('No clicks yet');
     const current = examples.find(e => e.key === example)!, graph = current.graph;
     const formatAmount = current.formatAmount ?? format;
-    const customDetails = useCallback((view: SankeyPresentation) => details(view, formatAmount), [formatAmount]);
+    const customDetails = useCallback((view: SankeyPresentation) => details(view, formatAmount, graph.defaultUnit), [formatAmount, graph.defaultUnit]);
     const { hostRef, readyMs } = useExampleTiming(`${example}:${viewport}:${custom}`);
     const selectedName = selection?.kind === 'node' ? (() => { const n = graph.nodes.find(n => n.key === selection.key); return n ? nodeName(n, graph) : undefined; })() : selection?.kind === 'link' ? (() => { const f = graph.links.find(f => f.key === selection.key); return f ? linkName(f, graph, formatAmount) : undefined; })() : undefined;
     const clicked = (subject: SankeySubject, name: string) => { setEvents(n => n + 1); setLast(`${subject.kind === 'node' ? 'Node' : 'Link'} clicked: ${name}`); if (clicksSelect)
