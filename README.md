@@ -4,6 +4,8 @@
 
 **[Live demo →](https://bwin.github.io/sankey-plus/)**
 
+[Changelog](https://github.com/bwin/sankey-plus/blob/master/CHANGELOG.md)
+
 ![Distribution chart at 960 pixels wide, with partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/21-distribution-chart-960.jpg)
 
 ## Quick start
@@ -51,6 +53,7 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 | [Layout and interaction](https://github.com/bwin/sankey-plus/blob/master/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
 | [Examples](https://github.com/bwin/sankey-plus/blob/master/docs/examples.md) | What each interactive demo demonstrates |
 | [Development](https://github.com/bwin/sankey-plus/blob/master/docs/development.md) | Local setup, tests, builds and stress commands |
+| [Releasing](https://github.com/bwin/sankey-plus/blob/master/docs/releasing.md) | Changelog, dev → master, package verification, npm and GitHub releases |
 
 Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](https://github.com/bwin/sankey-plus/blob/master/docs/performance.md) and [verification](https://github.com/bwin/sankey-plus/blob/master/docs/verification.md) for measurements and tested coverage. `master` contains the latest npm release; ongoing development happens on `dev`.
 

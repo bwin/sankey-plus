@@ -74,11 +74,13 @@ The live demo tracks `master`, the latest released version. Its relative asset U
 
 ## Working conventions
 
+Follow the [release guide](releasing.md) to update the [changelog](../CHANGELOG.md), merge `dev` into `master`, publish to npm and create the matching tag/GitHub release.
+
 Follow [AGENTS.md](https://github.com/bwin/sankey-plus/blob/master/AGENTS.md), including focused commits for independent changes. [Verification](verification.md) records observed behavior and testing limits.
 
 ## npm package contents
 
-The npm archive contains the compiled JavaScript, stylesheet, the three public declaration files, README and license notices. Source files, guides, internal declarations, development scripts and the demo stay in the repository. README guide links point to GitHub so they also work from the installed package and npm page.
+The npm archive contains the compiled JavaScript, stylesheet, the three public declaration files, README, changelog and license notices. Source files, guides, internal declarations, development scripts and the demo stay in the repository. README guide links point to GitHub so they also work from the installed package and npm page.
 
 The library bundle omits source maps; use a repository checkout and the demo build for source-map debugging. The demo still emits its map. This trims download and installed size without changing the runtime code or layout behavior.
 

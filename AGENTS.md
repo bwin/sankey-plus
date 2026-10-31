@@ -29,7 +29,7 @@
 
 ## Development and verification
 
-Work on `dev` (or feature branches merged into `dev`). `master` is the default branch and represents the latest npm release; do not push ordinary development or documentation updates directly to it. Release preparation belongs on `dev`, followed by a release merge into `master`. Return to `dev` after releasing. CI checks both branches, but only `master` deploys the live demo.
+Work on `dev` (or feature branches merged into `dev`). `master` is the default branch and represents the latest npm release; do not push ordinary development or documentation updates directly to it. Follow `docs/releasing.md`: update `CHANGELOG.md`, prepare on `dev`, merge locally into `master`, verify/publish the tested archive, then atomically push `master` and its version tag and create the GitHub release. Merge the release back into `dev` and return there after releasing. CI checks both branches, but only `master` deploys the live demo.
 
 From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits.
 
@@ -45,7 +45,7 @@ npm run benchmark
 - Add focused regressions for behavioral bugs. For routing changes, check actual rendered output at desktop and narrow widths in addition to geometry tests. Record what was verified without implying untested browser/platform coverage.
 - Profile before optimizing. Compare unprofiled first-call and warm timings; keep fixture creation, compilation and rendering outside layout timing. See `docs/performance.md` for methodology and benchmark arguments. In PowerShell, use `npm.cmd` if the `npm.ps1` shim strips forwarded `--` arguments.
 - Keep generated `dist/`, `demo-dist/`, `.tests/` and `node_modules/` out of Git. Store CPU profiles and temporary reports under `.tests/`.
-- Keep the npm archive limited to runtime JS/CSS, public declarations, README and license notices. If public declarations gain relative imports, update the `files` allowlist and verify a consumer against the packed archive. Detailed guides stay on GitHub; use absolute repository links from the README.
+- Keep the npm archive limited to runtime JS/CSS, public declarations, README, changelog and license notices. If public declarations gain relative imports, update the `files` allowlist and verify a consumer against the packed archive. Detailed guides stay on GitHub; use absolute repository links from the README.
 - Make focused, independently reviewable commits: separate performance work, routing fixes, examples and repository guidance. Preserve unrelated user changes.
 - Keep README/API examples aligned with implementation. Distinguish changes committed to Git from versions actually published to npm.
 
