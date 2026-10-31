@@ -4,6 +4,8 @@
 
 The default Distribution demo combines two inputs, shared processing, partial totals, a supplement above, and unused/deferred flow below. Its nine nodes and twelve links use generic labels; the component has no business-domain logic.
 
+![Distribution example on a dark background, with shared processing, partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/16-dark-distribution.jpg)
+
 ## Installation
 
 ```sh
@@ -181,6 +183,8 @@ Labels use measured text, truncation and at most two lines. Link labels avoid ba
 
 For links, the tooltip context already includes both original nodes as `view.fromNode` and `view.toNode`, including their typed `meta`, `placement`, `color` and optional declared `total`. These are also available to label/amount formatters and `onLinkClick`. A missing `node.total` means it is derived; do not treat it as zero. The demo's custom link tooltip shows both endpoints, their placement, declared totals when present, and metadata notes. Try **Input A → Process A** in Distribution.
 
+![Custom link tooltip with both endpoint nodes and their metadata](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/17-endpoint-tooltip.jpg)
+
 ```tsx
 // For a SankeyGraph<{ note: string }>, node metadata stays typed here.
 renderTooltip={(view) => view.kind === 'link' ? (
@@ -240,6 +244,8 @@ The component inherits the font family, uses 12-pixel chart text, and exposes fo
 
 Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palette color based on their key; links inherit their destination color. Unsupported CSS colors fall back to the palette. No application-specific theme provider is needed.
 
+Distribution demonstrates a dark surface using these same tokens: `--flow-surface: #101b2d`, `--flow-text: #e4ebf6`, `--flow-muted-text: #a4b1c7` and `--flow-focus: #bac8ff`. The tooltip inherits the diagram's tokens even though it is portaled to the document body. Other examples retain their light surface.
+
 ## Source map
 
 | File | Responsibility |
@@ -262,8 +268,6 @@ Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palet
 ## Actual implementation screenshots
 
 These captures come from the running implementation, not design mockups.
-
-![Generic distribution example with shared stages and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/13-distribution.png)
 
 ![Complete flow with three stages, multiple top/bottom nodes, mixed-role relays, custom labels and partial totals](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/01-complete-flow.jpg)
 
