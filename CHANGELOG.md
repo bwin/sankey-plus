@@ -4,6 +4,8 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-31
+
 ### Added
 
 - Cooperative, cancellable main-thread layout: preparation yields between chunks, shows a loading state initially, and retains the completed scene while resizing.
@@ -32,5 +34,6 @@ The public component props and exported TypeScript API remain compatible with 1.
 - Custom labels/tooltips, one-hop inspection, controlled selection, click callbacks and keyboard navigation.
 - Responsive edge wrapping, routing/collision diagnostics, React 18.2+ peer support, MIT license and author metadata for Benjamin Winkler | bwin.
 
-[Unreleased]: https://github.com/bwin/sankey-plus/compare/v1.0.0...dev
+[Unreleased]: https://github.com/bwin/sankey-plus/compare/v1.1.0...dev
+[1.1.0]: https://github.com/bwin/sankey-plus/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bwin/sankey-plus/tree/v1.0.0
