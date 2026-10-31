@@ -1,30 +1,30 @@
 import type { KeyboardEvent, MouseEvent, ReactNode } from 'react';
 /** Identity of one externally selected subject; keys are scoped by kind. */
-export type FlowSubject = {
-    readonly kind: 'item';
+export type SankeySubject = {
+    readonly kind: 'node';
     readonly key: string;
 } | {
-    readonly kind: 'transfer';
+    readonly kind: 'link';
     readonly key: string;
 };
 /** Pointer/touch click or equivalent keyboard activation. */
-export type FlowActivationEvent = MouseEvent<Element> | KeyboardEvent<Element>;
-export type FlowPlacement = {
+export type SankeyActivationEvent = MouseEvent<Element> | KeyboardEvent<Element>;
+export type SankeyPlacement = {
     readonly stage: string;
     readonly edge?: never;
 } | {
     readonly edge: 'top' | 'bottom';
     readonly stage?: never;
 };
-export interface FlowItem<Meta = unknown> {
+export interface SankeyNode<Meta = unknown> {
     readonly key: string;
     readonly title: string;
-    readonly placement: FlowPlacement;
+    readonly placement: SankeyPlacement;
     readonly total?: number;
     readonly color?: string;
     readonly meta?: Meta;
 }
-export interface Transfer<Meta = unknown> {
+export interface SankeyLink<Meta = unknown> {
     readonly key: string;
     readonly from: string;
     readonly to: string;
@@ -32,75 +32,75 @@ export interface Transfer<Meta = unknown> {
     readonly color?: string;
     readonly meta?: Meta;
 }
-export interface FlowGraph<ItemMeta = unknown, TransferMeta = unknown> {
+export interface SankeyGraph<NodeMeta = unknown, LinkMeta = unknown> {
     readonly stages: readonly string[];
-    readonly items: readonly FlowItem<ItemMeta>[];
-    readonly transfers: readonly Transfer<TransferMeta>[];
+    readonly nodes: readonly SankeyNode<NodeMeta>[];
+    readonly links: readonly SankeyLink<LinkMeta>[];
 }
-export interface ItemFacts<ItemMeta = unknown, TransferMeta = unknown> {
-    readonly kind: 'item';
-    readonly item: FlowItem<ItemMeta>;
+export interface SankeyNodeFacts<NodeMeta = unknown, LinkMeta = unknown> {
+    readonly kind: 'node';
+    readonly node: SankeyNode<NodeMeta>;
     readonly total: number;
     readonly incoming: number;
     readonly outgoing: number;
     readonly totalSource: 'declared' | 'derived';
-    readonly incomingTransfers: readonly Transfer<TransferMeta>[];
-    readonly outgoingTransfers: readonly Transfer<TransferMeta>[];
+    readonly incomingLinks: readonly SankeyLink<LinkMeta>[];
+    readonly outgoingLinks: readonly SankeyLink<LinkMeta>[];
 }
-export interface TransferFacts<ItemMeta = unknown, TransferMeta = unknown> {
-    readonly kind: 'transfer';
-    readonly transfer: Transfer<TransferMeta>;
-    readonly fromItem: FlowItem<ItemMeta>;
-    readonly toItem: FlowItem<ItemMeta>;
+export interface SankeyLinkFacts<NodeMeta = unknown, LinkMeta = unknown> {
+    readonly kind: 'link';
+    readonly link: SankeyLink<LinkMeta>;
+    readonly fromNode: SankeyNode<NodeMeta>;
+    readonly toNode: SankeyNode<NodeMeta>;
 }
-export type AmountContext<I = unknown, T = unknown> = ((ItemFacts<I, T> & {
+export type SankeyAmountContext<I = unknown, T = unknown> = ((SankeyNodeFacts<I, T> & {
     readonly field: 'total' | 'incoming' | 'outgoing';
-}) | (TransferFacts<I, T> & {
+}) | (SankeyLinkFacts<I, T> & {
     readonly field: 'amount';
 })) & {
     readonly surface: 'label' | 'tooltip' | 'accessible';
 };
-export type Presentation<I = unknown, T = unknown> = (ItemFacts<I, T> & {
+export type SankeyPresentation<I = unknown, T = unknown> = (SankeyNodeFacts<I, T> & {
     readonly text: Readonly<{
         total: string;
         incoming: string;
         outgoing: string;
     }>;
-}) | (TransferFacts<I, T> & {
+}) | (SankeyLinkFacts<I, T> & {
     readonly text: Readonly<{
         amount: string;
     }>;
 });
-export interface FlowDiagramProps<ItemMeta = unknown, TransferMeta = unknown> {
-    readonly graph: FlowGraph<ItemMeta, TransferMeta>;
+export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
+    readonly graph: SankeyGraph<NodeMeta, LinkMeta>;
     readonly accessibleName: string;
     /** Controlled selection only. Omitted/null means no selection. */
-    readonly selection?: FlowSubject | null;
+    readonly selection?: SankeySubject | null;
     /** Fires once per activation; never changes selection internally. */
-    readonly onItemClick?: (facts: ItemFacts<ItemMeta, TransferMeta>, event: FlowActivationEvent) => void;
+    readonly onNodeClick?: (facts: SankeyNodeFacts<NodeMeta, LinkMeta>, event: SankeyActivationEvent) => void;
     /** Fires once per activation; never changes selection internally. */
-    readonly onTransferClick?: (facts: TransferFacts<ItemMeta, TransferMeta>, event: FlowActivationEvent) => void;
+    readonly onLinkClick?: (facts: SankeyLinkFacts<NodeMeta, LinkMeta>, event: SankeyActivationEvent) => void;
     readonly className?: string;
     /** Preferred height of the central stage region, not the entire component. Default: 336 CSS px. */
     readonly plotHeight?: number;
-    readonly formatAmount?: (value: number, context: AmountContext<ItemMeta, TransferMeta>) => string;
+    readonly formatAmount?: (value: number, context: SankeyAmountContext<NodeMeta, LinkMeta>) => string;
     /** Plain text, up to two lines, or null to suppress this visible label. */
-    readonly getLabel?: (context: Presentation<ItemMeta, TransferMeta>) => string | readonly string[] | null;
+    readonly getLabel?: (context: SankeyPresentation<NodeMeta, LinkMeta>) => string | readonly string[] | null;
     /** Non-interactive content; placement, sizing, dismissal and accessibility are owned by the component. */
-    readonly renderTooltip?: (context: Presentation<ItemMeta, TransferMeta>) => ReactNode;
+    readonly renderTooltip?: (context: SankeyPresentation<NodeMeta, LinkMeta>) => ReactNode;
 }
-export type FlowIssueCode = 'invalid-key' | 'invalid-title' | 'duplicate-key' | 'unknown-endpoint' | 'unknown-stage' | 'invalid-placement' | 'invalid-number' | 'total-too-small' | 'backward-stage-transfer' | 'cycle' | 'incompatible-placement';
-export interface FlowIssue {
-    readonly code: FlowIssueCode;
+export type SankeyIssueCode = 'invalid-key' | 'invalid-title' | 'duplicate-key' | 'unknown-endpoint' | 'unknown-stage' | 'invalid-placement' | 'invalid-number' | 'total-too-small' | 'backward-stage-link' | 'cycle' | 'incompatible-placement';
+export interface SankeyIssue {
+    readonly code: SankeyIssueCode;
     readonly message: string;
-    readonly itemKey?: string;
-    readonly transferKey?: string;
+    readonly nodeKey?: string;
+    readonly linkKey?: string;
 }
-export class FlowInputError extends Error {
-    readonly issues: readonly FlowIssue[];
-    constructor(issues: readonly FlowIssue[]) {
+export class SankeyInputError extends Error {
+    readonly issues: readonly SankeyIssue[];
+    constructor(issues: readonly SankeyIssue[]) {
         super(issues.map(issue => issue.message).join('\n'));
-        this.name = 'FlowInputError';
+        this.name = 'SankeyInputError';
         this.issues = issues;
     }
 }

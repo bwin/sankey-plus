@@ -1,4 +1,4 @@
-export { FlowDiagram } from './FlowDiagram.js';
-export { FlowInputError } from './types.js';
-export type { FlowActivationEvent, FlowDiagramProps, FlowGraph, FlowIssue, FlowIssueCode, FlowItem, FlowPlacement, FlowSubject, ItemFacts, Transfer, TransferFacts, AmountContext, Presentation } from './types.js';
+export { SankeyDiagram } from './SankeyDiagram.js';
+export { SankeyInputError } from './types.js';
+export type { SankeyActivationEvent, SankeyDiagramProps, SankeyGraph, SankeyIssue, SankeyIssueCode, SankeyNode, SankeyPlacement, SankeySubject, SankeyNodeFacts, SankeyLink, SankeyLinkFacts, SankeyAmountContext, SankeyPresentation } from './types.js';
 import './style.css';

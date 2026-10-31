@@ -5,6 +5,9 @@
   "type": "module",
   "description": "An interactive React Sankey component with four-sided node placement, partial allocations and controlled selection.",
   "keywords": ["sankey", "react", "flow-diagram", "data-visualization", "typescript"],
+  "repository": { "type": "git", "url": "https://github.com/bwin/sankey-plus.git" },
+  "homepage": "https://github.com/bwin/sankey-plus#readme",
+  "bugs": { "url": "https://github.com/bwin/sankey-plus/issues" },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

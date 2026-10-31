@@ -4,7 +4,7 @@
     "statements",
     "invoices"
   ],
-  "items": [
+  "nodes": [
     {
       "key": "T-45678901",
       "title": "Transaction 45678901",
@@ -106,7 +106,7 @@
       }
     }
   ],
-  "transfers": [
+  "links": [
     {
       "key": "allocation-0",
       "from": "CB-2233445",

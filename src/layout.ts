@@ -1,6 +1,6 @@
 import type { ResolvedGraph } from './model.js';
-import { itemColor } from './model.js';
-import { FlowInputError } from './types.js';
+import { nodeColor } from './model.js';
+import { SankeyInputError } from './types.js';
 import { avoidObstacles, crossings, cubic, describe, distanceToRoute, inflate, intersects, pointAt, ribbonOverlap, roundedOrthogonal, roundedPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
 export interface TextBox extends Rect {
     lines: string[];
@@ -8,7 +8,7 @@ export interface TextBox extends Rect {
     textX: number;
     textY: number;
 }
-export interface ItemGeometry extends Rect {
+export interface NodeGeometry extends Rect {
     key: string;
     color: string;
     edge?: 'top' | 'bottom';
@@ -23,7 +23,7 @@ export interface ItemGeometry extends Rect {
     preferred: number;
     footprint: number;
 }
-export interface TransferGeometry {
+export interface LinkGeometry {
     key: string;
     from: string;
     to: string;
@@ -44,8 +44,8 @@ export interface Scene {
     bottomBand: number;
     centralTop: number;
     centralHeight: number;
-    items: ItemGeometry[];
-    transfers: TransferGeometry[];
+    nodes: NodeGeometry[];
+    links: LinkGeometry[];
     diagnostics: {
         crossings: number;
         obstacleCollisions: number;
@@ -82,37 +82,37 @@ function labelBox(lines: string[], x: number, cy: number, anchor: TextBox['ancho
     const w = lines.length ? Math.max(...lines.map(measure)) : 0, h = lines.length * lineHeight;
     return { lines, anchor, textX: x, textY: cy - h / 2 + lineHeight * .76, x: x - (anchor === 'middle' ? w / 2 : anchor === 'end' ? w : 0), y: cy - h / 2, w, h };
 }
-function packRow(items: ItemGeometry[]): number[] | null {
+function packRow(nodes: NodeGeometry[]): number[] | null {
     const values: number[] = [];
-    for (let i = 0; i < items.length; i++) {
-        const n = items[i], minimum = Math.max(n.lo + n.w / 2, PAD + n.footprint / 2), maximum = n.hi - n.w / 2;
-        values.push(Math.max(clamp(n.preferred, minimum, maximum), i ? values[i - 1] + items[i - 1].footprint / 2 + GAP + n.footprint / 2 : minimum));
+    for (let i = 0; i < nodes.length; i++) {
+        const n = nodes[i], minimum = Math.max(n.lo + n.w / 2, PAD + n.footprint / 2), maximum = n.hi - n.w / 2;
+        values.push(Math.max(clamp(n.preferred, minimum, maximum), i ? values[i - 1] + nodes[i - 1].footprint / 2 + GAP + n.footprint / 2 : minimum));
     }
-    for (let i = items.length - 1; i >= 0; i--) {
-        const n = items[i];
+    for (let i = nodes.length - 1; i >= 0; i--) {
+        const n = nodes[i];
         values[i] = Math.min(values[i], n.hi - n.w / 2);
-        if (i < items.length - 1)
-            values[i] = Math.min(values[i], values[i + 1] - items[i + 1].footprint / 2 - GAP - n.footprint / 2);
+        if (i < nodes.length - 1)
+            values[i] = Math.min(values[i], values[i + 1] - nodes[i + 1].footprint / 2 - GAP - n.footprint / 2);
         if (values[i] < Math.max(n.lo + n.w / 2, PAD + n.footprint / 2) - .001)
             return null;
     }
     return values;
 }
-function outward(n: ItemGeometry, outgoing: boolean): Point {
+function outward(n: NodeGeometry, outgoing: boolean): Point {
     return n.edge ? { x: 0, y: n.edge === 'top' ? 1 : -1 } : { x: outgoing ? 1 : -1, y: 0 };
 }
 const add = (a: Point, b: Point, scale = 1): Point => ({ x: a.x + b.x * scale, y: a.y + b.y * scale });
 export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOptions, attempt = 0): Scene {
     const requested = options.width, plotHeight = options.plotHeight ?? 336;
     if (!Number.isFinite(requested) || requested <= 0 || !Number.isFinite(plotHeight) || plotHeight <= 0)
-        throw new FlowInputError([{ code: 'invalid-number', message: 'Layout width and plotHeight must be finite and positive.' }]);
+        throw new SankeyInputError([{ code: 'invalid-number', message: 'Layout width and plotHeight must be finite and positive.' }]);
     const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
     const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
-    const stages = model.stages.map(s => [...model.items.values()].filter(n => n.item.placement.stage === s));
-    const edges = [...model.items.values()].filter(n => n.item.placement.edge);
-    const leftExtra = edges.some(n => n.outgoingTransfers.some(f => model.items.get(f.to)!.item.placement.stage === model.stages[0])) ? 1 : 0;
-    const rightExtra = edges.some(n => n.incomingTransfers.some(f => model.items.get(f.from)!.item.placement.stage === model.stages.at(-1))) ? 1 : 0;
+    const stages = model.stages.map(s => [...model.nodes.values()].filter(n => n.node.placement.stage === s));
+    const edges = [...model.nodes.values()].filter(n => n.node.placement.edge);
+    const leftExtra = edges.some(n => n.outgoingLinks.some(f => model.nodes.get(f.to)!.node.placement.stage === model.stages[0])) ? 1 : 0;
+    const rightExtra = edges.some(n => n.incomingLinks.some(f => model.nodes.get(f.from)!.node.placement.stage === model.stages.at(-1))) ? 1 : 0;
     const slots = Math.max(1, stages.length - 1 + leftExtra + rightExtra);
     const minWidth = stages.length ? 2 * PAD + BAR + slots * 112 : 180;
     const width = Math.max(requested, minWidth);
@@ -135,13 +135,13 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }>();
     for (const n of edges) {
         let lo = PAD, hi = width - PAD;
-        const sourceColumns = n.incomingTransfers.map(f => model.items.get(f.from)!.item.placement.stage).filter((s): s is string => s !== undefined).map(s => stageIndex.get(s)!);
-        const targetColumns = n.outgoingTransfers.map(f => model.items.get(f.to)!.item.placement.stage).filter((s): s is string => s !== undefined).map(s => stageIndex.get(s)!);
+        const sourceColumns = n.incomingLinks.map(f => model.nodes.get(f.from)!.node.placement.stage).filter((s): s is string => s !== undefined).map(s => stageIndex.get(s)!);
+        const targetColumns = n.outgoingLinks.map(f => model.nodes.get(f.to)!.node.placement.stage).filter((s): s is string => s !== undefined).map(s => stageIndex.get(s)!);
         if (sourceColumns.length)
             lo = Math.max(lo, axis(Math.max(...sourceColumns)) + BAR + CLEAR);
         if (targetColumns.length)
             hi = Math.min(hi, axis(Math.min(...targetColumns)) - CLEAR);
-        limits.set(n.item.key, { lo, hi });
+        limits.set(n.node.key, { lo, hi });
         if (geomTotal(n) > 0)
             scale = Math.min(scale, Math.max(8, hi - lo - 28) / geomTotal(n));
     }
@@ -151,17 +151,17 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         keys: string[];
         origin: number;
     }[] = [];
-    for (const facts of model.items.values())
-        if (facts.item.placement.stage !== undefined)
+    for (const facts of model.nodes.values())
+        if (facts.node.placement.stage !== undefined)
             for (const side of ['top', 'bottom']) {
-                const links = facts.outgoingTransfers.filter(f => {
-                    const target = model.items.get(f.to)!;
-                    return target.item.placement.edge === side && target.incomingTransfers.length === 1 && target.outgoingTransfers.length === 0;
+                const links = facts.outgoingLinks.filter(f => {
+                    const target = model.nodes.get(f.to)!;
+                    return target.node.placement.edge === side && target.incomingLinks.length === 1 && target.outgoingLinks.length === 0;
                 });
                 if (links.length < 2)
                     continue;
-                const targets = links.map(f => model.items.get(f.to)!), lo = Math.max(...targets.map(n => limits.get(n.item.key)!.lo)), hi = Math.min(...targets.map(n => limits.get(n.item.key)!.hi)), available = hi - lo;
-                const textWidths = targets.map(n => Math.min(148, Math.max(0, ...label('item', n.item.key, n.item.title).map(measure))));
+                const targets = links.map(f => model.nodes.get(f.to)!), lo = Math.max(...targets.map(n => limits.get(n.node.key)!.lo)), hi = Math.min(...targets.map(n => limits.get(n.node.key)!.hi)), available = hi - lo;
+                const textWidths = targets.map(n => Math.min(148, Math.max(0, ...label('node', n.node.key, n.node.title).map(measure))));
                 const needed = sum(targets.map((n, i) => Math.max(geomTotal(n) * scale, textWidths[i]))) + (targets.length - 1) * GAP;
                 if (needed <= available)
                     continue;
@@ -170,44 +170,44 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
                 const channelWidth = Math.max(8, strip - labelWidth / 2 - 10 - Math.max(0, links.length - 2) * LANE_GAP);
                 scale = Math.min(scale, channelWidth / traffic);
                 for (const n of targets)
-                    limits.set(n.item.key, { lo: lo + strip, hi });
-                wrappedFans.push({ keys: targets.map(n => n.item.key), origin: lo });
+                    limits.set(n.node.key, { lo: lo + strip, hi });
+                wrappedFans.push({ keys: targets.map(n => n.node.key), origin: lo });
             }
     scale = Math.max(Number.MIN_VALUE, scale);
     const widestEdge = Math.max(0, ...edges.map(n => geomTotal(n) * scale));
     const mainLabelLimit = Math.max(48, Math.min(160, (step - BAR - widestEdge - 40) / 2));
-    const items: ItemGeometry[] = [];
+    const nodes: NodeGeometry[] = [];
     for (let col = 0; col < stages.length; col++) {
         const stage = stages[col], sizes = stage.map(n => n.total ? geomTotal(n) * scale : 3);
         const spacing = Math.max(GAP, (centralHeight - sum(sizes)) / (stage.length + 1));
         let y = spacing;
         for (let i = 0; i < stage.length; i++) {
-            const n = stage[i], x = axis(col), h = sizes[i], raw = label('item', n.item.key, n.item.title);
+            const n = stage[i], x = axis(col), h = sizes[i], raw = label('node', n.node.key, n.node.title);
             const lines = fitted(raw, mainLabelLimit, measure), anchor = col === 0 ? 'start' : 'end';
-            items.push({ key: n.item.key, index: model.graph.items.indexOf(n.item), x, y, w: BAR, h, color: itemColor(n.item.key, n.item.color), stage: model.stages[col], row: 0, zero: n.total === 0, lo: x, hi: x + BAR, preferred: x, footprint: BAR, label: labelBox(lines, anchor === 'start' ? x + BAR + 8 : x - 8, y + h / 2, anchor, measure, lineHeight) });
+            nodes.push({ key: n.node.key, index: model.graph.nodes.indexOf(n.node), x, y, w: BAR, h, color: nodeColor(n.node.key, n.node.color), stage: model.stages[col], row: 0, zero: n.total === 0, lo: x, hi: x + BAR, preferred: x, footprint: BAR, label: labelBox(lines, anchor === 'start' ? x + BAR + 8 : x - 8, y + h / 2, anchor, measure, lineHeight) });
             y += h + spacing;
         }
     }
-    const byKey = new Map(items.map(n => [n.key, n]));
+    const byKey = new Map(nodes.map(n => [n.key, n]));
     for (let i = 0; i < edges.length; i++) {
-        const facts = edges[i], n = facts.item, w = facts.total ? geomTotal(facts) * scale : 3;
+        const facts = edges[i], n = facts.node, w = facts.total ? geomTotal(facts) * scale : 3;
         let { lo, hi } = limits.get(n.key)!;
         let routeLo = lo, routeHi = hi;
         let sx = 0, sw = 0, tx = 0, tw = 0;
-        for (const f of facts.incomingTransfers) {
+        for (const f of facts.incomingLinks) {
             const other = byKey.get(f.from);
             if (other && !other.edge) {
-                const members = items.filter(v => v.stage === other.stage && !v.edge);
+                const members = nodes.filter(v => v.stage === other.stage && !v.edge);
                 const right = Math.max(other.x + BAR, ...members.map(v => v.label.x + v.label.w));
                 sx += right * f.amount;
                 sw += f.amount;
                 routeLo = Math.max(routeLo, right + 8);
             }
         }
-        for (const f of facts.outgoingTransfers) {
+        for (const f of facts.outgoingLinks) {
             const other = byKey.get(f.to);
             if (other && !other.edge) {
-                const members = items.filter(v => v.stage === other.stage && !v.edge);
+                const members = nodes.filter(v => v.stage === other.stage && !v.edge);
                 const left = Math.min(other.x, ...members.map(v => v.label.x));
                 tx += left * f.amount;
                 tw += f.amount;
@@ -218,19 +218,19 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         // stage's labels. Preserve this corridor whenever the bar fits;
         // tight mixed-role intervals still use the obstacle-routing fallback.
         if (routeHi - routeLo >= w) { lo = routeLo; hi = routeHi; }
-        const raw = label('item', n.key, n.title), lines = fitted(raw, Math.max(40, Math.min(148, hi - lo, width - 2 * PAD)), measure);
+        const raw = label('node', n.key, n.title), lines = fitted(raw, Math.max(40, Math.min(148, hi - lo, width - 2 * PAD)), measure);
         const footprint = Math.max(w, ...lines.map(measure), 0);
         const preferred = sw && tw ? (sx / sw + tx / tw) / 2 : sw ? sx / sw + 16 + footprint / 2 : tw ? tx / tw - 16 - footprint / 2 : PAD + (width - 2 * PAD) * (i + 1) / (edges.length + 1);
-        const item: ItemGeometry = { key: n.key, index: model.graph.items.indexOf(n), x: 0, y: 0, w, h: BAR, color: itemColor(n.key, n.color), edge: n.placement.edge!, row: 0, zero: facts.total === 0, lo: Math.max(lo, PAD + (footprint - w) / 2), hi: Math.min(hi, width - PAD - (footprint - w) / 2), preferred, footprint, label: labelBox(lines, 0, 0, 'middle', measure, lineHeight) };
-        items.push(item);
-        byKey.set(n.key, item);
+        const node: NodeGeometry = { key: n.key, index: model.graph.nodes.indexOf(n), x: 0, y: 0, w, h: BAR, color: nodeColor(n.key, n.color), edge: n.placement.edge!, row: 0, zero: facts.total === 0, lo: Math.max(lo, PAD + (footprint - w) / 2), hi: Math.min(hi, width - PAD - (footprint - w) / 2), preferred, footprint, label: labelBox(lines, 0, 0, 'middle', measure, lineHeight) };
+        nodes.push(node);
+        byKey.set(n.key, node);
     }
     const rows: {
-        top: ItemGeometry[][];
-        bottom: ItemGeometry[][];
+        top: NodeGeometry[][];
+        bottom: NodeGeometry[][];
     } = { top: [], bottom: [] };
     for (const edge of ['top', 'bottom'] as const) {
-        const candidates = items.filter(n => n.edge === edge).sort((a, b) => a.preferred - b.preferred || a.index - b.index);
+        const candidates = nodes.filter(n => n.edge === edge).sort((a, b) => a.preferred - b.preferred || a.index - b.index);
         for (const n of candidates) {
             let packed = false;
             for (let r = 0; r < rows[edge].length; r++) {
@@ -250,7 +250,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             }
         }
     }
-    const maxRibbon = Math.max(0, ...model.graph.transfers.map(f => f.amount * scale));
+    const maxRibbon = Math.max(0, ...model.graph.links.map(f => f.amount * scale));
     const clearance = 72 + maxRibbon / 2, baseRowPitch = Math.max(86, lineHeight * 2 + BAR + maxRibbon + 32);
     const rowPitches = {
         top: rows.top.map((_, index) => index ? baseRowPitch : 0),
@@ -270,7 +270,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             let cursor = BAR + 10 + lineHeight * 2 + 8;
             let widest = 0;
             for (const node of targets) {
-                const thickness = model.items.get(node.key)!.incoming * scale;
+                const thickness = model.nodes.get(node.key)!.incoming * scale;
                 fanLaneDistances.set(node.key, cursor + thickness / 2);
                 cursor += thickness + LANE_GAP;
                 widest = Math.max(widest, thickness);
@@ -284,7 +284,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             rowOffsets[side][row] = rowOffsets[side][row - 1] + rowPitches[side][row];
     const band = (side: 'top' | 'bottom') => rows[side].length ? clearance + BAR + lineHeight * 2 + 12 + rowOffsets[side].at(-1)! : 0;
     const topBand = band('top'), bottomBand = band('bottom'), centralTop = PAD + topBand, height = PAD + topBand + centralHeight + bottomBand + PAD;
-    for (const n of items) {
+    for (const n of nodes) {
         if (!n.edge) {
             n.y += centralTop;
             n.label.y += centralTop;
@@ -295,7 +295,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         n.label = labelBox(n.label.lines, n.x + n.w / 2, n.edge === 'top' ? n.y - 10 - n.label.h / 2 : n.y + BAR + 10 + n.label.h / 2, 'middle', measure, lineHeight);
         if (n.row) {
             const nearer = rows[n.edge].slice(0, n.row).flat().filter(o => o.x + o.w > n.lo && o.x < n.hi);
-            const traffic = Math.max(...[...model.items.get(n.key)!.incomingTransfers, ...model.items.get(n.key)!.outgoingTransfers].map(f => f.amount * scale), 0);
+            const traffic = Math.max(...[...model.nodes.get(n.key)!.incomingLinks, ...model.nodes.get(n.key)!.outgoingLinks].map(f => f.amount * scale), 0);
             const first = nearer.length ? Math.min(...nearer.map(o => o.x + o.w / 2 - o.footprint / 2)) : n.x;
             n.corridor = Math.max(PAD + traffic / 2, first - traffic / 2 - 10);
         }
@@ -303,28 +303,28 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     for (const fan of wrappedFans) {
         let cursor = fan.origin;
         for (const n of fan.keys.map(k => byKey.get(k)!).filter(n => n.row > 0).sort((a, b) => b.row - a.row || a.x - b.x || a.index - b.index)) {
-            const traffic = model.items.get(n.key)!.incoming * scale;
+            const traffic = model.nodes.get(n.key)!.incoming * scale;
             n.corridor = cursor + traffic / 2;
             cursor += traffic + LANE_GAP;
         }
     }
-    const transfers: TransferGeometry[] = model.graph.transfers.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: f.amount * scale, color: itemColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
-    const positions = new Map(transfers.map((f, i) => [f.key, i]));
-    const approach = (n: ItemGeometry) => n.corridor ?? n.x + n.w / 2;
+    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: f.amount * scale, color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
+    const positions = new Map(links.map((f, i) => [f.key, i]));
+    const approach = (n: NodeGeometry) => n.corridor ?? n.x + n.w / 2;
     const portGroups: {
-        node: ItemGeometry;
+        node: NodeGeometry;
         out: boolean;
-        links: TransferGeometry[];
+        links: LinkGeometry[];
     }[] = [];
-    for (const n of items)
+    for (const n of nodes)
         for (const out of [true, false]) {
-            const links = transfers.filter(f => (out ? f.from : f.to) === n.key);
-            const opposite = (f: TransferGeometry) => byKey.get(out ? f.to : f.from)!;
-            links.sort((a, b) => {
+            const connectedLinks = links.filter(f => (out ? f.from : f.to) === n.key);
+            const opposite = (f: LinkGeometry) => byKey.get(out ? f.to : f.from)!;
+            connectedLinks.sort((a, b) => {
                 const aa = opposite(a), bb = opposite(b);
                 let order = 0;
                 if (!n.edge) {
-                    const rank = (v: ItemGeometry) => v.edge === 'top' ? 0 : v.edge === 'bottom' ? 2 : 1;
+                    const rank = (v: NodeGeometry) => v.edge === 'top' ? 0 : v.edge === 'bottom' ? 2 : 1;
                     order = rank(aa) - rank(bb);
                     if (!order) {
                         if (aa.edge === 'bottom')
@@ -342,7 +342,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
                 }
                 return order || positions.get(a.key)! - positions.get(b.key)!;
             });
-            portGroups.push({ node: n, out, links });
+            portGroups.push({ node: n, out, links: connectedLinks });
         }
     function setPorts(group: typeof portGroups[number]) {
         const { node: n, out, links } = group;
@@ -357,9 +357,9 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         }
     }
     portGroups.forEach(setPorts);
-    const obstacles = (f: TransferGeometry) => items.filter(n => n.key !== f.from && n.key !== f.to).flatMap(n => [n, ...(n.label.w ? [n.label] : [])]);
+    const obstacles = (f: LinkGeometry) => nodes.filter(n => n.key !== f.from && n.key !== f.to).flatMap(n => [n, ...(n.label.w ? [n.label] : [])]);
     const radius = Math.max(24, Math.min(90, maxRibbon + 12));
-    const rowApproach = (node: ItemGeometry, flow: TransferGeometry) => {
+    const rowApproach = (node: NodeGeometry, flow: LinkGeometry) => {
         // The cross-row leg sits beyond the previous row's two-line label plus
         // half a ribbon. A fixed fraction of row pitch clips long custom labels.
         const distance = fanLaneDistances.get(node.key) ?? (BAR + 10 + lineHeight * 2 + flow.width / 2 + 8);
@@ -370,7 +370,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     for (const fan of wrappedFans) {
         const members = fan.keys.map(key => byKey.get(key)!).filter(n => n.row > 0);
         if (members.length < 2) continue;
-        const flows = members.map(n => transfers.find(f => f.to === n.key)!);
+        const flows = members.map(n => links.find(f => f.to === n.key)!);
         const side = members[0].edge!, direction = side === 'bottom' ? 1 : -1;
         const minX = Math.min(...members.map(n => n.corridor!));
         const inner = flows.reduce((a, b) => direction * a.start.y > direction * b.start.y ? a : b);
@@ -402,7 +402,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         // All members switch together so a fallback cannot split the bundle.
         if (trial.size === flows.length) for (const [key, route] of trial) fanRoutes.set(key, route);
     }
-    function ordinary(f: TransferGeometry): Route {
+    function ordinary(f: LinkGeometry): Route {
         const fanRoute = fanRoutes.get(f.key);
         if (fanRoute) return fanRoute;
         const a = byKey.get(f.from)!, b = byKey.get(f.to)!, s = f.start, t = f.end;
@@ -427,15 +427,15 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         const mid = a.edge === b.edge ? (a.edge === 'top' ? Math.max(s.y, t.y) + clearance * .65 : Math.min(s.y, t.y) - clearance * .65) : (centralTop + centralHeight / 2);
         return roundedPolyline([s, { x: s.x, y: mid }, { x: t.x, y: mid }, t], radius);
     }
-    const score = (f: TransferGeometry, route: Route) => {
+    const score = (f: LinkGeometry, route: Route) => {
         const collisions = routeCollisions(route, obstacles(f), f.width / 2 + 2);
-        const cross = transfers.reduce((n, o) => n + (o !== f && o.route ? crossings(route, o.route) : 0), 0);
+        const cross = links.reduce((n, o) => n + (o !== f && o.route ? crossings(route, o.route) : 0), 0);
         return collisions * 1e8 + cross * 1e4 + route.length;
     };
-    for (const f of transfers)
+    for (const f of links)
         f.route = ordinary(f);
     // First repair obstacles; all alternatives preserve the same endpoint faces.
-    for (const f of transfers) {
+    for (const f of links) {
         const boxes = obstacles(f);
         if (!routeCollisions(f.route, boxes, f.width / 2 + 2))
             continue;
@@ -489,7 +489,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             const candidate = describe(`${curve.path} L${f.end.x} ${f.end.y}`, [...curve.points, f.end]);
             const boxes = obstacles(f);
             if (routeCollisions(candidate, boxes, f.width / 2 + 2) > routeCollisions(f.route, boxes, f.width / 2 + 2)) continue;
-            const others = transfers.filter(other => other !== f);
+            const others = links.filter(other => other !== f);
             if (others.some(other => crossings(candidate, other.route) > crossings(f.route, other.route))) continue;
             // Also check ribbon widths: no centerline crossing does not imply
             // separation. Preserve separated pairs and reduce total overlap;
@@ -505,9 +505,9 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             if (!worse && improvement > .05) f.route = candidate;
         }
     }
-    const occupied: Rect[] = items.flatMap(n => [inflate(n, 3), ...(n.label.w ? [inflate(n.label, 3)] : [])]);
-    for (const f of [...transfers].sort((a, b) => b.width - a.width || positions.get(a.key)! - positions.get(b.key)!)) {
-        const lines = fitted(label('transfer', f.key, String(f.amount)), 150, measure);
+    const occupied: Rect[] = nodes.flatMap(n => [inflate(n, 3), ...(n.label.w ? [inflate(n.label, 3)] : [])]);
+    for (const f of [...links].sort((a, b) => b.width - a.width || positions.get(a.key)! - positions.get(b.key)!)) {
+        const lines = fitted(label('link', f.key, String(f.amount)), 150, measure);
         let chosen: TextBox | undefined;
         const fractions = [.5, .42, .58, .34, .66, .26, .74, .18, .82];
         for (const fraction of fractions) {
@@ -524,12 +524,12 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             occupied.push(inflate(chosen, 4));
     }
     let crossingCount = 0, obstacleCount = 0;
-    for (let i = 0; i < transfers.length; i++) {
-        obstacleCount += routeCollisions(transfers[i].route, obstacles(transfers[i]), transfers[i].width / 2);
-        for (let j = i + 1; j < transfers.length; j++)
-            crossingCount += crossings(transfers[i].route, transfers[j].route);
+    for (let i = 0; i < links.length; i++) {
+        obstacleCount += routeCollisions(links[i].route, obstacles(links[i]), links[i].width / 2);
+        for (let j = i + 1; j < links.length; j++)
+            crossingCount += crossings(links[i].route, links[j].route);
     }
-    const scene = { width, height, scale, topBand, bottomBand, centralTop, centralHeight, items: items.sort((a, b) => a.index - b.index), transfers, diagnostics: { crossings: crossingCount, obstacleCollisions: obstacleCount } };
+    const scene = { width, height, scale, topBand, bottomBand, centralTop, centralHeight, nodes: nodes.sort((a, b) => a.index - b.index), links, diagnostics: { crossings: crossingCount, obstacleCollisions: obstacleCount } };
     // A single wide route may not fit between measured labels and stage bars.
     // Only unresolved obstacle clearance can grow the local canvas; row count and
     // the sum of edge footprints never trigger widening. Every resize starts fresh.
@@ -556,26 +556,26 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
 }
 /** Bars and visible labels win, then a real ribbon hit or thin hit corridor. */
 export function hitTest(scene: Scene, point: Point) {
-    for (let i = scene.items.length - 1; i >= 0; i--) {
-        const n = scene.items[i];
+    for (let i = scene.nodes.length - 1; i >= 0; i--) {
+        const n = scene.nodes[i];
         if (point.x >= n.x - 2 && point.x <= n.x + n.w + 2 && point.y >= n.y - 2 && point.y <= n.y + n.h + 2)
-            return { kind: 'item' as const, key: n.key };
+            return { kind: 'node' as const, key: n.key };
     }
     const onLabel = (box: TextBox) => box.w > 0 && box.h > 0 && point.x >= box.x && point.x <= box.x + box.w && point.y >= box.y && point.y <= box.y + box.h;
     // Labels are painted above ribbons. Clicking a node's name must not activate
-    // a transfer that happens to pass underneath it.
-    for (let i = scene.items.length - 1; i >= 0; i--)
-        if (onLabel(scene.items[i].label)) return { kind: 'item' as const, key: scene.items[i].key };
-    for (let i = scene.transfers.length - 1; i >= 0; i--)
-        if (!scene.transfers[i].labelHidden && onLabel(scene.transfers[i].label)) return { kind: 'transfer' as const, key: scene.transfers[i].key };
+    // a link that happens to pass underneath it.
+    for (let i = scene.nodes.length - 1; i >= 0; i--)
+        if (onLabel(scene.nodes[i].label)) return { kind: 'node' as const, key: scene.nodes[i].key };
+    for (let i = scene.links.length - 1; i >= 0; i--)
+        if (!scene.links[i].labelHidden && onLabel(scene.links[i].label)) return { kind: 'link' as const, key: scene.links[i].key };
     let best: {
         key: string;
         distance: number;
         painted: boolean;
         index: number;
     } | null = null;
-    for (let i = 0; i < scene.transfers.length; i++) {
-        const f = scene.transfers[i];
+    for (let i = 0; i < scene.links.length; i++) {
+        const f = scene.links[i];
         if (!intersects(inflate(f.route.bounds, Math.max(5, f.width / 2)), { x: point.x - .01, y: point.y - .01, w: .02, h: .02 }))
             continue;
         const d = distanceToRoute(point, f.route), painted = d <= f.width / 2;
@@ -584,5 +584,5 @@ export function hitTest(scene: Scene, point: Point) {
         if (!best || (+painted > +best.painted) || painted === best.painted && (d < best.distance - .01 || Math.abs(d - best.distance) < .01 && i > best.index))
             best = { key: f.key, distance: d, painted, index: i };
     }
-    return best ? { kind: 'transfer' as const, key: best.key } : null;
+    return best ? { kind: 'link' as const, key: best.key } : null;
 }

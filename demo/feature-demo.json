@@ -1,6 +1,6 @@
 {
   "stages": ["supply", "processing", "delivery"],
-  "items": [
+  "nodes": [
     { "key": "supply-a", "title": "Supply A", "placement": { "stage": "supply" }, "total": 1500, "color": "#4464dc" },
     { "key": "supply-b", "title": "Supply B", "placement": { "stage": "supply" }, "total": 1000, "color": "#c58a29", "meta": { "note": "Only 500 of the total 1,000 has outgoing connections." } },
     { "key": "process-a", "title": "Process A", "placement": { "stage": "processing" }, "total": 1000, "color": "#168e9d" },
@@ -17,7 +17,7 @@
     { "key": "adjustment", "title": "Adjustment", "placement": { "edge": "bottom" }, "color": "#b95c84" },
     { "key": "loss", "title": "Loss", "placement": { "edge": "bottom" }, "color": "#899469" }
   ],
-  "transfers": [
+  "links": [
     { "key": "reserve-process", "from": "reserve", "to": "process-a", "amount": 250 },
     { "key": "supply-a-process-a", "from": "supply-a", "to": "process-a", "amount": 500 },
     { "key": "supply-a-process-b", "from": "supply-a", "to": "process-b", "amount": 300 },

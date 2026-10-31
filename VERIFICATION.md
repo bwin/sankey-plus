@@ -4,6 +4,7 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 ## Automated checks
 
+- Public API rename checked on 31 October 2026: all 43 tests and strict source/demo/test checking pass with `SankeyDiagram`, `SankeyGraph`, `SankeyNode`, `SankeyLink`, `nodes`/`links`, and `onNodeClick`/`onLinkClick`. A separate TypeScript consumer compiled against the built package declarations and verified node/link metadata types in callback contexts. Runtime imports expose `SankeyDiagram` and `SankeyInputError`; the npm pack manifest contains the renamed component source and declaration only.
 - Package rename checked on 31 October 2026: the manifest and lockfile agree on `@bwin/sankey-plus`; strict typechecking and library/demo builds pass; importing `FlowDiagram` and `FlowInputError` through the scoped package name succeeds. All declared exports exist, and `npm pack --dry-run --ignore-scripts` produces the expected `bwin-sankey-plus-1.0.0.tgz` manifest. This was a local packaging check, not a registry publication.
 - Strict TypeScript checking passes for source, demo and tests.
 - Library and demo builds pass. The library keeps React/React DOM external and emits declarations and a stylesheet.
@@ -23,6 +24,7 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 | Check | Observed result |
 | --- | --- |
+| Renamed API interactions (31 October) | Process A activation invokes the node callback once and highlights 7 nodes / 6 links. Supply B → Unassigned invokes the link callback once and highlights 2 nodes / 1 link. Selecting Recovery externally updates the selected node without another callback. All use `kind: 'node'` / `kind: 'link'` and the new callback fact fields. |
 | Package branding (31 October) | The page title and header show Sankey Plus, with React identified in the subtitle. The default allocation diagram renders and no warning/error logs were captured. Screenshot: `screenshots/11-sankey-plus.jpg`. |
 | Wheel scrolling (29 October) | Normal up/down wheel input worked before and after the change; the reported intermittent stall was not reproduced. Removed unnecessary nested scroll containers and horizontal scroll containment. In the updated demo, wheeling over an inspected node moved the page from 259.5 to 348.5 pixels and dismissed pointer details; wheeling up over blank chart space returned it to 259.5. With a 360-pixel host and 549-pixel canvas, horizontal scrolling reached 189 pixels and vertical up/down input still moved the page without changing that horizontal position. The tall multi-row example also scrolled both ways. These are native browser-input checks, not synthetic wheel events. |
 | All example tabs (29 October review) | All seven examples are exposed as tabs. ArrowRight, Home and End move focus and selection together; one tab is tabbable. The tabs wrap within a 390-pixel viewport. Captures: `screenshots/08-all-example-tabs.jpg`, `screenshots/09-example-tabs-mobile.jpg`. |

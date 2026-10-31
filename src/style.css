@@ -7,7 +7,7 @@
 .flow-canvas [role=button]{cursor:pointer;pointer-events:none}
 .flow-decoration{fill:none;pointer-events:none}
 .flow-label{fill:var(--flow-text);paint-order:stroke;stroke:var(--flow-surface);stroke-width:3px;stroke-linejoin:round;font-weight:450}
-.flow-transfer-label{font-variant-numeric:tabular-nums}
+.flow-link-label{font-variant-numeric:tabular-nums}
 .flow-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .flow-empty{padding:48px 24px;text-align:center;color:var(--flow-muted-text);font-size:14px}
 .flow-measuring{width:100%}
