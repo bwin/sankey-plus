@@ -2,7 +2,7 @@
 
 [Back to README](../README.md)
 
-Measured on 31 October 2026 on an Intel Core i7-4930K at 3.40 GHz, comparing the published 1.0.0 layout with optimization commit `afee909`. These are local measurements, not minimum hardware requirements or maximum supported graph sizes. Later routing fixes, including wrapped source port ordering, intentionally change some scene hashes; the geometry-equivalence results below refer to that optimization commit.
+Measured on 31 October 2026 on an Intel Core i7-4930K at 3.40 GHz, comparing the published 1.0.0 layout with optimization commit `afee909`. These are local measurements, not minimum hardware requirements or maximum supported graph sizes. Later routing changes, including wrapped source port ordering and smooth cubic edge routes, intentionally change scene hashes and some crossing counts; the geometry-equivalence results below refer only to that optimization commit. Run the included benchmark for timings of the current checkout.
 
 ## What was measured
 
