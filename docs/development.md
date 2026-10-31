@@ -4,14 +4,6 @@
 
 ## Run the demo
 
-The ZIP includes the compiled demo. With Node.js installed, preview it without installing packages:
-
-```sh
-node scripts/serve.mjs
-```
-
-Open **http://127.0.0.1:5178/**. The server binds only to the local machine. Set `PORT` to use another port.
-
 Beside the node/link counts, “Ready in ~… ms” shows approximate elapsed time from the demo update to a completed diagram and a paint opportunity. It includes chunk scheduling and frame waits, excludes downloads, and is not a CPU-only benchmark. Example, size and label changes refresh it; hover and selection do not. This observer belongs to the demo, with no extra library prop.
 
 To develop from the GitHub repository:
@@ -23,7 +15,7 @@ npm ci
 npm run dev
 ```
 
-The development command builds once and starts the server. After editing, run `npm run build` in another terminal and refresh the browser. There is no hot reload or file watcher.
+The development command builds once and starts the server at **http://127.0.0.1:5178/**. It binds only to the local machine; set `PORT` to use another port. After editing, run `npm run build` in another terminal and refresh the browser. There is no hot reload or file watcher. To serve an existing build, run `npm run preview`.
 
 ```sh
 npm run typecheck
@@ -49,6 +41,14 @@ The Stress test demo uses that same graph with the normal interactive renderer, 
 Node 22 was used for verification. React 19.2 was used for the demo; the library declares React/React DOM 18.2 or later as peer dependencies.
 
 
+
+## Automatic demo deployment
+
+[The demo workflow](https://github.com/bwin/sankey-plus/blob/main/.github/workflows/demo.yml) runs on pushes to `main` and can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, runs the tests, builds the library/demo and uploads only `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed.
+
+The repository's Pages publishing source is **GitHub Actions**. The `github-pages` environment receives the deployment; only that job has Pages write and identity-token permissions. No personal access token or npm publishing secret is stored in the workflow. Generated files stay out of Git.
+
+The live demo tracks `main` independently of npm releases. Its relative asset URLs work under the `/sankey-plus/` project path. Updates to the library package still require a separate npm release.
 
 ## Source organization
 
