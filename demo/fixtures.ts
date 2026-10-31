@@ -25,10 +25,16 @@ export const examples: {
     { key: 'stages', name: 'Stages', description: 'Collect → Prepare → Deliver. Node order keeps Prepare B above Prepare A; the gold 100-unit link skips Prepare without moving either column.', graph: stagesData as SankeyGraph },
     {
         key: 'trade', name: 'World trade',
-        description: 'Exporting countries → global totals by good → importing countries. Illustrative annual values in USD billions; colors identify goods. Not actual trade statistics.',
+        description: 'Countries trade four goods, with reserves released above and stock held for next year below. Illustrative annual values in USD billions; not actual trade statistics.',
         graph: tradeData as SankeyGraph, plotHeight: 420,
         formatAmount: value => `$${value.toLocaleString('en-US')} bn`,
-        getLabel: view => view.kind === 'link' ? view.text.amount : [view.node.title, `${view.text.total} ${view.node.placement.stage === 'global-goods' ? 'global' : view.node.placement.stage === 'exporters' ? 'exports' : 'imports'}`],
+        getLabel: view => {
+            if (view.kind === 'link') return view.text.amount;
+            const { stage, edge } = view.node.placement;
+            const role = edge === 'top' ? 'released' : edge === 'bottom' ? 'stored'
+                : stage === 'global-goods' ? 'available' : stage === 'exporters' ? 'exports' : 'imports';
+            return [view.node.title, `${view.text.total} ${role}`];
+        },
     },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },

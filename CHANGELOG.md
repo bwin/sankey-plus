@@ -6,7 +6,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
-- World trade example with exporting/importing countries, balanced global totals per good, commodity colors and illustrative USD-billion formatting.
+- World trade example with exporting/importing countries, top reserve releases, bottom inventory outflows, balanced totals per good, commodity colors and illustrative USD-billion formatting.
 
 ### Changed
 
