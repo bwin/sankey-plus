@@ -1,12 +1,25 @@
 import { useState, type KeyboardEvent } from 'react';
 import { createRoot } from 'react-dom/client';
-import { SankeyDiagram, type SankeySubject, type SankeyPresentation } from '../src/index.js';
+import { SankeyDiagram, type SankeySubject, type SankeyPresentation, type SankeyNode } from '../src/index.js';
 import { examples } from './fixtures.js';
 import './demo.css';
 const format = (value: number) => `${value.toLocaleString('en-US')} units`;
 const title = (view: SankeyPresentation) => view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`;
 const labels = (view: SankeyPresentation) => view.kind === 'node' ? [view.node.title, `${view.text.total} total`] : view.text.amount;
-const details = (view: SankeyPresentation) => <><span className="detail-eyebrow">{view.kind === 'node' ? 'NODE DETAILS' : 'TRANSFER DETAILS'}</span><strong className="flow-tip-title">{title(view)}</strong>{view.kind === 'node' ? <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl> : <dl><dt>Amount</dt><dd>{view.text.amount}</dd></dl>}<p className="detail-note">{view.kind === 'node' ? `${view.incomingLinks.length} incoming · ${view.outgoingLinks.length} outgoing` : 'Click to select this link'}</p></>;
+function EndpointDetails({ node, label }: { node: SankeyNode; label: string }) {
+    const note = node.meta && typeof node.meta === 'object' && 'note' in node.meta && typeof node.meta.note === 'string' ? node.meta.note : null;
+    return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {format(node.total)}</span>}{note && <span>{note}</span>}</div>;
+}
+const details = (view: SankeyPresentation) => <>
+    <span className="detail-eyebrow">{view.kind === 'node' ? 'NODE DETAILS' : 'TRANSFER DETAILS'}</span>
+    <strong className="flow-tip-title">{title(view)}</strong>
+    {view.kind === 'node' ? <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl> : <>
+        <dl><dt>Amount</dt><dd>{view.text.amount}</dd></dl>
+        <EndpointDetails node={view.fromNode} label="Source"/>
+        <EndpointDetails node={view.toNode} label="Destination"/>
+    </>}
+    <p className="detail-note">{view.kind === 'node' ? `${view.incomingLinks.length} incoming · ${view.outgoingLinks.length} outgoing` : 'Click to select this link'}</p>
+</>;
 function App() {
     const [example, setExample] = useState('distribution'), [selection, setSelection] = useState<SankeySubject | null>(null), [viewport, setViewport] = useState('auto');
     const [clicksSelect, setClicksSelect] = useState(true), [custom, setCustom] = useState(true), [events, setEvents] = useState(0), [last, setLast] = useState('No clicks yet');

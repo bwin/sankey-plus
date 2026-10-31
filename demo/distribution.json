@@ -1,10 +1,10 @@
 {
   "stages": ["inputs", "processing", "results"],
   "nodes": [
-    { "key": "input-a", "title": "Input A", "total": 1000, "placement": { "stage": "inputs" }, "color": "#5265cc" },
+    { "key": "input-a", "title": "Input A", "total": 1000, "placement": { "stage": "inputs" }, "color": "#5265cc", "meta": { "note": "Primary input stream." } },
     { "key": "input-b", "title": "Input B", "total": 650, "placement": { "stage": "inputs" }, "color": "#c58a29" },
     { "key": "supplement", "title": "Supplement", "total": 200, "placement": { "edge": "top" }, "color": "#3589ac" },
-    { "key": "process-a", "title": "Process A", "total": 900, "placement": { "stage": "processing" }, "color": "#168e9d" },
+    { "key": "process-a", "title": "Process A", "total": 900, "placement": { "stage": "processing" }, "color": "#168e9d", "meta": { "note": "Combines both inputs and the supplement." } },
     { "key": "process-b", "title": "Process B", "placement": { "stage": "processing" }, "color": "#8170b4" },
     { "key": "result-a", "title": "Result A", "total": 700, "placement": { "stage": "results" }, "color": "#d76c91" },
     { "key": "result-b", "title": "Result B", "placement": { "stage": "results" }, "color": "#688670" },

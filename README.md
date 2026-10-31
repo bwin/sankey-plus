@@ -175,6 +175,19 @@ Keys are unique within each kind. Parallel links need different keys. Invalid da
 
 Labels use measured text, truncation and at most two lines. Link labels avoid bars and other labels; a label with no suitable space is hidden until its link is inspected. Tooltips and accessible descriptions retain the full information. Units are presentation only: there is no conversion or normalization of currencies/units.
 
+For links, the tooltip context already includes both original nodes as `view.fromNode` and `view.toNode`, including their typed `meta`, `placement`, `color` and optional declared `total`. These are also available to label/amount formatters and `onLinkClick`. A missing `node.total` means it is derived; do not treat it as zero. The demo's custom link tooltip shows both endpoints, their placement, declared totals when present, and metadata notes. Try **Input A → Process A** in Distribution.
+
+```tsx
+// For a SankeyGraph<{ note: string }>, node metadata stays typed here.
+renderTooltip={(view) => view.kind === 'link' ? (
+  <>
+    <strong>{view.text.amount}</strong>
+    <p>From: {view.fromNode.title} — {view.fromNode.meta?.note}</p>
+    <p>To: {view.toNode.title} — {view.toNode.meta?.note}</p>
+  </>
+) : <strong>{view.node.title}</strong>}
+```
+
 Tooltip placement, viewport clamping, dismissal and accessible association are internal. Content is portaled to `document.body` so it can escape the chart's scroll area. Interactive tooltip content is unsupported.
 
 ## Interaction and selection
