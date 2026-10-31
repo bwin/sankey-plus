@@ -67,6 +67,16 @@ test('parallel cubic waves preserve ribbon gaps without bulging into adjacent ro
             assert.ok(point.x >= -.1 && point.x <= 380.1);
             assert.ok(sign * point.y >= -20.1 && sign * point.y <= 140.1, 'endpoint spread must not enter the previous row');
         }
+        // A tenfold increase in destination spacing used to concentrate the
+        // turn into a tiny hook. Circumcircles of adjacent samples bound how
+        // sharply the actual painted centerline bends, independent of commands.
+        for (let i = 1; i < spread.points.length - 1; i++) {
+            const a = spread.points[i - 1], b = spread.points[i], c = spread.points[i + 1];
+            const cross = Math.abs((b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x));
+            if (cross < 1e-8) continue;
+            const radius = Math.hypot(b.x - a.x, b.y - a.y) * Math.hypot(c.x - b.x, c.y - b.y) * Math.hypot(c.x - a.x, c.y - a.y) / (2 * cross);
+            assert.ok(radius > 50, 'wide fan spacing must not create a pinched destination turn');
+        }
     }
 });
 

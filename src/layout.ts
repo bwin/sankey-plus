@@ -305,7 +305,10 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                 cursor += thickness + LANE_GAP;
                 widest = Math.max(widest, thickness);
             }
-            rowPitches[side][row] = Math.max(rowPitches[side][row], cursor - LANE_GAP + Math.max(32, widest + 16));
+            // Leave room after the last lane for a broad arrival, rather than
+            // spending the whole row pitch on horizontal lanes and squeezing
+            // the final turn into a few pixels above the destination bar.
+            rowPitches[side][row] = Math.max(rowPitches[side][row], cursor - LANE_GAP + Math.max(80, widest * 2 + 16));
         }
     }
     const rowOffsets = { top: [0], bottom: [0] };
@@ -416,9 +419,13 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         const direction = side === 'bottom' ? 1 : -1;
         const inner = flows.reduce((a, b) => a.end.x < b.end.x ? a : b);
         if (flows.some(f => Math.abs(f.start.x - inner.start.x) > .01 || Math.abs(f.end.y - inner.end.y) > .01 || direction * (inner.start.y - f.start.y) < -.01)) return;
-        const trial = flows.map(f => parallelCurve(inner.start, inner.end, { x: 1, y: 0 }, { x: 0, y: direction }, direction * (inner.start.y - f.start.y), f.end.x - inner.end.x, direction));
-        if (trial.every((route, i) => !routeCollisions(route, obstacles(flows[i]), flows[i].width / 2 + 2)))
-            flows.forEach((f, i) => fanRoutes.set(f.key, trial[i]));
+        for (const tension of [.8, .9, 1]) {
+            const trial = flows.map(f => parallelCurve(inner.start, inner.end, { x: 1, y: 0 }, { x: 0, y: direction }, direction * (inner.start.y - f.start.y), f.end.x - inner.end.x, direction, tension));
+            if (trial.every((route, i) => !routeCollisions(route, obstacles(flows[i]), flows[i].width / 2 + 2))) {
+                flows.forEach((f, i) => fanRoutes.set(f.key, trial[i]));
+                break;
+            }
+        }
     };
     for (const group of portGroups) {
         if (group.out && !group.node.edge) for (const side of ['top', 'bottom'] as const)
@@ -507,6 +514,21 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                 const candidate = cubic(f.start, { x: f.start.x + dx * from, y: f.start.y },
                     { x: f.end.x - dx * to, y: f.end.y }, f.end);
                 if (score(f, candidate) < score(f, f.route)) f.route = candidate;
+            }
+            if (!routeCollisions(f.route, boxes, f.width / 2 + 2)) continue;
+        }
+        if (!!a.edge !== !!b.edge) {
+            const out = outward(a, true), back = outward(b, false);
+            const dx = Math.abs(f.end.x - f.start.x), dy = Math.abs(f.end.y - f.start.y);
+            const others = links.filter(other => other !== f);
+            const overlaps = others.map(other => ribbonOverlap(f.route, f.width, other.route, other.width));
+            for (const from of [.5, .8, 1]) for (const to of [.5, .8, 1]) {
+                yield;
+                const candidate = cubic(f.start, add(f.start, out, (out.x ? dx : dy) * from),
+                    add(f.end, back, (back.x ? dx : dy) * to), f.end);
+                if (routeCollisions(candidate, boxes, f.width / 2 + 2) || score(f, candidate) >= score(f, f.route)) continue;
+                if (others.some((other, i) => ribbonOverlap(candidate, f.width, other.route, other.width) > Math.max(1, overlaps[i]))) continue;
+                f.route = candidate;
             }
             if (!routeCollisions(f.route, boxes, f.width / 2 + 2)) continue;
         }

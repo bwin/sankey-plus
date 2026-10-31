@@ -211,6 +211,27 @@ for (const edge of ['top', 'bottom'] as const)
             assert.equal(scene.diagnostics.obstacleCollisions, 0);
         }
     });
+test('three unequal fan-in links keep broad bends clear of sibling labels', () => {
+    const initial = JSON.parse(readFileSync(new URL('../../demo/fan-in.json', import.meta.url), 'utf8')) as SankeyGraph;
+    for (const edge of ['top', 'bottom'] as const) for (const width of [360, 960, 1126, 1440]) {
+        const graph = { ...initial, nodes: initial.nodes.map(n => n.placement.edge ? { ...n, placement: { edge } } : n) };
+        const model = resolveGraph(graph);
+        const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));
+        const scene = layoutGraph(model, { width, labels });
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        assert.equal(scene.diagnostics.crossings, 0);
+        for (const link of scene.links) {
+            const middle = link.route.points.filter(p => {
+                const progress = (p.y - link.start.y) / (link.end.y - link.start.y);
+                return progress > .4 && progress < .6;
+            });
+            assert.ok(middle.some(p => link.end.x - p.x > (link.end.x - link.start.x) * .01), `${edge}/${width}/${link.key}: the bend spans the route instead of finishing in an early elbow`);
+        }
+        for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++)
+            assert.ok(separation(scene.links[i], scene.links[j]) > -.6, 'direct curve repair must retain fan separation');
+    }
+});
+
 test('skipping a stage uses the available gap without a vertical detour', () => {
     const graph = JSON.parse(readFileSync(new URL('../../demo/stages.json', import.meta.url), 'utf8')) as SankeyGraph;
     const model = resolveGraph(graph);

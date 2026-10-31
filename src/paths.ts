@@ -48,9 +48,9 @@ export function cubic(a: Point, b: Point, c: Point, d: Point): Route {
     return describe(`M${xy(a)} C${xy(b)} ${xy(c)} ${xy(d)}`, points);
 }
 /** Smooth endpoint-tangent connector, including the degenerate straight case. */
-export function flowCurve(start: Point, end: Point, outgoing: Point, incoming: Point): Route {
+export function flowCurve(start: Point, end: Point, outgoing: Point, incoming: Point, tension = BEND_HANDLE): Route {
     const dx = Math.abs(end.x - start.x), dy = Math.abs(end.y - start.y);
-    const handle = (direction: Point) => (direction.x ? dx : dy) * BEND_HANDLE;
+    const handle = (direction: Point) => (direction.x ? dx : dy) * tension;
     return cubic(start,
         { x: start.x + outgoing.x * handle(outgoing), y: start.y + outgoing.y * handle(outgoing) },
         { x: end.x - incoming.x * handle(incoming), y: end.y - incoming.y * handle(incoming) }, end);
@@ -62,10 +62,10 @@ export function joinRoutes(routes: Route[]): Route {
 /** Follow a shared wave between perpendicular axis-aligned tangents. Offsets ease in/out so the
  * endpoint tangents stay on the node faces. Fit the offset itself with cubics;
  * painting and collision checks therefore never use different centerlines. */
-export function parallelCurve(start: Point, end: Point, outgoing: Point, incoming: Point, fromOffset: number, toOffset: number, side: number): Route {
-    if (!fromOffset && !toOffset) return flowCurve(start, end, outgoing, incoming);
+export function parallelCurve(start: Point, end: Point, outgoing: Point, incoming: Point, fromOffset: number, toOffset: number, side: number, tension = BEND_HANDLE): Route {
+    if (!fromOffset && !toOffset) return flowCurve(start, end, outgoing, incoming, tension);
     const dx = Math.abs(end.x - start.x), dy = Math.abs(end.y - start.y);
-    const h1 = (outgoing.x ? dx : dy) * BEND_HANDLE, h2 = (incoming.x ? dx : dy) * BEND_HANDLE;
+    const h1 = (outgoing.x ? dx : dy) * tension, h2 = (incoming.x ? dx : dy) * tension;
     const b = { x: start.x + outgoing.x * h1, y: start.y + outgoing.y * h1 };
     const c = { x: end.x - incoming.x * h2, y: end.y - incoming.y * h2 };
     const evaluate = (t: number) => {
@@ -76,16 +76,15 @@ export function parallelCurve(start: Point, end: Point, outgoing: Point, incomin
         const speed = Math.hypot(v.x, v.y) || 1, normal = { x: side * v.y / speed, y: -side * v.x / speed };
         const acceleration = (v.x * a.x + v.y * a.y) / (speed * speed);
         const normalDerivative = { x: side * a.y / speed - normal.x * acceleration, y: -side * a.x / speed - normal.y * acceleration };
-        const from = Math.max(.000001, fromOffset), to = Math.max(.000001, toOffset);
-        const startNormal = outgoing.x ? normal.y : normal.x, endNormal = incoming.x ? normal.y : normal.x;
-        const startDerivative = outgoing.x ? normalDerivative.y : normalDerivative.x, endDerivative = incoming.x ? normalDerivative.y : normalDerivative.x;
-        // An elliptical offset profile stays within both endpoint offsets.
-        // Interpolating offsets by t can bulge into the preceding wrapped row.
-        const offset = 1 / Math.sqrt(startNormal ** 2 / from ** 2 + endNormal ** 2 / to ** 2);
-        const derivative = -(offset ** 3) * (startNormal * startDerivative / from ** 2 + endNormal * endDerivative / to ** 2);
+        // Scale the normal independently along each port axis. A scalar radial
+        // offset concentrates a wide fan's spread at its destination and creates
+        // a pinched hook. Axis offsets spread it across the entire bend, staying
+        // within the endpoint rectangle even when the two spacings differ.
+        const xOffset = outgoing.x ? toOffset : fromOffset;
+        const yOffset = outgoing.x ? fromOffset : toOffset;
         return {
-            p: { x: p.x + normal.x * offset, y: p.y + normal.y * offset },
-            v: { x: v.x + normalDerivative.x * offset + normal.x * derivative, y: v.y + normalDerivative.y * offset + normal.y * derivative },
+            p: { x: p.x + normal.x * xOffset, y: p.y + normal.y * yOffset },
+            v: { x: v.x + normalDerivative.x * xOffset, y: v.y + normalDerivative.y * yOffset },
         };
     };
     const curves: Route[] = [];

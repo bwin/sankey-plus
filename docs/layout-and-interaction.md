@@ -17,7 +17,7 @@
 
 Top/bottom nodes are horizontal quantitative bars with full labels, facts and interactions. Both link directions use the inward face: below a top bar and above a bottom bar. Multiple edge nodes pack within their valid source/target intervals and wrap into rows. A side without nodes reserves no extra band.
 
-All links use smooth cubic curves. Main-stage connections ease between horizontal ports; edge connections bend gradually between horizontal and vertical ports. Obstacle detours join several curves with matching tangent directions. Tight passages may require shorter bends and straight sections, but do not switch to circular, rounded right-angle elbows. Ribbon widths still encode amounts using the same scale as the node bars.
+All links use smooth cubic curves. Main-stage connections ease between horizontal ports; edge connections bend gradually between horizontal and vertical ports. Before taking an obstacle detour, the router tries earlier/later direct bends. This lets skipping-stage links use existing gaps and keeps edge links broad when a different approach clears a sibling's label. Edge alternatives also check ribbon overlap so fixing a label collision does not squeeze a previously separated fan together. Obstacle detours join several curves with matching tangent directions; tight passages can still require shorter bends and straight sections. Ribbon widths encode amounts using the same scale as the node bars.
 
 Crossing, ribbon-overlap and obstacle checks use adaptively sampled points from these same curves, with a 0.1-pixel flattening tolerance. Hit testing and label placement also use those samples. The search therefore evaluates the rendered bend, rather than just its control polygon or an earlier orthogonal route.
 
@@ -25,7 +25,7 @@ Simple fan-out and fan-in use ordered ports. Bottom arrivals reverse vertical so
 
 Inputs from edge nodes use their source bars' horizontal positions to order their destination slots. A detour needed for a wrapped row does not change that order: a rightmost bottom source still enters below its left-hand neighbor, with the mirrored rule for top sources.
 
-Simple fans use offsets from a shared curved centerline so adjacent ribbons bend together. Wrapped fans reserve a 4 CSS-pixel gap in their vertical corridors; the curves ease between touching source ports, separated corridors and spaced destinations without changing ribbon widths or inflating the node's total. Where the offsets are constant, the gap stays constant through the bend. Where the group fans out, gaps change gradually. The group switches to these shared curves together when space and obstacle clearance allow it; constrained layouts use individually routed smooth curves.
+Simple fans use offsets from a shared curved centerline so adjacent ribbons bend together. Offsets scale independently along the two port axes: wide destination spacing spreads over the bend instead of compressing its last part into a hook. Wrapped fans reserve a 4 CSS-pixel gap in their vertical corridors and extra vertical room for the final approach to each row. The curves ease between touching source ports, separated corridors and spaced destinations without changing ribbon widths or inflating the node's total. Where both offsets are equal, the gap stays constant through the bend. Where the group fans out, gaps change gradually. The group switches to these shared curves together when space and obstacle clearance allow it; constrained layouts use individually routed smooth curves.
 
 When a main-stage link and a top/bottom link enter the same node, the main-stage curve can reach its final entry height earlier and finish horizontally. This prevents a late curve from crossing the edge input and then crossing back again. The finish point accounts for the edge input's actual curved approach and ribbon width, including detours, rather than assuming it follows its source's vertical axis. The existing top/main/bottom port order stays intact. A bounded pass accepts the alternative only when sampled ribbon overlap decreases, no new crossing pair appears, and obstacle clearance does not worsen. It also checks for newly overlapping ribbon pairs, with a small tolerance for sampling noise and shared endpoints.
 
@@ -43,8 +43,12 @@ The same curve style connects stages, top sources and bottom destinations:
 
 ![Distribution with smooth links on all sides](../screenshots/24-smooth-distribution.jpg)
 
-Wrapped destinations use separate lanes and shared flowing bends:
+Skipping-stage links can bend through the existing gap without a trip below the middle column:
 
-![Wrapped fan-out with smooth separated links](../screenshots/25-smooth-wrapped-fan.jpg)
+![Direct stage-skipping curve](../screenshots/26-direct-stage-bypass.jpg)
+
+Wrapped destinations use separate lanes and gradual arrivals, with additional height reserved when necessary:
+
+![Wrapped fan-out with gradual arrivals](../screenshots/28-gradual-fan-arrivals.jpg)
 
 See [performance](performance.md) for cooperative scheduling and [verification](verification.md) for tested cases and remaining limits.

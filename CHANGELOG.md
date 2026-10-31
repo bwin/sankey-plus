@@ -5,6 +5,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ## [Unreleased]
 
 - Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
+- Spread fan curves gradually along both axes and reserve more arrival space in wrapped rows. Try broad edge curves before elbow-like detours while preserving ribbon separation and label clearance.
 
 ### Changed
 
