@@ -28,6 +28,7 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 | Check | Observed result |
 | --- | --- |
+| Selection colors (31 October) | Selected Input A has a `#5265cc` outline matching its bar; Input A → Process A has a `#168e9d` outline matching its ribbon. Both remain at opacity 1 while Result B inspection fades their fills. Surface-color separators and dashed keyboard focus remain distinct. |
 | Demo readiness timing (31 October) | Readout transitions from “Rendering…” to an approximate elapsed duration. At 960 px, the stress scene retains all 100 nodes while `aria-busy=true` during resize. Changing external selection after completion leaves both its 500 ms reading and `aria-busy=false` unchanged. This is a single observed run, not a benchmark claim. |
 | Chunked layout (31 October) | Stress test exposes `aria-busy=true` and “Preparing diagram…” before its geometry is ready. Switching to Partial allocation finishes with only that graph's two nodes. Layout computation is deferred out of React rendering. |
 | Link endpoint tooltip (31 October) | Distribution's Input A → Process A tooltip shows both source/destination nodes, stages, declared totals (1,000 / 900 units) and their metadata notes. Existing `fromNode`/`toNode` fields are used without an API change. |

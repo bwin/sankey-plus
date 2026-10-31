@@ -203,7 +203,7 @@ Tooltip placement, viewport clamping, dismissal and accessible association are i
 - One roving tab stop enters the diagram. Arrow keys move through nodes then links in input order; Home/End jump to the ends. Enter/Space activate once. Escape dismisses inspection. Tab leaves normally.
 - Keyboard focus works after pointer use, including clicks on empty chart space. Keyboard/touch details follow the inspected subject when resizing or scrolling changes its position.
 - Activation calls the relevant handler. It never changes selection internally. The host may select, navigate, open a panel, or ignore the click.
-- Selection uses a persistent solid contrast outline, including when its fill fades during unrelated inspection. Keyboard focus uses a dashed indicator. Escape does not change selection. A selected key removed from the graph is ignored without a callback.
+- Selection uses a persistent solid outline in the selected node/link's own color, separated from its fill and surroundings by the surface color. The outline remains fully opaque when its fill fades during unrelated inspection. Keyboard focus uses a dashed indicator. Escape does not change selection. A selected key removed from the graph is ignored without a callback.
 
 ## Layout and routing
 

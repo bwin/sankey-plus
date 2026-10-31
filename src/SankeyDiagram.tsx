@@ -302,7 +302,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         {ordered.map(f => {
                     const subject: SankeySubject = { kind: 'link', key: f.key }, isSelected = same(subject, selected), focused = same(subject, keyboardFocus), strongFlow = strong.links.has(f.key), opacity = strongFlow ? (same(subject, active?.subject ?? null) ? .75 : .4) : .1;
                     return <g key={f.key} {...subjectProps(subject)} data-emphasis={strongFlow ? 'strong' : 'faded'}>
-            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 8}/><path d={f.route.path} stroke="var(--flow-text, #24334a)" strokeWidth={f.width + 5}/><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 2}/></g>}
+            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 8}/><path d={f.route.path} stroke={f.color} strokeWidth={f.width + 5}/><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 2}/></g>}
             <path data-link-paint="" d={f.route.path} fill="none" stroke={f.color} strokeWidth={f.width} opacity={opacity} pointerEvents="none" aria-hidden="true"/>
             {focused && <g className="flow-decoration" aria-hidden="true"><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={4}/><path d={f.route.path} stroke="var(--flow-focus, #2644af)" strokeWidth={2} strokeDasharray="4 4"/></g>}
           </g>;
@@ -311,7 +311,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
                     const subject: SankeySubject = { kind: 'node', key: n.key }, isSelected = same(subject, selected), focused = same(subject, keyboardFocus), strongItem = strong.nodes.has(n.key);
                     return <g key={n.key} {...subjectProps(subject)} data-emphasis={strongItem ? 'strong' : 'faded'}>
             <rect data-node-paint="" x={n.x} y={n.y} width={n.w} height={n.h} fill={n.zero ? 'none' : n.color} stroke={n.zero ? n.color : undefined} strokeWidth={1} opacity={strongItem ? 1 : .25} pointerEvents="none" aria-hidden="true"/>
-            {isSelected && <g className="flow-decoration" data-selection-outline="" aria-hidden="true"><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke="var(--flow-surface, white)" strokeWidth={6}/><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke="var(--flow-text, #24334a)" strokeWidth={2}/></g>}
+            {isSelected && <g className="flow-decoration" data-selection-outline="" aria-hidden="true"><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke="var(--flow-surface, white)" strokeWidth={6}/><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke={n.color} strokeWidth={2}/></g>}
             {focused && <rect className="flow-decoration" x={n.x - 8} y={n.y - 8} width={n.w + 16} height={n.h + 16} stroke="var(--flow-focus, #2644af)" strokeWidth={1.5} strokeDasharray="3 3" aria-hidden="true"/>}
           </g>;
                 })}
