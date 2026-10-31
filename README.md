@@ -27,7 +27,7 @@ node scripts/serve.mjs
 
 Open **http://127.0.0.1:5178/**. The server binds only to the local machine. Set `PORT` to use another port.
 
-All seven examples are directly available as tabs. Left/Right arrows switch tabs; Home/End select the first/last example. The tabs wrap on narrow screens.
+All eight examples are directly available as tabs, including the **Stress test** with 100 nodes and 300 links. Left/Right arrows switch tabs; Home/End select the first/last example. The tabs wrap on narrow screens.
 
 To develop from the GitHub repository:
 
@@ -58,6 +58,8 @@ npm run benchmark -- --case stress-100-300 --profile .tests/stress.cpuprofile
 `stress` measures the deterministic **100-node / 300-link** fixture: four stages of 25 nodes, with four forward links per node to the next stage (indices wrap within that stage). Amounts are 10–13 units. `benchmark` also measures desktop/mobile regression fixtures, the four-sided example and wrapped fan-out. The shared generator is in `fixtures/stress.ts`.
 
 Reports include the first calculation, median/min/max of ten subsequent calculations, scene dimensions, crossings and obstacle collisions. Timings cover data validation and layout at 1440 px for the stress case; compilation, React rendering and browser painting are excluded. CPU profiling adds overhead, so compare unprofiled runs for timings. [PERFORMANCE.md](PERFORMANCE.md) records the measured optimization results and limitations. These commands require a development checkout with dependencies installed; they are not included in the npm library.
+
+The Stress test demo uses that same graph with the normal interactive renderer, custom two-line labels and responsive sizing. It grows vertically to fit all nodes; dense crossings are expected. Its layout can differ from the timing fixture because browser font measurement, container width and label settings affect geometry. Disable “Custom labels and tooltip” and select 1440 px in a sufficiently wide host for a closer visual comparison.
 
 Node 22 was used for verification. React 19.2 was used for the demo; the library declares React/React DOM 18.2 or later as peer dependencies.
 

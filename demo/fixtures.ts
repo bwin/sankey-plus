@@ -1,6 +1,7 @@
 import type { SankeyGraph } from '../src/index.js';
 import full from './feature-demo.json';
 import distributionData from './distribution.json';
+import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
 export function fanOut(edge: 'top' | 'bottom' = 'bottom', count = 3): SankeyGraph {
@@ -19,5 +20,6 @@ export const examples: {
     { key: 'top', name: 'Top fan-out', description: 'The same routing rule, reflected above the main sequence.', graph: fanOut('top') },
     { key: 'crowded', name: 'Many edge nodes', description: 'Twelve destinations share the bottom edge and wrap into additional rows.', graph: fanOut('bottom', 12) },
     { key: 'partial', name: 'Partial allocation', description: 'An available total of 1,000 with only 500 transferred. No extra edge margins.', graph: simple },
+    { key: 'stress', name: 'Stress test', description: '100 nodes and 300 links across four stages. The same deterministic graph used by npm run stress; crossings are expected in this dense case.', graph: stressGraph() },
     { key: 'empty', name: 'Empty', description: 'A quiet empty state, without unused edge bands.', graph: { stages: [], nodes: [], links: [] } },
 ];
