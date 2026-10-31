@@ -6,6 +6,7 @@
 
 - Inspecting a node keeps that node, all directly incoming/outgoing links, and every node those links touch strong. Everything else fades. This is one hop, not recursive traversal or all links between highlighted neighbors.
 - Inspecting a link keeps only that link and its two endpoint nodes strong.
+- Node, link and label opacity eases between inspection states in 120 ms. Tooltips, selection outlines and keyboard focus update immediately. The fade is disabled when the system requests reduced motion.
 - Visible node and link labels activate their own subject. Node labels take priority over ribbons passing behind them; hidden labels do not create invisible click targets.
 - Pointer movement inspects; leaving clears pointer inspection. Touch taps activate and pin details; dragging cancels activation. Tapping outside dismisses details.
 - One roving tab stop enters the diagram. Arrow keys move through nodes then links in input order; Home/End jump to the ends. Enter/Space activate once. Escape dismisses inspection. Tab leaves normally.

@@ -9,6 +9,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Changed
 
+- Node/link inspection fades paint and labels over 120 ms, respecting reduced motion. Tooltips and selection/focus outlines remain instant.
 - Demo link tooltips use aligned two-column rows: transfer details and amount above source and destination details, without the click-to-select hint.
 - All links use smooth cubic curves, including top/bottom connections, wrapped fans and obstacle detours. Crossing, ribbon-overlap, hit-testing and label calculations follow adaptively sampled curves; convergence checks use the actual approach path.
 
