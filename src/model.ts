@@ -101,7 +101,12 @@ export function resolveGraph<I, T>(graph: SankeyGraph<I, T>): ResolvedGraph<I, T
                 issues.push({ code: 'total-too-small', nodeKey: id, message: `${row.unit ?? 'Unitless'} total on ${id} must be at least ${required}.` });
         }
         const totals = [...balances.values()];
-        const combined = (field: 'total' | 'incoming' | 'outgoing') => totals.reduce((s, row) => s + row[field] * units.conversion(row.unit).factor, 0);
+        const combined = (field: 'total' | 'incoming' | 'outgoing') => totals.reduce((s, row) => {
+            const value = row[field] * units.conversion(row.unit).factor;
+            if (row[field] > 0 && value === 0)
+                issues.push({ code: 'invalid-number', nodeKey: id, message: `Converted ${row.unit} ${field} on ${id} underflows to zero.` });
+            return s + value;
+        }, 0);
         const a = combined('incoming'), b = combined('outgoing'), total = combined('total');
         const totalSource = totals.every(r => r.totalSource === 'declared') ? 'declared' : totals.every(r => r.totalSource === 'derived') ? 'derived' : 'mixed';
         if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isFinite(total))

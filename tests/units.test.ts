@@ -132,6 +132,10 @@ test('multi-line balance labels reserve row space without inflating quantitative
     approx(scene.nodes[1].h / scene.nodes[0].h, 1000);
 });
 
+test('a positive declared balance cannot underflow into a zero marker', () => {
+    error({ defaultUnit: 'USD', conversionRates: [{ from: 'EUR', to: 'USD', rate: .25 }], stages: ['a'], nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' }, totals: { EUR: Number.MIN_VALUE } }], links: [] }, 'invalid-number');
+});
+
 for (const edge of ['top', 'bottom'] as const)
     test(`wrapped ${edge} balance labels retain all lines and fit edge bands`, () => {
         const g: SankeyGraph = { stages: ['a'], nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' } }, ...Array.from({ length: 5 }, (_, i) => ({ key: `n${i}`, title: `Balance ${i}`, placement: { edge } }))], links: Array.from({ length: 5 }, (_, i) => ({ key: `l${i}`, from: 'a', to: `n${i}`, amount: 1 })) };

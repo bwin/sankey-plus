@@ -42,7 +42,7 @@ The wallet holds **200 EUR plus 50 USD**, with a combined total of **270 USD**. 
 
 Conflicting rates or inconsistent cycles are rejected (relative tolerance `1e-9`). This interface models one valuation basis. Different transaction-time exchange rates for the same unit pair require separate graphs or pre-normalized data; the component never silently picks a favorable path or averages conflicting rates.
 
-Every used unit needs a conversion path to the width basis. Missing conversions, overflow or underflow producing a zero link width raise an input error. One common scale applies to node bars and links, including top/bottom nodes.
+Every used unit needs a conversion path to the width basis. Missing conversions, overflow or underflow turning a positive amount/balance into zero raise an input error. One common scale applies to node bars and links, including top/bottom nodes.
 
 Without `defaultUnit`, a single explicitly named unit works directly. A multi-unit graph still needs rates: the first encountered unit is used internally for widths, while labels/tooltips omit the combined total. Choosing another basis in a consistent rate table changes absolute numbers but not width ratios. Unitless and named amounts cannot be mixed without an explicit default. Existing entirely unitless graphs retain their behavior.
 

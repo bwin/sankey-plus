@@ -11,6 +11,7 @@
 
 - `src/types.ts` and `src/index.ts`: public contract and exports. Keep implementation-only options internal.
 - `src/model.ts`: input validation, adjacency, totals and one-hop emphasis.
+- `src/units.ts`: consistent conversion paths, inverse rates and unit validation. Never add unlike units or silently choose between conflicting rates.
 - `src/layout.ts` and `src/paths.ts`: deterministic geometry, port order, routing and collision checks. These modules must remain independent of React and the DOM.
 - `src/layout-task.ts`: cooperative scheduling. Keep the synchronous benchmark and chunked component on the same iterator; preserve cancellation and complete-scene commits. Chunk checkpoints belong at phase/item boundaries, not in React render.
 - `src/presentation.ts` and `src/SankeyDiagram.tsx`: formatting, measured labels, rendering and interaction.
@@ -20,7 +21,7 @@
 
 ## Behavior to preserve
 
-- Inputs are immutable. A declared total may exceed transferred amounts, but cannot be less than either incoming or outgoing sums. All ribbon widths and quantitative bars use one common scale.
+- Inputs are immutable. A declared balance may exceed transferred amounts, but cannot be less than either incoming or outgoing sums in that unit. Multiple units are separate balances; convert their per-unit totals before summing for node size. All ribbon widths and quantitative bars use one common converted scale, retaining native amounts in presentation.
 - Main-stage nodes retain their shared vertical axis and input order. Top/bottom nodes use their inward face in both directions; reserve edge space only when nodes occupy that edge.
 - Wrapping must preserve intended port order, separate simple fan ribbons and keep unrelated bars/labels clear. Test mirrored top and bottom cases and both incoming and outgoing directions when changing routing.
 - Inspecting a node emphasizes itself, its incident links and their endpoints only. Inspecting a link emphasizes it and its two endpoints. Selection is controlled by the host, independent of inspection, and visually distinct even when faded.

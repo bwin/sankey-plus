@@ -422,9 +422,9 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         return boxes;
     };
     const rowApproach = (node: NodeGeometry, flow: LinkGeometry) => {
-        // The cross-row leg sits beyond the previous row's two-line label plus
+        // The cross-row leg sits beyond the previous row's full label plus
         // half a ribbon. A fixed fraction of row pitch clips long custom labels.
-        const distance = fanLaneDistances.get(node.key) ?? (BAR + 10 + lineHeight * 2 + flow.width / 2 + 8);
+        const distance = fanLaneDistances.get(node.key) ?? (BAR + 10 + edgeLabelHeight + flow.width / 2 + 8);
         const inset = rowPitches[node.edge!][node.row] - distance;
         return node.edge === 'bottom' ? node.y - inset : node.y + BAR + inset;
     };
