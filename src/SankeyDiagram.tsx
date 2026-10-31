@@ -37,7 +37,9 @@ function Details({ id, anchor, children, theme }: {
     children: ReactNode;
     theme: CSSProperties;
 }) {
-    const ref = useRef<HTMLDivElement>(null), [size, setSize] = useState({ width: 260, height: 140 }), [viewport, setViewport] = useState({ width: window.innerWidth, height: window.innerHeight });
+    // client dimensions exclude classic scrollbars, unlike innerWidth/Height.
+    const readViewport = () => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight });
+    const ref = useRef<HTMLDivElement>(null), [size, setSize] = useState({ width: 260, height: 140 }), [viewport, setViewport] = useState(readViewport);
     useBrowserLayoutEffect(() => {
         const el = ref.current;
         if (!el)
@@ -48,7 +50,13 @@ function Details({ id, anchor, children, theme }: {
         observer.observe(el);
         return () => observer.disconnect();
     }, [children]);
-    useEffect(() => { const update = () => setViewport({ width: window.innerWidth, height: window.innerHeight }); window.addEventListener('resize', update); return () => window.removeEventListener('resize', update); }, []);
+    useEffect(() => {
+        const update = () => { const next = readViewport(); setViewport(old => old.width === next.width && old.height === next.height ? old : next); };
+        const observer = new ResizeObserver(update);
+        observer.observe(document.documentElement);
+        window.addEventListener('resize', update);
+        return () => { observer.disconnect(); window.removeEventListener('resize', update); };
+    }, []);
     const x = Math.max(8, Math.min(viewport.width - size.width - 8, anchor.x + 16 + size.width > viewport.width - 8 ? anchor.x - size.width - 16 : anchor.x + 16));
     const y = Math.max(8, Math.min(viewport.height - size.height - 8, anchor.y + 16 + size.height > viewport.height - 8 ? anchor.y - size.height - 16 : anchor.y + 16));
     return createPortal(<div ref={ref} id={id} role="tooltip" className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }}>{children}</div>, document.body);
