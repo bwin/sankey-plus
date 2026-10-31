@@ -211,6 +211,21 @@ for (const edge of ['top', 'bottom'] as const)
             assert.equal(scene.diagnostics.obstacleCollisions, 0);
         }
     });
+test('skipping a stage uses the available gap without a vertical detour', () => {
+    const graph = JSON.parse(readFileSync(new URL('../../demo/stages.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(graph);
+    const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total} units total`]]));
+    for (const width of [960, 1126, 1440]) {
+        const scene = layoutGraph(model, { width, labels }), link = scene.links.find(f => f.key === 'bypass')!;
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        assert.equal((link.route.path.match(/ C/g) ?? []).length, 1, 'one broad curve fits between the middle-stage bars');
+        for (const point of link.route.points) {
+            assert.ok(point.y >= Math.min(link.start.y, link.end.y) - .01);
+            assert.ok(point.y <= Math.max(link.start.y, link.end.y) + .01, 'no excursion below the destination');
+        }
+    }
+});
+
 test('edge-to-edge links have finite paths and inward endpoint faces', () => {
     for (const from of ['top', 'bottom'] as const)
         for (const to of ['top', 'bottom'] as const) {

@@ -497,6 +497,19 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         if (!routeCollisions(f.route, boxes, f.width / 2 + 2))
             continue;
         const a = byKey.get(f.from)!, b = byKey.get(f.to)!;
+        // A skipping-stage link can often pass through the existing gap by
+        // easing earlier or later. Search those direct curves before reserving
+        // an inflated orthogonal corridor that may close the gap entirely.
+        if (!a.edge && !b.edge) {
+            const dx = f.end.x - f.start.x;
+            for (const from of [.25, .5, .75]) for (const to of [.25, .5, .75]) {
+                yield;
+                const candidate = cubic(f.start, { x: f.start.x + dx * from, y: f.start.y },
+                    { x: f.end.x - dx * to, y: f.end.y }, f.end);
+                if (score(f, candidate) < score(f, f.route)) f.route = candidate;
+            }
+            if (!routeCollisions(f.route, boxes, f.width / 2 + 2)) continue;
+        }
         for (const fraction of [1, .5, .25, .125]) {
             yield;
             const turnSpan = Math.max(8, Math.min(32, f.width / 2 + 6)) * fraction, padding = f.width / 2 + turnSpan + 3;

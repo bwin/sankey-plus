@@ -4,6 +4,8 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+- Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
+
 ### Changed
 
 - Demo link tooltips show source and destination details in two columns below full-width link details, without the click-to-select hint.
