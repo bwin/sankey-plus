@@ -1,7 +1,7 @@
 import type { ResolvedGraph } from './model.js';
 import { nodeColor } from './model.js';
 import { SankeyInputError } from './types.js';
-import { avoidObstacles, crossings, cubic, describe, distanceToRoute, inflate, intersects, pointAt, ribbonOverlap, roundedOrthogonal, roundedPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
+import { avoidObstacles, crossings as countCrossings, cubic, describe, distanceToRoute, inflate, intersects, pointAt, ribbonOverlap, roundedOrthogonal, roundedPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
 export interface TextBox extends Rect {
     lines: string[];
     anchor: 'start' | 'middle' | 'end';
@@ -106,6 +106,20 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     const requested = options.width, plotHeight = options.plotHeight ?? 336;
     if (!Number.isFinite(requested) || requested <= 0 || !Number.isFinite(plotHeight) || plotHeight <= 0)
         throw new SankeyInputError([{ code: 'invalid-number', message: 'Layout width and plotHeight must be finite and positive.' }]);
+    // Scoring revisits the same route pairs during port swaps and diagnostics.
+    // Routes are replaced, never mutated, during one layout attempt. Keep this
+    // cache local so no geometry survives into a resize or a different graph.
+    const crossingCache = new WeakMap<Route, WeakMap<Route, number>>();
+    const crossings = (a: Route, b: Route): number => {
+        if (!intersects(a.bounds, b.bounds)) return 0;
+        const cached = crossingCache.get(a)?.get(b) ?? crossingCache.get(b)?.get(a);
+        if (cached !== undefined) return cached;
+        const result = countCrossings(a, b);
+        let row = crossingCache.get(a);
+        if (!row) { row = new WeakMap(); crossingCache.set(a, row); }
+        row.set(b, result);
+        return result;
+    };
     const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
     const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
@@ -357,7 +371,15 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         }
     }
     portGroups.forEach(setPorts);
-    const obstacles = (f: LinkGeometry) => nodes.filter(n => n.key !== f.from && n.key !== f.to).flatMap(n => [n, ...(n.label.w ? [n.label] : [])]);
+    const obstacleCache = new Map<string, Rect[]>();
+    const obstacles = (f: LinkGeometry) => {
+        let boxes = obstacleCache.get(f.key);
+        if (!boxes) {
+            boxes = nodes.filter(n => n.key !== f.from && n.key !== f.to).flatMap(n => [n, ...(n.label.w ? [n.label] : [])]);
+            obstacleCache.set(f.key, boxes);
+        }
+        return boxes;
+    };
     const radius = Math.max(24, Math.min(90, maxRibbon + 12));
     const rowApproach = (node: NodeGeometry, flow: LinkGeometry) => {
         // The cross-row leg sits beyond the previous row's two-line label plus

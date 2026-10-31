@@ -165,25 +165,38 @@ export function ribbonBounds(route: Route, width: number): Rect {
     return describe('', points).bounds;
 }
 function segmentHits(a: Point, b: Point, r: Rect): boolean {
-    if (inside(a, r) || inside(b, r))
+    // Most visibility-grid edges and curve samples are nowhere near this box.
+    // Reject those before doing slab clipping, including zero-length segments.
+    const minX = r.x + 1e-5, maxX = r.x + r.w - 1e-5;
+    const minY = r.y + 1e-5, maxY = r.y + r.h - 1e-5;
+    // Tiny boxes can have inverted epsilon-adjusted limits. Let the original
+    // clipping rule handle those rather than changing its boundary behavior.
+    if ((minX <= maxX && ((a.x <= minX && b.x <= minX) || (a.x >= maxX && b.x >= maxX))) ||
+        (minY <= maxY && ((a.y <= minY && b.y <= minY) || (a.y >= maxY && b.y >= maxY))))
+        return false;
+    if ((a.x > minX && a.x < maxX && a.y > minY && a.y < maxY) ||
+        (b.x > minX && b.x < maxX && b.y > minY && b.y < maxY))
         return true;
     // Slab clipping also handles non-axis-aligned sampled curve segments.
+    // Spell out both axes to avoid an iterator and dynamic property access in
+    // this hot loop. Keep the original tolerances and clipping arithmetic.
     let lo = 0, hi = 1;
-    for (const axis of ['x', 'y'] as const) {
-        const v = b[axis] - a[axis], min = r[axis] + 1e-5, max = r[axis] + (axis === 'x' ? r.w : r.h) - 1e-5;
-        if (Math.abs(v) < 1e-9) {
-            if (a[axis] <= min || a[axis] >= max)
-                return false;
-        }
-        else {
-            let t1 = (min - a[axis]) / v, t2 = (max - a[axis]) / v;
-            if (t1 > t2)
-                [t1, t2] = [t2, t1];
-            lo = Math.max(lo, t1);
-            hi = Math.min(hi, t2);
-            if (lo >= hi)
-                return false;
-        }
+    const dx = b.x - a.x, dy = b.y - a.y;
+    if (Math.abs(dx) < 1e-9) {
+        if (a.x <= minX || a.x >= maxX) return false;
+    } else {
+        const t1 = (minX - a.x) / dx, t2 = (maxX - a.x) / dx;
+        lo = Math.max(lo, Math.min(t1, t2));
+        hi = Math.min(hi, Math.max(t1, t2));
+        if (lo >= hi) return false;
+    }
+    if (Math.abs(dy) < 1e-9) {
+        if (a.y <= minY || a.y >= maxY) return false;
+    } else {
+        const t1 = (minY - a.y) / dy, t2 = (maxY - a.y) / dy;
+        lo = Math.max(lo, Math.min(t1, t2));
+        hi = Math.min(hi, Math.max(t1, t2));
+        if (lo >= hi) return false;
     }
     return hi > 0 && lo < 1;
 }
@@ -202,12 +215,52 @@ export function crossings(a: Route, b: Route): number {
     if (!intersects(a.bounds, b.bounds))
         return 0;
     const side = (p: Point, q: Point, r: Point) => (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
-    for (let i = 1; i < a.points.length; i++)
-        for (let j = 1; j < b.points.length; j++) {
+    const monotoneX = (points: Point[]): number => {
+        let direction = 0;
+        for (let i = 1; i < points.length; i++) {
+            const delta = points[i].x - points[i - 1].x;
+            if (!delta) continue;
+            const next = delta > 0 ? 1 : -1;
+            if (direction && direction !== next) return 0;
+            direction = next;
+        }
+        return direction || 1;
+    };
+    const aDirection = monotoneX(a.points), bDirection = monotoneX(b.points);
+    if (aDirection && bDirection) {
+        // Ordinary stage curves (and many edge routes) advance monotonically
+        // along x. Merge their segment intervals instead of comparing every
+        // segment with every other segment. Vertical runs stay in the sweep.
+        let i = aDirection > 0 ? 1 : a.points.length - 1;
+        let j = bDirection > 0 ? 1 : b.points.length - 1;
+        while (i > 0 && i < a.points.length && j > 0 && j < b.points.length) {
             const p = a.points[i - 1], q = a.points[i], r = b.points[j - 1], s = b.points[j];
+            const aMin = Math.min(p.x, q.x), aMax = Math.max(p.x, q.x);
+            const bMin = Math.min(r.x, s.x), bMax = Math.max(r.x, s.x);
+            if (aMax >= bMin && bMax >= aMin &&
+                side(p, q, r) * side(p, q, s) < -1e-7 && side(r, s, p) * side(r, s, q) < -1e-7)
+                return 1;
+            // Equal interval ends can only meet at endpoints, or along
+            // collinear vertical segments; neither counts as a crossing.
+            if (aMax <= bMax) i += aDirection;
+            if (bMax <= aMax) j += bDirection;
+        }
+        return 0;
+    }
+    for (let i = 1; i < a.points.length; i++) {
+        const p = a.points[i - 1], q = a.points[i];
+        const minX = Math.min(p.x, q.x), maxX = Math.max(p.x, q.x);
+        const minY = Math.min(p.y, q.y), maxY = Math.max(p.y, q.y);
+        for (let j = 1; j < b.points.length; j++) {
+            const r = b.points[j - 1], s = b.points[j];
+            // Inclusive bounds preserve the existing endpoint/collinearity
+            // semantics; the orientation test below decides actual crossings.
+            if ((r.x < minX && s.x < minX) || (r.x > maxX && s.x > maxX) ||
+                (r.y < minY && s.y < minY) || (r.y > maxY && s.y > maxY)) continue;
             if (side(p, q, r) * side(p, q, s) < -1e-7 && side(r, s, p) * side(r, s, q) < -1e-7)
                 return 1;
         }
+    }
     return 0;
 }
 /** Orthogonal visibility grid used only when an ordinary route hits a bar/label. */
@@ -228,7 +281,10 @@ export function avoidObstacles(start: Point, end: Point, obstacles: Rect[], boun
     const startId = cell(sx, sy) * 3, goal = cell(ex, ey);
     const best = new Map<number, number>([[startId, 0]]), previous = new Map<number, number>();
     const open = [{ id: startId, score: 0 }];
-    const blocked = new Map<string, boolean>();
+    // An edge is identified by its lower cell index and horizontal/vertical
+    // direction. Numeric keys avoid building strings for every search step.
+    const blocked = new Map<number, boolean>();
+    const directions = [[1, 0, 1], [-1, 0, 1], [0, 1, 2], [0, -1, 2]];
     let visits = 0;
     while (open.length && visits++ < nx * ny * 4) {
         // Binary heap keeps obstacle searches bounded on larger graphs.
@@ -260,16 +316,17 @@ export function avoidObstacles(start: Point, end: Point, obstacles: Rect[], boun
             return points.reverse();
         }
         const a = { x: xs[x], y: ys[y] };
-        for (const [dx, dy, dir] of [[1, 0, 1], [-1, 0, 1], [0, 1, 2], [0, -1, 2]]) {
+        const costSoFar = best.get(id)!;
+        for (const [dx, dy, dir] of directions) {
             const xx = x + dx, yy = y + dy;
             if (xx < 0 || yy < 0 || xx >= nx || yy >= ny)
                 continue;
-            const b = { x: xs[xx], y: ys[yy] }, next = cell(xx, yy) * 3 + dir, edge = [Math.min(index, cell(xx, yy)), Math.max(index, cell(xx, yy))].join(':');
+            const b = { x: xs[xx], y: ys[yy] }, nextCell = cell(xx, yy), next = nextCell * 3 + dir, edge = Math.min(index, nextCell) * 2 + dir - 1;
             if (!blocked.has(edge))
                 blocked.set(edge, relevant.some(r => segmentHits(a, b, r)));
             if (blocked.get(edge))
                 continue;
-            const cost = best.get(id)! + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + (direction && direction !== dir ? bendCost : 0);
+            const cost = costSoFar + Math.abs(b.x - a.x) + Math.abs(b.y - a.y) + (direction && direction !== dir ? bendCost : 0);
             if (cost >= (best.get(next) ?? Infinity) - 1e-6)
                 continue;
             best.set(next, cost);

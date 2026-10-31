@@ -5,6 +5,7 @@ import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { crossings, distanceToRoute, distanceToSegment, inflate, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode } from '../src/types.js';
+import { stressGraph } from './stress-fixture.js';
 const full = JSON.parse(readFileSync(new URL('../../demo/feature-demo.json', import.meta.url), 'utf8')) as SankeyGraph;
 const base: SankeyGraph = { stages: ['a', 'b'], nodes: [{ key: 'a', title: 'Available', total: 1000, placement: { stage: 'a' } }, { key: 'b', title: 'Allocated', placement: { stage: 'b' } }], links: [{ key: 'ab', from: 'a', to: 'b', amount: 500 }] };
 const error = (graph: SankeyGraph, code: SankeyIssueCode) => assert.throws(() => resolveGraph(graph), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === code));
@@ -236,10 +237,7 @@ for (const edge of ['top', 'bottom'] as const)
         }
     });
 test('100 nodes and 300 links produce finite geometry without input changes', () => {
-    const stages = ['a', 'b', 'c', 'd'];
-    const nodes = stages.flatMap((stage, s) => Array.from({ length: 25 }, (_, n) => ({ key: `${s}-${n}`, title: `Node ${s}-${n}`, placement: { stage } })));
-    const links = stages.slice(0, -1).flatMap((_, s) => Array.from({ length: 25 }, (_, n) => Array.from({ length: 4 }, (_, offset) => ({ key: `${s}-${n}-${offset}`, from: `${s}-${n}`, to: `${s + 1}-${(n + offset) % 25}`, amount: 10 + offset }))).flat());
-    const graph = { stages, nodes, links }, before = JSON.stringify(graph), scene = layoutGraph(resolveGraph(graph), { width: 1440 });
+    const graph = stressGraph(), before = JSON.stringify(graph), scene = layoutGraph(resolveGraph(graph), { width: 1440 });
     assert.equal(scene.nodes.length, 100);
     assert.equal(scene.links.length, 300);
     assert.ok(scene.links.every(f => !(/NaN|Infinity/).test(f.route.path)));
