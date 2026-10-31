@@ -4,6 +4,7 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 ## Automated checks
 
+- npm release archive checked on 31 October 2026: the final `1.0.0` tarball contains the MIT license and `Benjamin Winkler | bwin` author/copyright metadata. Installed that archive into a fresh consumer with React/React DOM 19.2.0 and verified public runtime exports, stylesheet resolution and server rendering. The archive has 22 entries, is 86,751 bytes, and has SHA-1 `38005b121bd60770e8196c9a7c75aa51461f0be0`.
 - Public API rename checked on 31 October 2026: all 43 tests and strict source/demo/test checking pass with `SankeyDiagram`, `SankeyGraph`, `SankeyNode`, `SankeyLink`, `nodes`/`links`, and `onNodeClick`/`onLinkClick`. A separate TypeScript consumer compiled against the built package declarations and verified node/link metadata types in callback contexts. Runtime imports expose `SankeyDiagram` and `SankeyInputError`; the npm pack manifest contains the renamed component source and declaration only.
 - Package rename checked on 31 October 2026: the manifest and lockfile agree on `@bwin/sankey-plus`; strict typechecking and library/demo builds pass; importing `FlowDiagram` and `FlowInputError` through the scoped package name succeeds. All declared exports exist, and `npm pack --dry-run --ignore-scripts` produces the expected `bwin-sankey-plus-1.0.0.tgz` manifest. This was a local packaging check, not a registry publication.
 - Strict TypeScript checking passes for source, demo and tests.

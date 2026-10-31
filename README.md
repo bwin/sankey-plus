@@ -4,6 +4,19 @@
 
 The default demo includes the supplied transaction, statement and invoice data, including Client Balance above and Unallocated, Unpaid, Written Off and Bad Debt below. The component has no business-domain logic.
 
+## Installation
+
+```sh
+npm install @bwin/sankey-plus
+```
+
+Requires React and React DOM 18.2 or later. Import the component and its stylesheet:
+
+```tsx
+import { SankeyDiagram, type SankeyGraph } from '@bwin/sankey-plus';
+import '@bwin/sankey-plus/style.css';
+```
+
 ## Open the demo
 
 The ZIP includes the compiled demo. With Node.js installed, preview it without installing packages:
@@ -39,13 +52,7 @@ The working project has a local Git repository. Commit `23293a1` preserves the i
 
 ## Integration
 
-Either copy `src/` into your application and import its `index.ts`, or install this directory as a local package:
-
-```sh
-npm install /absolute/path/to/flow-diagram
-```
-
-The packaged library is ESM and includes TypeScript declarations. Import its stylesheet separately. The source entry already imports the stylesheet.
+The packaged library is ESM and includes TypeScript declarations. Import its stylesheet separately. You can also copy `src/` into your application; its source entry already imports the stylesheet.
 
 ```tsx
 import {useState} from 'react';
@@ -221,24 +228,28 @@ Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palet
 
 These captures come from the running implementation, not design mockups.
 
-![All examples available as tabs above the original allocation dataset](screenshots/08-all-example-tabs.jpg)
+![All examples available as tabs above the original allocation dataset](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/08-all-example-tabs.jpg)
 
-![Complete flow with three stages, multiple top/bottom nodes, mixed-role relays, custom labels and partial totals](screenshots/01-complete-flow.jpg)
+![Complete flow with three stages, multiple top/bottom nodes, mixed-role relays, custom labels and partial totals](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/01-complete-flow.jpg)
 
 Process A is inspected below while Unassigned remains externally selected. Its solid outline survives fading; Process A's keyboard focus indicator is dashed.
 
-![One-hop inspection, a custom tooltip and independent selection](screenshots/02-inspection-and-selection.jpg)
+![One-hop inspection, a custom tooltip and independent selection](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/02-inspection-and-selection.jpg)
 
 The mobile example wraps destinations into rows while keeping links separate.
 
-![Wrapped fan-out in a phone-sized viewport](screenshots/03-mobile-wrapping.jpg)
+![Wrapped fan-out in a phone-sized viewport](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/03-mobile-wrapping.jpg)
 
 With several destinations in each wrapped row, the horizontal lanes remain separate too. The row spacing includes the entire group of link widths. Nested bends keep the 4-pixel gaps consistent through the turn.
 
-![Twelve destinations with nested curves and consistent gaps between parallel links](screenshots/07-consistent-bundle-curves.jpg)
+![Twelve destinations with nested curves and consistent gaps between parallel links](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/07-consistent-bundle-curves.jpg)
 
 In this updated complete example, the two green inputs into Outcome B no longer cross each other. Process B reaches its upper entry height before Carry-in turns toward the lower entry. The same routing rule handles inputs from above.
 
-![Separate side and bottom inputs into Outcome B](screenshots/06-separated-convergence.jpg)
+![Separate side and bottom inputs into Outcome B](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/06-separated-convergence.jpg)
 
 See `VERIFICATION.md` for checks performed and verification limits.
+
+## License
+
+MIT. Copyright (c) 2026 Benjamin Winkler | bwin. See [LICENSE](https://github.com/bwin/sankey-plus/blob/main/LICENSE).
