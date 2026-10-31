@@ -12,17 +12,20 @@ function EndpointDetails({ node, label }: { node: SankeyNode; label: string }) {
     const note = node.meta && typeof node.meta === 'object' && 'note' in node.meta && typeof node.meta.note === 'string' ? node.meta.note : null;
     return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {format(node.total)}</span>}{note && <span>{note}</span>}</div>;
 }
-const details = (view: SankeyPresentation) => <>
-    <span className="detail-eyebrow">{view.kind === 'node' ? 'NODE DETAILS' : 'TRANSFER DETAILS'}</span>
+const details = (view: SankeyPresentation) => view.kind === 'node' ? <>
+    <span className="detail-eyebrow">NODE DETAILS</span>
     <strong className="flow-tip-title">{title(view)}</strong>
-    {view.kind === 'node' ? <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl> : <>
-        <dl><dt>Amount</dt><dd>{view.text.amount}</dd></dl>
+    <dl><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></dl>
+    <p className="detail-note">{view.incomingLinks.length} incoming · {view.outgoingLinks.length} outgoing</p>
+</> : <>
+        <div className="detail-transfer">
+            <div><span className="detail-eyebrow">TRANSFER DETAILS</span><strong className="flow-tip-title">{title(view)}</strong></div>
+            <dl className="detail-amount"><dt>Amount</dt><dd>{view.text.amount}</dd></dl>
+        </div>
         <div className="detail-endpoints">
             <EndpointDetails node={view.fromNode} label="Source"/>
             <EndpointDetails node={view.toNode} label="Destination"/>
         </div>
-    </>}
-    {view.kind === 'node' && <p className="detail-note">{view.incomingLinks.length} incoming · {view.outgoingLinks.length} outgoing</p>}
 </>;
 function App() {
     const [example, setExample] = useState('distribution'), [selection, setSelection] = useState<SankeySubject | null>(null), [viewport, setViewport] = useState('auto');
