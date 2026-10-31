@@ -29,6 +29,8 @@ Open **http://127.0.0.1:5178/**. The server binds only to the local machine. Set
 
 All eight examples are directly available as tabs, including the **Stress test** with 100 nodes and 300 links. Left/Right arrows switch tabs; Home/End select the first/last example. The tabs wrap on narrow screens.
 
+Beside the node/link counts, “Ready in ~… ms” shows approximate elapsed time from the demo update to a completed diagram and a paint opportunity. It includes chunk scheduling and frame waits, excludes downloads, and is not a CPU-only benchmark. Example, size and label changes refresh it; hover and selection do not. This observer belongs to the demo, with no extra library prop.
+
 To develop from the GitHub repository:
 
 ```sh

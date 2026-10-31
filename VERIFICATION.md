@@ -28,6 +28,7 @@ Verified on 28 October 2026, with routing updates checked on 29 October, on Wind
 
 | Check | Observed result |
 | --- | --- |
+| Demo readiness timing (31 October) | Readout transitions from “Rendering…” to an approximate elapsed duration. At 960 px, the stress scene retains all 100 nodes while `aria-busy=true` during resize. Changing external selection after completion leaves both its 500 ms reading and `aria-busy=false` unchanged. This is a single observed run, not a benchmark claim. |
 | Chunked layout (31 October) | Stress test exposes `aria-busy=true` and “Preparing diagram…” before its geometry is ready. Switching to Partial allocation finishes with only that graph's two nodes. Layout computation is deferred out of React rendering. |
 | Link endpoint tooltip (31 October) | Distribution's Input A → Process A tooltip shows both source/destination nodes, stages, declared totals (1,000 / 900 units) and their metadata notes. Existing `fromNode`/`toNode` fields are used without an API change. |
 | Distribution replacement (31 October) | Generic 9-node/12-link default example renders at the container width and at 360 px. No page overflow or obstacle collisions at the narrow width. The original allocation graph remains a regression fixture. Screenshot: `screenshots/13-distribution.png`. |

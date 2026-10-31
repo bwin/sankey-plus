@@ -2,6 +2,7 @@ import { useState, type KeyboardEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SankeyDiagram, type SankeySubject, type SankeyPresentation, type SankeyNode } from '../src/index.js';
 import { examples } from './fixtures.js';
+import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 const format = (value: number) => `${value.toLocaleString('en-US')} units`;
 const title = (view: SankeyPresentation) => view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`;
@@ -24,6 +25,7 @@ function App() {
     const [example, setExample] = useState('distribution'), [selection, setSelection] = useState<SankeySubject | null>(null), [viewport, setViewport] = useState('auto');
     const [clicksSelect, setClicksSelect] = useState(true), [custom, setCustom] = useState(true), [events, setEvents] = useState(0), [last, setLast] = useState('No clicks yet');
     const current = examples.find(e => e.key === example)!, graph = current.graph;
+    const { hostRef, readyMs } = useExampleTiming(`${example}:${viewport}:${custom}`);
     const selectedName = selection?.kind === 'node' ? graph.nodes.find(n => n.key === selection.key)?.title : selection?.kind === 'link' ? (() => { const f = graph.links.find(f => f.key === selection.key); return f ? `${graph.nodes.find(n => n.key === f.from)?.title} → ${graph.nodes.find(n => n.key === f.to)?.title}` : undefined; })() : undefined;
     const clicked = (subject: SankeySubject, name: string) => { setEvents(n => n + 1); setLast(`${subject.kind === 'node' ? 'Node' : 'Link'} clicked: ${name}`); if (clicksSelect)
         setSelection(subject); };
@@ -37,11 +39,11 @@ function App() {
         document.getElementById(`example-tab-${examples[next].key}`)?.focus();
     };
     return <main className="demo-shell"><header className="page-header"><div className="wordmark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M4 7h8c8 0 4 18 12 18h4M4 25h8c8 0 4-18 12-18h4" fill="none" stroke="currentColor" strokeWidth="5"/></svg>Sankey Plus</div><span className="header-note">Interactive Sankey diagrams for React</span></header>
-    <section className="intro"><div><div className="eyebrow">FOLLOW THE FLOW</div><h1>Every connection, in context.</h1><p>Trace incoming and outgoing links. Keep a selection in view as you explore.</p></div><div className="intro-stat"><b>{graph.nodes.length}</b><span>nodes</span><i> / </i><b>{graph.links.length}</b><span>links</span></div></section>
+    <section className="intro"><div><div className="eyebrow">FOLLOW THE FLOW</div><h1>Every connection, in context.</h1><p>Trace incoming and outgoing links. Keep a selection in view as you explore.</p></div><div className="intro-stat"><b>{graph.nodes.length}</b><span>nodes</span><i> / </i><b>{graph.links.length}</b><span>links</span><span className="render-timing" data-render-time="" title="Approximate elapsed time from the demo update to a complete diagram and a paint opportunity. Includes chunk scheduling and frame waits; excludes downloads. Hover and selection do not restart it.">{readyMs === null ? 'Rendering…' : `Ready in ~${Math.round(readyMs)} ms`}</span></div></section>
     <section className="workspace"><div className="workspace-toolbar"><div className="example-tabs" role="tablist" aria-label="Examples">{examples.map((e, index) => <button key={e.key} id={`example-tab-${e.key}`} role="tab" aria-selected={example === e.key} aria-controls="example-panel" tabIndex={example === e.key ? 0 : -1} onClick={() => chooseExample(e.key)} onKeyDown={event => navigateExamples(event, index)}>{e.name}</button>)}</div><label className="viewport-control">Canvas<select aria-label="Canvas width" value={viewport} onChange={e => setViewport(e.target.value)}><option value="auto">Fit container</option>{[1440, 960, 600, 360, 260].map(n => <option key={n} value={n}>{n} px</option>)}</select></label></div>
       <div role="tabpanel" id="example-panel" aria-labelledby={`example-tab-${example}`}>
       <div className="chart-heading"><div><h2>{current.name}</h2><p>{current.description}</p></div><span className="interaction-hint"><span />Hover to trace · click to select</span></div>
-      <div className="canvas-stage"><div className="canvas-host" style={{ width: viewport === 'auto' ? '100%' : `${viewport}px`, maxWidth: '100%' }} data-demo-host=""><SankeyDiagram graph={graph} accessibleName={`${current.name} diagram`} plotHeight={336} selection={selection} formatAmount={format} getLabel={custom ? labels : undefined} renderTooltip={custom ? details : undefined} onNodeClick={f => clicked({ kind: 'node', key: f.node.key }, f.node.title)} onLinkClick={f => clicked({ kind: 'link', key: f.link.key }, `${f.fromNode.title} → ${f.toNode.title}`)}/></div></div>
+      <div className="canvas-stage"><div ref={hostRef} className="canvas-host" style={{ width: viewport === 'auto' ? '100%' : `${viewport}px`, maxWidth: '100%' }} data-demo-host=""><SankeyDiagram graph={graph} accessibleName={`${current.name} diagram`} plotHeight={336} selection={selection} formatAmount={format} getLabel={custom ? labels : undefined} renderTooltip={custom ? details : undefined} onNodeClick={f => clicked({ kind: 'node', key: f.node.key }, f.node.title)} onLinkClick={f => clicked({ kind: 'link', key: f.link.key }, `${f.fromNode.title} → ${f.toNode.title}`)}/></div></div>
       <footer className="chart-footer"><div className="selected-summary"><span className="selection-icon"/><span>Selected</span><b data-selected-name="">{selectedName ?? 'Nothing selected'}</b></div><button className="clear-button" onClick={() => setSelection(null)} disabled={!selection}>Clear selection</button></footer>
       </div>
     </section>
