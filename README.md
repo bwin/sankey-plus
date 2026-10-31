@@ -2,7 +2,7 @@
 
 **`@bwin/sankey-plus`** is an interactive React + TypeScript Sankey component with explicit stages, top/bottom nodes, independent totals and controlled selection. Runtime dependencies are React and React DOM only.
 
-![Distribution on a dark background, with partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/16-dark-distribution.jpg)
+![Distribution chart at 960 pixels wide, with partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/main/screenshots/21-distribution-chart-960.jpg)
 
 ## Quick start
 
