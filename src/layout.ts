@@ -1,7 +1,7 @@
 import type { ResolvedGraph } from './model.js';
 import { nodeColor } from './model.js';
 import { SankeyInputError } from './types.js';
-import { avoidObstacles, crossings, cubic, describe, distanceToRoute, inflate, intersects, pointAt, ribbonOverlap, roundedOrthogonal, roundedPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
+import { avoidObstacles, crossings as countCrossings, cubic, describe, distanceToRoute, inflate, intersects, pointAt, ribbonOverlap, roundedOrthogonal, roundedPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
 export interface TextBox extends Rect {
     lines: string[];
     anchor: 'start' | 'middle' | 'end';
@@ -102,10 +102,33 @@ function outward(n: NodeGeometry, outgoing: boolean): Point {
     return n.edge ? { x: 0, y: n.edge === 'top' ? 1 : -1 } : { x: outgoing ? 1 : -1, y: 0 };
 }
 const add = (a: Point, b: Point, scale = 1): Point => ({ x: a.x + b.x * scale, y: a.y + b.y * scale });
+/** Synchronous entry for geometry tests and CPU benchmarks; shares every layout step. */
 export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOptions, attempt = 0): Scene {
+    const steps = layoutGraphSteps(model, options, attempt);
+    let next = steps.next();
+    while (!next.done) next = steps.next();
+    return next.value;
+}
+/** Checkpoints are at phase/item boundaries; an individual geometry helper remains synchronous. */
+export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: LayoutOptions, attempt = 0): Generator<void, Scene, void> {
     const requested = options.width, plotHeight = options.plotHeight ?? 336;
     if (!Number.isFinite(requested) || requested <= 0 || !Number.isFinite(plotHeight) || plotHeight <= 0)
         throw new SankeyInputError([{ code: 'invalid-number', message: 'Layout width and plotHeight must be finite and positive.' }]);
+    yield;
+    // Scoring revisits the same route pairs during port swaps and diagnostics.
+    // Routes are replaced, never mutated, during one layout attempt. Keep this
+    // cache local so no geometry survives into a resize or a different graph.
+    const crossingCache = new WeakMap<Route, WeakMap<Route, number>>();
+    const crossings = (a: Route, b: Route): number => {
+        if (!intersects(a.bounds, b.bounds)) return 0;
+        const cached = crossingCache.get(a)?.get(b) ?? crossingCache.get(b)?.get(a);
+        if (cached !== undefined) return cached;
+        const result = countCrossings(a, b);
+        let row = crossingCache.get(a);
+        if (!row) { row = new WeakMap(); crossingCache.set(a, row); }
+        row.set(b, result);
+        return result;
+    };
     const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
     const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
@@ -134,6 +157,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         hi: number;
     }>();
     for (const n of edges) {
+        yield;
         let lo = PAD, hi = width - PAD;
         const sourceColumns = n.incomingLinks.map(f => model.nodes.get(f.from)!.node.placement.stage).filter((s): s is string => s !== undefined).map(s => stageIndex.get(s)!);
         const targetColumns = n.outgoingLinks.map(f => model.nodes.get(f.to)!.node.placement.stage).filter((s): s is string => s !== undefined).map(s => stageIndex.get(s)!);
@@ -151,7 +175,8 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         keys: string[];
         origin: number;
     }[] = [];
-    for (const facts of model.nodes.values())
+    for (const facts of model.nodes.values()) {
+        yield;
         if (facts.node.placement.stage !== undefined)
             for (const side of ['top', 'bottom']) {
                 const links = facts.outgoingLinks.filter(f => {
@@ -173,6 +198,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
                     limits.set(n.node.key, { lo: lo + strip, hi });
                 wrappedFans.push({ keys: targets.map(n => n.node.key), origin: lo });
             }
+    }
     scale = Math.max(Number.MIN_VALUE, scale);
     const widestEdge = Math.max(0, ...edges.map(n => geomTotal(n) * scale));
     const mainLabelLimit = Math.max(48, Math.min(160, (step - BAR - widestEdge - 40) / 2));
@@ -182,6 +208,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         const spacing = Math.max(GAP, (centralHeight - sum(sizes)) / (stage.length + 1));
         let y = spacing;
         for (let i = 0; i < stage.length; i++) {
+            yield;
             const n = stage[i], x = axis(col), h = sizes[i], raw = label('node', n.node.key, n.node.title);
             const lines = fitted(raw, mainLabelLimit, measure), anchor = col === 0 ? 'start' : 'end';
             nodes.push({ key: n.node.key, index: model.graph.nodes.indexOf(n.node), x, y, w: BAR, h, color: nodeColor(n.node.key, n.node.color), stage: model.stages[col], row: 0, zero: n.total === 0, lo: x, hi: x + BAR, preferred: x, footprint: BAR, label: labelBox(lines, anchor === 'start' ? x + BAR + 8 : x - 8, y + h / 2, anchor, measure, lineHeight) });
@@ -190,6 +217,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }
     const byKey = new Map(nodes.map(n => [n.key, n]));
     for (let i = 0; i < edges.length; i++) {
+        yield;
         const facts = edges[i], n = facts.node, w = facts.total ? geomTotal(facts) * scale : 3;
         let { lo, hi } = limits.get(n.key)!;
         let routeLo = lo, routeHi = hi;
@@ -232,6 +260,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     for (const edge of ['top', 'bottom'] as const) {
         const candidates = nodes.filter(n => n.edge === edge).sort((a, b) => a.preferred - b.preferred || a.index - b.index);
         for (const n of candidates) {
+            yield;
             let packed = false;
             for (let r = 0; r < rows[edge].length; r++) {
                 const trial = [...rows[edge][r], n].sort((a, b) => a.preferred - b.preferred || a.index - b.index), centers = packRow(trial);
@@ -250,6 +279,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             }
         }
     }
+    yield;
     const maxRibbon = Math.max(0, ...model.graph.links.map(f => f.amount * scale));
     const clearance = 72 + maxRibbon / 2, baseRowPitch = Math.max(86, lineHeight * 2 + BAR + maxRibbon + 32);
     const rowPitches = {
@@ -310,7 +340,6 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }
     const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: f.amount * scale, color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
     const positions = new Map(links.map((f, i) => [f.key, i]));
-    const approach = (n: NodeGeometry) => n.corridor ?? n.x + n.w / 2;
     const portGroups: {
         node: NodeGeometry;
         out: boolean;
@@ -318,8 +347,14 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }[] = [];
     for (const n of nodes)
         for (const out of [true, false]) {
+            yield;
             const connectedLinks = links.filter(f => (out ? f.from : f.to) === n.key);
             const opposite = (f: LinkGeometry) => byKey.get(out ? f.to : f.from)!;
+            // Incoming edge links retain their source's left-to-right order when
+            // rows wrap. A detour corridor is not the source position: sorting by
+            // it can move a rightmost bottom input above its neighboring input.
+            // Outgoing fan-out still follows its reserved corridor order.
+            const approach = (v: NodeGeometry) => out ? v.corridor ?? v.x + v.w / 2 : v.x + v.w / 2;
             connectedLinks.sort((a, b) => {
                 const aa = opposite(a), bb = opposite(b);
                 let order = 0;
@@ -357,7 +392,15 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         }
     }
     portGroups.forEach(setPorts);
-    const obstacles = (f: LinkGeometry) => nodes.filter(n => n.key !== f.from && n.key !== f.to).flatMap(n => [n, ...(n.label.w ? [n.label] : [])]);
+    const obstacleCache = new Map<string, Rect[]>();
+    const obstacles = (f: LinkGeometry) => {
+        let boxes = obstacleCache.get(f.key);
+        if (!boxes) {
+            boxes = nodes.filter(n => n.key !== f.from && n.key !== f.to).flatMap(n => [n, ...(n.label.w ? [n.label] : [])]);
+            obstacleCache.set(f.key, boxes);
+        }
+        return boxes;
+    };
     const radius = Math.max(24, Math.min(90, maxRibbon + 12));
     const rowApproach = (node: NodeGeometry, flow: LinkGeometry) => {
         // The cross-row leg sits beyond the previous row's two-line label plus
@@ -388,6 +431,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             }));
             const centerX = rightmost.corridor! + secondRadius;
             for (const n of rowNodes) {
+                yield;
                 const f = flows.find(f => f.to === n.key)!, laneY = rowApproach(n, f);
                 const r = centerX - n.corridor!;
                 const lastRadius = Math.min(Math.max(20, f.width / 2 + 12), (f.end.x - centerX) * .48, Math.abs(f.end.y - laneY) * .48);
@@ -432,10 +476,13 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         const cross = links.reduce((n, o) => n + (o !== f && o.route ? crossings(route, o.route) : 0), 0);
         return collisions * 1e8 + cross * 1e4 + route.length;
     };
-    for (const f of links)
+    for (const f of links) {
+        yield;
         f.route = ordinary(f);
+    }
     // First repair obstacles; all alternatives preserve the same endpoint faces.
     for (const f of links) {
+        yield;
         const boxes = obstacles(f);
         if (!routeCollisions(f.route, boxes, f.width / 2 + 2))
             continue;
@@ -456,6 +503,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     for (let pass = 0; pass < 2; pass++)
         for (const group of eligible)
             for (let i = 0; i < group.links.length - 1 && swaps < 64; i++, swaps++) {
+                yield;
                 const a = group.links[i], b = group.links[i + 1], oldA = a.route, oldB = b.route, before = score(a, oldA) + score(b, oldB);
                 [group.links[i], group.links[i + 1]] = [b, a];
                 setPorts(group);
@@ -478,6 +526,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
         const edgeInputs = group.links.filter(f => byKey.get(f.from)!.edge);
         if (!edgeInputs.length) continue;
         for (const f of group.links.filter(f => !byKey.get(f.from)!.edge)) {
+            yield;
             if (convergenceTrials++ >= 64) break;
             const conflicting = edgeInputs.filter(other => ribbonOverlap(f.route, f.width, other.route, other.width) > .05);
             if (!conflicting.length) continue;
@@ -496,6 +545,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
             // an existing crossing may change its angle and contact length.
             let improvement = 0, worse = false;
             for (const other of others) {
+                yield;
                 const before = ribbonOverlap(f.route, f.width, other.route, other.width);
                 const after = ribbonOverlap(candidate, f.width, other.route, other.width);
                 const change = before - after;
@@ -507,6 +557,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }
     const occupied: Rect[] = nodes.flatMap(n => [inflate(n, 3), ...(n.label.w ? [inflate(n.label, 3)] : [])]);
     for (const f of [...links].sort((a, b) => b.width - a.width || positions.get(a.key)! - positions.get(b.key)!)) {
+        yield;
         const lines = fitted(label('link', f.key, String(f.amount)), 150, measure);
         let chosen: TextBox | undefined;
         const fractions = [.5, .42, .58, .34, .66, .26, .74, .18, .82];
@@ -525,6 +576,7 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     }
     let crossingCount = 0, obstacleCount = 0;
     for (let i = 0; i < links.length; i++) {
+        yield;
         obstacleCount += routeCollisions(links[i].route, obstacles(links[i]), links[i].width / 2);
         for (let j = i + 1; j < links.length; j++)
             crossingCount += crossings(links[i].route, links[j].route);
@@ -534,14 +586,14 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
     // Only unresolved obstacle clearance can grow the local canvas; row count and
     // the sum of edge footprints never trigger widening. Every resize starts fresh.
     if (obstacleCount && attempt < 5) {
-        const retry = layoutGraph(model, { ...options, width: width + Math.max(80, maxRibbon + 32) }, attempt + 1);
+        const retry = yield* layoutGraphSteps(model, { ...options, width: width + Math.max(80, maxRibbon + 32) }, attempt + 1);
         if (retry.diagnostics.obstacleCollisions < obstacleCount) {
             if (attempt === 0 && retry.diagnostics.obstacleCollisions === 0) {
                 let best = retry, lower = width;
                 // Refine the first working width without triggering more recursive retries.
                 // A bounded search avoids a large, unnecessary horizontal scroll gutter.
                 for (let i = 0; i < 5 && best.width - lower > 4; i++) {
-                    const trial = layoutGraph(model, { ...options, width: (lower + best.width) / 2 }, 5);
+                    const trial = yield* layoutGraphSteps(model, { ...options, width: (lower + best.width) / 2 }, 5);
                     if (trial.diagnostics.obstacleCollisions === 0)
                         best = trial;
                     else

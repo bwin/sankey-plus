@@ -5,6 +5,7 @@ import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { crossings, distanceToRoute, distanceToSegment, inflate, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode } from '../src/types.js';
+import { stressGraph } from '../fixtures/stress.js';
 const full = JSON.parse(readFileSync(new URL('../../demo/feature-demo.json', import.meta.url), 'utf8')) as SankeyGraph;
 const base: SankeyGraph = { stages: ['a', 'b'], nodes: [{ key: 'a', title: 'Available', total: 1000, placement: { stage: 'a' } }, { key: 'b', title: 'Allocated', placement: { stage: 'b' } }], links: [{ key: 'ab', from: 'a', to: 'b', amount: 500 }] };
 const error = (graph: SankeyGraph, code: SankeyIssueCode) => assert.throws(() => resolveGraph(graph), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === code));
@@ -236,10 +237,7 @@ for (const edge of ['top', 'bottom'] as const)
         }
     });
 test('100 nodes and 300 links produce finite geometry without input changes', () => {
-    const stages = ['a', 'b', 'c', 'd'];
-    const nodes = stages.flatMap((stage, s) => Array.from({ length: 25 }, (_, n) => ({ key: `${s}-${n}`, title: `Node ${s}-${n}`, placement: { stage } })));
-    const links = stages.slice(0, -1).flatMap((_, s) => Array.from({ length: 25 }, (_, n) => Array.from({ length: 4 }, (_, offset) => ({ key: `${s}-${n}-${offset}`, from: `${s}-${n}`, to: `${s + 1}-${(n + offset) % 25}`, amount: 10 + offset }))).flat());
-    const graph = { stages, nodes, links }, before = JSON.stringify(graph), scene = layoutGraph(resolveGraph(graph), { width: 1440 });
+    const graph = stressGraph(), before = JSON.stringify(graph), scene = layoutGraph(resolveGraph(graph), { width: 1440 });
     assert.equal(scene.nodes.length, 100);
     assert.equal(scene.links.length, 300);
     assert.ok(scene.links.every(f => !(/NaN|Infinity/).test(f.route.path)));
@@ -248,7 +246,7 @@ test('100 nodes and 300 links produce finite geometry without input changes', ()
 });
 
 for (const width of [1440, 1311, 960, 600, 360]) test(`original allocations at ${width}px clear neighboring labels`, () => {
-    const graph = JSON.parse(readFileSync(new URL('../../demo/allocations.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const graph = JSON.parse(readFileSync(new URL('../../tests/fixtures/original-allocations.json', import.meta.url), 'utf8')) as SankeyGraph;
     const model = resolveGraph(graph);
     const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));
     const scene = layoutGraph(model, { width, labels });
@@ -277,6 +275,29 @@ for (const edge of ['top', 'bottom'] as const) test(`${edge} multi-row fan-out k
             assert.ok(separation(a, b) > -.6, `${width}px ${unequal ? 'unequal' : 'equal'} widths: ${a.key}/${b.key} overlap = ${separation(a, b)}`);
         }
     }
+});
+
+for (const edge of ['top', 'bottom'] as const) test(`${edge} inputs retain their destination slots when their source wraps`, () => {
+    const graph: SankeyGraph = edge === 'bottom' ? full : { ...full, nodes: full.nodes.map(n => ({ ...n, placement: n.placement.edge ? { edge: n.placement.edge === 'top' ? 'bottom' : 'top' } : n.placement })) };
+    const model = resolveGraph(graph);
+    const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));
+    const wrapped = new Set<boolean>();
+    for (const width of [1440, 1200, 1151, 1126, 960, 600]) {
+        const scene = layoutGraph(model, { width, labels });
+        const recoveryNode = scene.nodes.find(n => n.key === 'recovery')!;
+        const carryNode = scene.nodes.find(n => n.key === 'carry-in')!;
+        const destination = scene.nodes.find(n => n.key === 'outcome-c')!;
+        const recovery = scene.links.find(f => f.key === 'recovery-outcome')!;
+        const carry = scene.links.find(f => f.key === 'carry-outcome-c')!;
+        wrapped.add(recoveryNode.row > 0);
+        assert.ok(recoveryNode.x > carryNode.x, 'rightmost source stays rightmost');
+        assert.equal(recovery.end.x, destination.x, 'connection stays on the incoming face');
+        assert.ok(edge === 'bottom' ? recovery.end.y > carry.end.y : recovery.end.y < carry.end.y, `${width}px input order`);
+        const boundary = edge === 'bottom' ? recovery.end.y + recovery.width / 2 : recovery.end.y - recovery.width / 2;
+        assert.ok(Math.abs(boundary - (edge === 'bottom' ? destination.y + destination.h : destination.y)) < 1e-6, `${width}px input remains at the ${edge} of the bar`);
+        assert.equal(scene.diagnostics.obstacleCollisions, 0, `${width}px bar and label clearance`);
+    }
+    assert.deepEqual(wrapped, new Set([false, true]), 'exercise both wrapped and unwrapped sources');
 });
 
 test('side and bottom inputs into Outcome B stay separate across viewport widths', () => {

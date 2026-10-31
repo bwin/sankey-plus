@@ -1,17 +1,31 @@
 {
   "name": "@bwin/sankey-plus",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "license": "MIT",
   "author": "Benjamin Winkler | bwin",
   "type": "module",
-  "publishConfig": { "access": "public", "registry": "https://registry.npmjs.org/" },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "main": "./dist/sankey-plus.js",
   "types": "./dist/index.d.ts",
   "description": "An interactive React Sankey component with four-sided node placement, partial allocations and controlled selection.",
-  "keywords": ["sankey", "react", "flow-diagram", "data-visualization", "typescript"],
-  "repository": { "type": "git", "url": "git+https://github.com/bwin/sankey-plus.git" },
+  "keywords": [
+    "sankey",
+    "react",
+    "flow-diagram",
+    "data-visualization",
+    "typescript"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bwin/sankey-plus.git"
+  },
   "homepage": "https://github.com/bwin/sankey-plus#readme",
-  "bugs": { "url": "https://github.com/bwin/sankey-plus/issues" },
+  "bugs": {
+    "url": "https://github.com/bwin/sankey-plus/issues"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -20,9 +34,13 @@
     "./style.css": "./dist/style.css"
   },
   "files": [
-    "dist",
-    "src",
+    "dist/sankey-plus.js",
+    "dist/style.css",
+    "dist/index.d.ts",
+    "dist/SankeyDiagram.d.ts",
+    "dist/types.d.ts",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
   ],
@@ -30,6 +48,8 @@
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node scripts/test.mjs",
+    "stress": "node scripts/benchmark-layout.mjs --case stress-100-300",
+    "benchmark": "node scripts/benchmark-layout.mjs",
     "build": "node scripts/build.mjs",
     "preview": "node scripts/serve.mjs"
   },

@@ -3,3 +3,5 @@ import {pathToFileURL} from 'node:url';
 import path from 'node:path';
 compile('tsconfig.test.json');
 await import(pathToFileURL(path.join(project,'.tests/tests/core.test.js')).href);
+await import(pathToFileURL(path.join(project,'.tests/tests/paths.test.js')).href);
+await import(pathToFileURL(path.join(project,'.tests/tests/layout-task.test.js')).href);

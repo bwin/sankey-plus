@@ -1,7 +1,8 @@
 import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
-import { hitTest, layoutGraph, type TextBox } from './layout.js';
+import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
+import { runInChunks } from './layout-task.js';
 import { identity, presentation, same, subjectName } from './presentation.js';
 import type { SankeyActivationEvent, SankeyDiagramProps, SankeySubject, SankeyPresentation } from './types.js';
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
@@ -115,10 +116,24 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         return result;
     }, [model, formatAmount, getLabel]);
     const names = useMemo(() => new Map(model.subjects.map(s => [identity(s), subjectName(presentation(model, s, formatAmount, 'accessible'))])), [model, formatAmount]);
-    const scene = useMemo(() => measurement.width > 0 ? layoutGraph(model, { width: measurement.width, plotHeight, labels, measureText, lineHeight: measurement.lineHeight }) : null, [model, measurement, plotHeight, labels, measureText]);
+    const layoutRequest = useMemo(() => ({ model, options: { width: measurement.width, plotHeight, labels, measureText, lineHeight: measurement.lineHeight } }), [model, measurement, plotHeight, labels, measureText]);
+    const [layoutResult, setLayoutResult] = useState<({ request: typeof layoutRequest } & ({ scene: Scene } | { error: unknown })) | null>(null);
+    useEffect(() => {
+        if (layoutRequest.options.width <= 0 || !layoutRequest.model.nodes.size) return;
+        const controller = new AbortController();
+        runInChunks(layoutGraphSteps(layoutRequest.model, layoutRequest.options), controller.signal).then(
+            scene => { if (!controller.signal.aborted) setLayoutResult({ request: layoutRequest, scene }); },
+            error => { if (!controller.signal.aborted) setLayoutResult({ request: layoutRequest, error }); },
+        );
+        return () => controller.abort();
+    }, [layoutRequest]);
+    // Keep a completed scene during resize so focus and scrolling survive. Never
+    // pair another graph's geometry with the current graph's facts or callbacks.
+    const scene = layoutResult?.request.model === model && 'scene' in layoutResult ? layoutResult.scene : null;
+    const pending = model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
     const exists = (s: SankeySubject | null | undefined) => !!s && (s.kind === 'node' ? model.nodes.has(s.key) : model.links.has(s.key));
     const selected = exists(selection) ? selection! : null;
-    const active = inspection && exists(inspection.subject) ? inspection : null;
+    const active = scene && inspection && exists(inspection.subject) ? inspection : null;
     const strong = useMemo(() => emphasis(model, active?.subject ?? null), [model, active?.subject.kind, active?.subject.key]);
     const activeView = active ? presentation(model, active.subject, formatAmount, 'tooltip') : null;
     const tooltip = activeView ? (renderTooltip ? renderTooltip(activeView) : <DefaultDetails view={activeView}/>) : null;
@@ -268,14 +283,15 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         const rank = (key: string) => active?.subject.kind === 'link' && active.subject.key === key ? 2 : selected?.kind === 'link' && selected.key === key ? 1 : 0;
         return rank(a.key) - rank(b.key);
     }) : [];
-    return <div ref={root} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) {
+    if (layoutResult?.request === layoutRequest && 'error' in layoutResult) throw layoutResult.error;
+    return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) {
         setKeyboardFocus(null);
         setInspection(null);
         suppressed.current = null;
         input.current = 'keyboard';
     } }}>
     <span className="flow-sr-only" id={helpId}>Use arrow keys to inspect nodes and links. Enter or Space activates the focused subject. Escape dismisses details. Selection is controlled by the surrounding application.</span>
-    {!model.nodes.size ? <div role="group" aria-label={accessibleName} className="flow-empty">No flow data</div> : !scene ? <div className="flow-measuring" aria-label={accessibleName} style={{ height: plotHeight }}/> :
+    {!model.nodes.size ? <div role="group" aria-label={accessibleName} className="flow-empty">No flow data</div> : !scene ? <div role="status" className="flow-measuring" aria-label={accessibleName} style={{ height: plotHeight }}>Preparing diagram…</div> :
             <div className={`flow-scroll${scene.width > measurement.width ? ' flow-scroll--overflow' : ''}`} data-flow-scroll="">
       <svg ref={svg} role="group" aria-label={accessibleName} width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`} className="flow-canvas" style={{ font: measurement.font, cursor: active?.modality === 'pointer' ? 'pointer' : undefined }} data-top-band={scene.topBand} data-bottom-band={scene.bottomBand} data-crossings={scene.diagnostics.crossings} data-obstacle-collisions={scene.diagnostics.obstacleCollisions} onPointerMove={pointerMove} onPointerLeave={() => { if (active?.modality === 'pointer' && !active.pinned)
                 setInspection(null); suppressed.current = null; }} onPointerDown={e => { if (e.button === 0) {
@@ -286,7 +302,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         {ordered.map(f => {
                     const subject: SankeySubject = { kind: 'link', key: f.key }, isSelected = same(subject, selected), focused = same(subject, keyboardFocus), strongFlow = strong.links.has(f.key), opacity = strongFlow ? (same(subject, active?.subject ?? null) ? .75 : .4) : .1;
                     return <g key={f.key} {...subjectProps(subject)} data-emphasis={strongFlow ? 'strong' : 'faded'}>
-            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 8}/><path d={f.route.path} stroke="var(--flow-text, #24334a)" strokeWidth={f.width + 5}/><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 2}/></g>}
+            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 8}/><path d={f.route.path} stroke={f.color} strokeWidth={f.width + 5}/><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 2}/></g>}
             <path data-link-paint="" d={f.route.path} fill="none" stroke={f.color} strokeWidth={f.width} opacity={opacity} pointerEvents="none" aria-hidden="true"/>
             {focused && <g className="flow-decoration" aria-hidden="true"><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={4}/><path d={f.route.path} stroke="var(--flow-focus, #2644af)" strokeWidth={2} strokeDasharray="4 4"/></g>}
           </g>;
@@ -295,7 +311,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
                     const subject: SankeySubject = { kind: 'node', key: n.key }, isSelected = same(subject, selected), focused = same(subject, keyboardFocus), strongItem = strong.nodes.has(n.key);
                     return <g key={n.key} {...subjectProps(subject)} data-emphasis={strongItem ? 'strong' : 'faded'}>
             <rect data-node-paint="" x={n.x} y={n.y} width={n.w} height={n.h} fill={n.zero ? 'none' : n.color} stroke={n.zero ? n.color : undefined} strokeWidth={1} opacity={strongItem ? 1 : .25} pointerEvents="none" aria-hidden="true"/>
-            {isSelected && <g className="flow-decoration" data-selection-outline="" aria-hidden="true"><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke="var(--flow-surface, white)" strokeWidth={6}/><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke="var(--flow-text, #24334a)" strokeWidth={2}/></g>}
+            {isSelected && <g className="flow-decoration" data-selection-outline="" aria-hidden="true"><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke="var(--flow-surface, white)" strokeWidth={6}/><rect x={n.x - 4} y={n.y - 4} width={n.w + 8} height={n.h + 8} stroke={n.color} strokeWidth={2}/></g>}
             {focused && <rect className="flow-decoration" x={n.x - 8} y={n.y - 8} width={n.w + 16} height={n.h + 16} stroke="var(--flow-focus, #2644af)" strokeWidth={1.5} strokeDasharray="3 3" aria-hidden="true"/>}
           </g>;
                 })}
