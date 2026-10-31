@@ -4,6 +4,8 @@
 
 ## Run the demo
 
+[Open the live demo](https://bwin.github.io/sankey-plus/) to try all examples without installing anything.
+
 Beside the node/link counts, “Ready in ~… ms” shows approximate elapsed time from the demo update to a completed diagram and a paint opportunity. It includes chunk scheduling and frame waits, excludes downloads, and is not a CPU-only benchmark. Example, size and label changes refresh it; hover and selection do not. This observer belongs to the demo, with no extra library prop.
 
 To develop from the GitHub repository:
