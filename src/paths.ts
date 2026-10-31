@@ -21,6 +21,7 @@ export const intersects = (a: Rect, b: Rect) => a.x < b.x + b.w && a.x + a.w > b
 const num = (v: number) => Number(v.toFixed(3));
 const xy = (p: Point) => `${num(p.x)} ${num(p.y)}`;
 const mix = (a: Point, b: Point, t: number): Point => ({ x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t });
+const CURVE_TOLERANCE = .1, OFFSET_TOLERANCE = .025, BEND_HANDLE = .8;
 export function describe(path: string, points: Point[]): Route {
     let length = 0;
     for (let i = 1; i < points.length; i++)
@@ -29,89 +30,117 @@ export function describe(path: string, points: Point[]): Route {
     return { path, points, length, bounds: { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) } };
 }
 export function cubic(a: Point, b: Point, c: Point, d: Point): Route {
-    const points = Array.from({ length: 41 }, (_, i) => {
-        const t = i / 40, u = 1 - t;
-        return { x: u ** 3 * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t ** 3 * d.x, y: u ** 3 * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t ** 3 * d.y };
-    });
+    // Subdivide the actual rendered cubic until its control hull is within a
+    // tenth of a pixel of the chord. Long straight portions need no extra work.
+    // All consumers (routing scores, hit testing and labels) use these samples.
+    const points: Point[] = [a];
+    const sample = (a: Point, b: Point, c: Point, d: Point, depth: number) => {
+        if (depth >= 16 || Math.max(distanceToSegment(b, a, d), distanceToSegment(c, a, d)) <= CURVE_TOLERANCE) {
+            points.push(d);
+            return;
+        }
+        const ab = mix(a, b, .5), bc = mix(b, c, .5), cd = mix(c, d, .5);
+        const abc = mix(ab, bc, .5), bcd = mix(bc, cd, .5), mid = mix(abc, bcd, .5);
+        sample(a, ab, abc, mid, depth + 1);
+        sample(mid, bcd, cd, d, depth + 1);
+    };
+    sample(a, b, c, d, 0);
     return describe(`M${xy(a)} C${xy(b)} ${xy(c)} ${xy(d)}`, points);
 }
-export function roundedPolyline(input: Point[], radius: number): Route {
-    const p: Point[] = [];
-    for (const v of input) {
-        if (p.length && near(p[p.length - 1], v))
-            continue;
-        while (p.length > 1) {
-            const a = p[p.length - 2], b = p[p.length - 1];
-            if (Math.abs((b.x - a.x) * (v.y - b.y) - (b.y - a.y) * (v.x - b.x)) > 1e-5)
-                break;
-            if ((b.x - a.x) * (v.x - b.x) + (b.y - a.y) * (v.y - b.y) < 0)
-                break;
-            p.pop();
-        }
-        p.push(v);
-    }
-    let path = `M${xy(p[0])}`, prev = p[0];
-    const samples = [prev];
-    const line = (end: Point) => {
-        const count = Math.max(1, Math.ceil(Math.hypot(end.x - prev.x, end.y - prev.y) / 10));
-        const start = prev;
-        for (let j = 1; j <= count; j++)
-            samples.push(mix(start, end, j / count));
-        path += ` L${xy(end)}`;
-        prev = end;
-    };
-    for (let i = 1; i < p.length - 1; i++) {
-        const a = p[i - 1], b = p[i], c = p[i + 1], before = Math.hypot(a.x - b.x, a.y - b.y), after = Math.hypot(c.x - b.x, c.y - b.y);
-        const r = Math.min(radius, before * .48, after * .48);
-        const start = mix(b, a, r / before), end = mix(b, c, r / after);
-        line(start);
-        path += ` Q${xy(b)} ${xy(end)}`;
-        for (let j = 1; j <= 20; j++) {
-            const t = j / 20, u = 1 - t;
-            samples.push({ x: u * u * start.x + 2 * u * t * b.x + t * t * end.x, y: u * u * start.y + 2 * u * t * b.y + t * t * end.y });
-        }
-        prev = end;
-    }
-    line(p[p.length - 1]);
-    return describe(path, samples);
+/** Smooth endpoint-tangent connector, including the degenerate straight case. */
+export function flowCurve(start: Point, end: Point, outgoing: Point, incoming: Point): Route {
+    const dx = Math.abs(end.x - start.x), dy = Math.abs(end.y - start.y);
+    const handle = (direction: Point) => (direction.x ? dx : dy) * BEND_HANDLE;
+    return cubic(start,
+        { x: start.x + outgoing.x * handle(outgoing), y: start.y + outgoing.y * handle(outgoing) },
+        { x: end.x - incoming.x * handle(incoming), y: end.y - incoming.y * handle(incoming) }, end);
 }
-/** Fixed quarter-ellipse bends. Unlike independently clamped corners, these
- * preserve the shared centers and radii of a group of parallel routes. */
-export function roundedOrthogonal(input: Point[], bends: { before: number; after: number }[]): Route | null {
-    if (bends.length !== input.length - 2) return null;
-    let path = `M${xy(input[0])}`, previous = input[0];
-    const samples = [previous];
-    const line = (end: Point) => {
-        const steps = Math.max(1, Math.ceil(Math.hypot(end.x - previous.x, end.y - previous.y) / 8));
-        for (let j = 1; j <= steps; j++) samples.push(mix(previous, end, j / steps));
-        path += ` L${xy(end)}`;
-        previous = end;
+export function joinRoutes(routes: Route[]): Route {
+    return describe(routes[0].path + routes.slice(1).map(route => route.path.slice(route.path.indexOf(' C'))).join(''),
+        [routes[0].points[0], ...routes.flatMap(route => route.points.slice(1))]);
+}
+/** Follow a shared wave between perpendicular axis-aligned tangents. Offsets ease in/out so the
+ * endpoint tangents stay on the node faces. Fit the offset itself with cubics;
+ * painting and collision checks therefore never use different centerlines. */
+export function parallelCurve(start: Point, end: Point, outgoing: Point, incoming: Point, fromOffset: number, toOffset: number, side: number): Route {
+    if (!fromOffset && !toOffset) return flowCurve(start, end, outgoing, incoming);
+    const dx = Math.abs(end.x - start.x), dy = Math.abs(end.y - start.y);
+    const h1 = (outgoing.x ? dx : dy) * BEND_HANDLE, h2 = (incoming.x ? dx : dy) * BEND_HANDLE;
+    const b = { x: start.x + outgoing.x * h1, y: start.y + outgoing.y * h1 };
+    const c = { x: end.x - incoming.x * h2, y: end.y - incoming.y * h2 };
+    const evaluate = (t: number) => {
+        const u = 1 - t;
+        const p = { x: u ** 3 * start.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t ** 3 * end.x, y: u ** 3 * start.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t ** 3 * end.y };
+        const v = { x: 3 * u * u * (b.x - start.x) + 6 * u * t * (c.x - b.x) + 3 * t * t * (end.x - c.x), y: 3 * u * u * (b.y - start.y) + 6 * u * t * (c.y - b.y) + 3 * t * t * (end.y - c.y) };
+        const a = { x: 6 * u * (c.x - 2 * b.x + start.x) + 6 * t * (end.x - 2 * c.x + b.x), y: 6 * u * (c.y - 2 * b.y + start.y) + 6 * t * (end.y - 2 * c.y + b.y) };
+        const speed = Math.hypot(v.x, v.y) || 1, normal = { x: side * v.y / speed, y: -side * v.x / speed };
+        const acceleration = (v.x * a.x + v.y * a.y) / (speed * speed);
+        const normalDerivative = { x: side * a.y / speed - normal.x * acceleration, y: -side * a.x / speed - normal.y * acceleration };
+        const from = Math.max(.000001, fromOffset), to = Math.max(.000001, toOffset);
+        const startNormal = outgoing.x ? normal.y : normal.x, endNormal = incoming.x ? normal.y : normal.x;
+        const startDerivative = outgoing.x ? normalDerivative.y : normalDerivative.x, endDerivative = incoming.x ? normalDerivative.y : normalDerivative.x;
+        // An elliptical offset profile stays within both endpoint offsets.
+        // Interpolating offsets by t can bulge into the preceding wrapped row.
+        const offset = 1 / Math.sqrt(startNormal ** 2 / from ** 2 + endNormal ** 2 / to ** 2);
+        const derivative = -(offset ** 3) * (startNormal * startDerivative / from ** 2 + endNormal * endDerivative / to ** 2);
+        return {
+            p: { x: p.x + normal.x * offset, y: p.y + normal.y * offset },
+            v: { x: v.x + normalDerivative.x * offset + normal.x * derivative, y: v.y + normalDerivative.y * offset + normal.y * derivative },
+        };
     };
-    for (let i = 1; i < input.length - 1; i++) {
-        const a = input[i - 1], b = input[i], c = input[i + 1], bend = bends[i - 1];
-        const before = Math.hypot(b.x - a.x, b.y - a.y), after = Math.hypot(c.x - b.x, c.y - b.y);
-        const prior = i > 1 ? bends[i - 2].after : 0;
-        if (bend.before <= 0 || bend.after <= 0 || bend.before + prior > before + 1e-5 || bend.after > after + 1e-5) return null;
-        const incoming = { x: (b.x - a.x) / before, y: (b.y - a.y) / before };
-        const outgoing = { x: (c.x - b.x) / after, y: (c.y - b.y) / after };
-        if ((incoming.x && incoming.y) || (outgoing.x && outgoing.y) || Math.abs(incoming.x * outgoing.x + incoming.y * outgoing.y) > 1e-5) return null;
-        const start = { x: b.x - incoming.x * bend.before, y: b.y - incoming.y * bend.before };
-        const end = { x: b.x + outgoing.x * bend.after, y: b.y + outgoing.y * bend.after };
-        const center = { x: start.x + outgoing.x * bend.after, y: start.y + outgoing.y * bend.after };
-        const rx = incoming.x ? bend.before : bend.after, ry = incoming.y ? bend.before : bend.after;
-        const sweep = incoming.x * outgoing.y - incoming.y * outgoing.x;
-        const angle = Math.atan2((start.y - center.y) / ry, (start.x - center.x) / rx);
-        line(start);
-        path += ` A${num(rx)} ${num(ry)} 0 0 ${sweep > 0 ? 1 : 0} ${xy(end)}`;
-        const steps = Math.max(24, Math.ceil(Math.max(rx, ry) * Math.PI / 2 / 4));
-        for (let j = 1; j <= steps; j++) {
-            const t = angle + sweep * Math.PI / 2 * j / steps;
-            samples.push({ x: center.x + rx * Math.cos(t), y: center.y + ry * Math.sin(t) });
+    const curves: Route[] = [];
+    const fit = (lo: number, hi: number, depth: number) => {
+        const a = evaluate(lo), d = evaluate(hi), step = (hi - lo) / 3;
+        const b = { x: a.p.x + a.v.x * step, y: a.p.y + a.v.y * step }, c = { x: d.p.x - d.v.x * step, y: d.p.y - d.v.y * step };
+        const error = [.25, .5, .75].some(t => {
+            const u = 1 - t, p = evaluate(lo + (hi - lo) * t).p;
+            return Math.hypot(p.x - (u ** 3 * a.p.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t ** 3 * d.p.x), p.y - (u ** 3 * a.p.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t ** 3 * d.p.y)) > OFFSET_TOLERANCE;
+        });
+        if (error && depth < 10) { const mid = (lo + hi) / 2; fit(lo, mid, depth + 1); fit(mid, hi, depth + 1); }
+        else curves.push(cubic(a.p, b, c, d.p));
+    };
+    fit(0, 1, 0);
+    return joinRoutes(curves);
+}
+/** Waypoints describe routing corridors, not painted elbows. Interpolate their
+ * midpoints with tangent-continuous cubic waves spanning each available bend. */
+export function smoothPolyline(input: Point[], span = Infinity): Route {
+    const points: Point[] = [];
+    for (const point of input) {
+        if (points.length && near(points.at(-1)!, point)) continue;
+        while (points.length > 1) {
+            const a = points.at(-2)!, b = points.at(-1)!;
+            if (Math.abs((b.x - a.x) * (point.y - b.y) - (b.y - a.y) * (point.x - b.x)) > 1e-5 ||
+                (b.x - a.x) * (point.x - b.x) + (b.y - a.y) * (point.y - b.y) < 0) break;
+            points.pop();
         }
-        previous = end;
+        points.push(point);
     }
-    line(input[input.length - 1]);
-    return describe(path, samples);
+    if (points.length < 2) return describe(`M${xy(points[0])}`, points);
+    const direction = (a: Point, b: Point) => {
+        const length = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+        return { x: (b.x - a.x) / length, y: (b.y - a.y) / length };
+    };
+    if (Number.isFinite(span)) {
+        const curves: Route[] = [];
+        let prior = points[0];
+        for (let i = 1; i < points.length - 1; i++) {
+            const a = points[i - 1], b = points[i], c = points[i + 1];
+            const before = Math.hypot(b.x - a.x, b.y - a.y), after = Math.hypot(c.x - b.x, c.y - b.y);
+            const start = mix(b, a, Math.min(span, before / 2) / before), end = mix(b, c, Math.min(span, after / 2) / after);
+            const incoming = direction(a, b), outgoing = direction(b, c);
+            if (!near(prior, start)) curves.push(flowCurve(prior, start, incoming, incoming));
+            curves.push(flowCurve(start, end, incoming, outgoing));
+            prior = end;
+        }
+        const end = points.at(-1)!, tangent = direction(points.at(-2)!, end);
+        if (!near(prior, end) || !curves.length) curves.push(flowCurve(prior, end, tangent, tangent));
+        return joinRoutes(curves);
+    }
+    const knots = [points[0], ...points.slice(1, -2).map((point, i) => mix(point, points[i + 2], .5)), points.at(-1)!];
+    const tangents = [direction(points[0], points[1]), ...points.slice(1, -2).map((point, i) => direction(point, points[i + 2])), direction(points.at(-2)!, points.at(-1)!)];
+    const curves = knots.slice(1).map((point, i) => flowCurve(knots[i], point, tangents[i], tangents[i + 1]));
+    return joinRoutes(curves);
 }
 export function pointAt(route: Route, fraction: number): Point {
     let remaining = route.length * fraction;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { crossings, describe, inflate, inside, intersects, routeCollisions, type Point, type Rect, type Route } from '../src/paths.js';
+import { crossings, cubic, describe, distanceToRoute, flowCurve, inflate, inside, intersects, parallelCurve, routeCollisions, type Point, type Rect, type Route } from '../src/paths.js';
 
 // Exhaustive reference predicates from the original implementation. These
 // deliberately omit the optimized bounds rejection and monotone sweep.
@@ -37,6 +37,47 @@ function random(seed: number) {
     return () => { seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0; return seed / 2 ** 32; };
 }
 const route = (points: number[][]) => describe('', points.map(([x, y]) => ({ x, y })));
+
+test('adaptive samples track broad, tight and reversing cubic curves', () => {
+    const cases = [
+        [[0, 0], [500, 0], [0, 400], [500, 400]],
+        [[0, 0], [0, 600], [10, -300], [10, 200]],
+        [[0, 0], [300, 500], [-300, 500], [0, 0]],
+    ];
+    for (const coordinates of cases) {
+        const [a, b, c, d] = coordinates.map(([x, y]) => ({ x, y }));
+        const curve = cubic(a, b, c, d);
+        for (let i = 0; i <= 2000; i++) {
+            const t = i / 2000, u = 1 - t;
+            const p = { x: u ** 3 * a.x + 3 * u * u * t * b.x + 3 * u * t * t * c.x + t ** 3 * d.x, y: u ** 3 * a.y + 3 * u * u * t * b.y + 3 * u * t * t * c.y + t ** 3 * d.y };
+            assert.ok(distanceToRoute(p, curve) <= .101, 'geometry checks follow the painted cubic');
+        }
+    }
+});
+
+test('parallel cubic waves preserve ribbon gaps without bulging into adjacent rows', () => {
+    for (const sign of [1, -1]) {
+        const a = { x: 0, y: 0 }, b = { x: 180, y: sign * 140 }, right = { x: 1, y: 0 }, vertical = { x: 0, y: sign };
+        const inner = flowCurve(a, b, right, vertical);
+        const outer = parallelCurve(a, b, right, vertical, 24, 24, sign);
+        // 10px and 30px ribbons leave 4px between their painted envelopes.
+        for (const point of outer.points) assert.ok(Math.abs(distanceToRoute(point, inner) - 24) < .15);
+        const spread = parallelCurve(a, b, right, vertical, 20, 200, sign);
+        for (const point of spread.points) {
+            assert.ok(point.x >= -.1 && point.x <= 380.1);
+            assert.ok(sign * point.y >= -20.1 && sign * point.y <= 140.1, 'endpoint spread must not enter the previous row');
+        }
+    }
+});
+
+test('crossings and obstacles use the broad bend rather than its routing corner', () => {
+    const bend = flowCurve({ x: 0, y: 0 }, { x: 100, y: 100 }, { x: 1, y: 0 }, { x: 0, y: 1 });
+    const across = route([[60, 23], [110, 23]]);
+    assert.equal(crossings(bend, across), 1);
+    assert.equal(crossings(across, bend), 1);
+    assert.equal(routeCollisions(bend, [{ x: 78, y: 18, w: 4, h: 4 }]), 1);
+    assert.equal(routeCollisions(bend, [{ x: 10, y: 40, w: 4, h: 4 }]), 0);
+});
 
 test('crossing sweep preserves proper crossings, vertical runs, endpoints and collinearity', () => {
     const cases: [number[][], number[][], number][] = [

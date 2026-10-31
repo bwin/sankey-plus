@@ -7,6 +7,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ### Changed
 
 - Demo link tooltips show source and destination details in two columns below full-width link details, without the click-to-select hint.
+- All links use smooth cubic curves, including top/bottom connections, wrapped fans and obstacle detours. Crossing, ribbon-overlap, hit-testing and label calculations follow adaptively sampled curves; convergence checks use the actual approach path.
 
 ## [1.1.0] - 2026-10-31
 

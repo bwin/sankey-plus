@@ -1,7 +1,7 @@
 import type { ResolvedGraph } from './model.js';
 import { nodeColor } from './model.js';
 import { SankeyInputError } from './types.js';
-import { avoidObstacles, crossings as countCrossings, cubic, describe, distanceToRoute, inflate, intersects, pointAt, ribbonOverlap, roundedOrthogonal, roundedPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
+import { avoidObstacles, crossings as countCrossings, cubic, distanceToRoute, flowCurve, inflate, intersects, joinRoutes, parallelCurve, pointAt, ribbonOverlap, smoothPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
 export interface TextBox extends Rect {
     lines: string[];
     anchor: 'start' | 'middle' | 'end';
@@ -401,7 +401,6 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         }
         return boxes;
     };
-    const radius = Math.max(24, Math.min(90, maxRibbon + 12));
     const rowApproach = (node: NodeGeometry, flow: LinkGeometry) => {
         // The cross-row leg sits beyond the previous row's two-line label plus
         // half a ribbon. A fixed fraction of row pitch clips long custom labels.
@@ -410,45 +409,56 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         return node.edge === 'bottom' ? node.y - inset : node.y + BAR + inset;
     };
     const fanRoutes = new Map<string, Route>();
+    // Curves that share a fan follow a common normal-offset spine. Independent
+    // Beziers can have ordered endpoints yet squeeze thick ribbons together.
+    const parallelFan = (flows: LinkGeometry[], side: 'top' | 'bottom') => {
+        if (flows.length < 2) return;
+        const direction = side === 'bottom' ? 1 : -1;
+        const inner = flows.reduce((a, b) => a.end.x < b.end.x ? a : b);
+        if (flows.some(f => Math.abs(f.start.x - inner.start.x) > .01 || Math.abs(f.end.y - inner.end.y) > .01 || direction * (inner.start.y - f.start.y) < -.01)) return;
+        const trial = flows.map(f => parallelCurve(inner.start, inner.end, { x: 1, y: 0 }, { x: 0, y: direction }, direction * (inner.start.y - f.start.y), f.end.x - inner.end.x, direction));
+        if (trial.every((route, i) => !routeCollisions(route, obstacles(flows[i]), flows[i].width / 2 + 2)))
+            flows.forEach((f, i) => fanRoutes.set(f.key, trial[i]));
+    };
+    for (const group of portGroups) {
+        if (group.out && !group.node.edge) for (const side of ['top', 'bottom'] as const)
+            parallelFan(group.links.filter(f => { const n = byKey.get(f.to)!; return n.edge === side && !n.row; }), side);
+        if (!group.out && group.node.edge && !group.node.row)
+            parallelFan(group.links.filter(f => !byKey.get(f.from)!.edge), group.node.edge);
+    }
     for (const fan of wrappedFans) {
         const members = fan.keys.map(key => byKey.get(key)!).filter(n => n.row > 0);
-        if (members.length < 2) continue;
+        if (!members.length) continue;
         const flows = members.map(n => links.find(f => f.to === n.key)!);
         const side = members[0].edge!, direction = side === 'bottom' ? 1 : -1;
-        const minX = Math.min(...members.map(n => n.corridor!));
         const inner = flows.reduce((a, b) => direction * a.start.y > direction * b.start.y ? a : b);
-        const firstRadius = Math.min(32 + inner.width / 2, minX - inner.start.x - 8);
-        if (firstRadius <= inner.width / 2 + 2) continue;
-        const firstCenter = { x: minX - firstRadius, y: inner.start.y + direction * firstRadius };
+        const minX = Math.min(...members.map(n => n.corridor!));
+        const firstEnd = { x: minX, y: side === 'bottom' ? centralTop + centralHeight : centralTop };
+        const down = { x: 0, y: direction }, right = { x: 1, y: 0 };
         const trial = new Map<string, Route>();
         for (const row of new Set(members.map(n => n.row))) {
             const rowNodes = members.filter(n => n.row === row);
             const rightmost = rowNodes.reduce((a, b) => a.corridor! > b.corridor! ? a : b);
             const rightFlow = flows.find(f => f.to === rightmost.key)!;
-            const secondRadius = Math.min(32 + rightFlow.width / 2, ...rowNodes.map(n => {
-                const f = flows.find(f => f.to === n.key)!;
-                return (f.end.x - rightmost.corridor!) / 2;
-            }));
-            const centerX = rightmost.corridor! + secondRadius;
+            const leftFlow = rowNodes.map(n => flows.find(f => f.to === n.key)!).reduce((a, b) => a.end.x < b.end.x ? a : b);
+            const rightLaneY = rowApproach(rightmost, rightFlow), leftLaneY = rowApproach(byKey.get(leftFlow.to)!, leftFlow);
+            const turnX = (rightmost.corridor! + leftFlow.end.x) / 2;
+            const beginY = rightLaneY - direction * Math.min(Math.abs(rightLaneY - firstEnd.y) * .45, turnX - rightmost.corridor!);
             for (const n of rowNodes) {
                 yield;
                 const f = flows.find(f => f.to === n.key)!, laneY = rowApproach(n, f);
-                const r = centerX - n.corridor!;
-                const lastRadius = Math.min(Math.max(20, f.width / 2 + 12), (f.end.x - centerX) * .48, Math.abs(f.end.y - laneY) * .48);
-                const route = roundedOrthogonal([f.start, { x: n.corridor!, y: f.start.y }, { x: n.corridor!, y: laneY }, { x: f.end.x, y: laneY }, f.end], [
-                    { before: n.corridor! - firstCenter.x, after: direction * (firstCenter.y - f.start.y) },
-                    { before: r, after: r },
-                    { before: lastRadius, after: lastRadius },
-                ]);
-                if (route && !routeCollisions(route, obstacles(f), f.width / 2 + 2)) trial.set(f.key, route);
+                const first = parallelCurve(inner.start, firstEnd, right, down, direction * (inner.start.y - f.start.y), n.corridor! - minX, direction);
+                const second = parallelCurve({ x: rightmost.corridor!, y: beginY }, { x: turnX, y: rightLaneY }, down, right, rightmost.corridor! - n.corridor!, direction * (laneY - rightLaneY), -direction);
+                const last = parallelCurve({ x: turnX, y: leftLaneY }, leftFlow.end, right, down, direction * (leftLaneY - laneY), f.end.x - leftFlow.end.x, direction);
+                const route = joinRoutes([first, flowCurve(first.points.at(-1)!, second.points[0], down, down), second, last]);
+                if (!routeCollisions(route, obstacles(f), f.width / 2 + 2)) trial.set(f.key, route);
             }
         }
-        // All members switch together so a fallback cannot split the bundle.
         if (trial.size === flows.length) for (const [key, route] of trial) fanRoutes.set(key, route);
     }
     function ordinary(f: LinkGeometry): Route {
-        const fanRoute = fanRoutes.get(f.key);
-        if (fanRoute) return fanRoute;
+        const shared = fanRoutes.get(f.key);
+        if (shared) return shared;
         const a = byKey.get(f.from)!, b = byKey.get(f.to)!, s = f.start, t = f.end;
         if (!a.edge && !b.edge) {
             const d = (t.x - s.x) * .48;
@@ -457,19 +467,19 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         if (!a.edge && b.edge) {
             if (b.row && b.corridor !== undefined && b.corridor > s.x + f.width / 2 + 4) {
                 const approachY = rowApproach(b, f);
-                return roundedPolyline([s, { x: b.corridor, y: s.y }, { x: b.corridor, y: approachY }, { x: t.x, y: approachY }, t], radius);
+                return smoothPolyline([s, { x: b.corridor, y: s.y }, { x: b.corridor, y: approachY }, { x: t.x, y: approachY }, t]);
             }
-            return roundedPolyline([s, { x: t.x, y: s.y }, t], radius);
+            return smoothPolyline([s, { x: t.x, y: s.y }, t]);
         }
         if (a.edge && !b.edge) {
             if (a.row && a.corridor !== undefined) {
                 const approachY = rowApproach(a, f);
-                return roundedPolyline([s, { x: s.x, y: approachY }, { x: a.corridor, y: approachY }, { x: a.corridor, y: t.y }, t], radius);
+                return smoothPolyline([s, { x: s.x, y: approachY }, { x: a.corridor, y: approachY }, { x: a.corridor, y: t.y }, t]);
             }
-            return roundedPolyline([s, { x: s.x, y: t.y }, t], radius);
+            return smoothPolyline([s, { x: s.x, y: t.y }, t]);
         }
         const mid = a.edge === b.edge ? (a.edge === 'top' ? Math.max(s.y, t.y) + clearance * .65 : Math.min(s.y, t.y) - clearance * .65) : (centralTop + centralHeight / 2);
-        return roundedPolyline([s, { x: s.x, y: mid }, { x: t.x, y: mid }, t], radius);
+        return smoothPolyline([s, { x: s.x, y: mid }, { x: t.x, y: mid }, t]);
     }
     const score = (f: LinkGeometry, route: Route) => {
         const collisions = routeCollisions(route, obstacles(f), f.width / 2 + 2);
@@ -487,13 +497,16 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         if (!routeCollisions(f.route, boxes, f.width / 2 + 2))
             continue;
         const a = byKey.get(f.from)!, b = byKey.get(f.to)!;
-        const turnRadius = Math.max(8, Math.min(32, f.width / 2 + 6)), padding = f.width / 2 + turnRadius + 3;
-        const start = add(f.start, outward(a, true), padding), end = add(f.end, outward(b, false), padding);
-        const route = avoidObstacles(start, end, boxes.map(r => inflate(r, padding)), { x: PAD / 2 + f.width / 2, y: PAD / 2 + f.width / 2, w: width - PAD - f.width, h: height - PAD - f.width });
-        if (route) {
-            const candidate = roundedPolyline([f.start, ...route, f.end], turnRadius);
-            if (score(f, candidate) < score(f, f.route))
-                f.route = candidate;
+        for (const fraction of [1, .5, .25, .125]) {
+            yield;
+            const turnSpan = Math.max(8, Math.min(32, f.width / 2 + 6)) * fraction, padding = f.width / 2 + turnSpan + 3;
+            const start = add(f.start, outward(a, true), padding), end = add(f.end, outward(b, false), padding);
+            const route = avoidObstacles(start, end, boxes.map(r => inflate(r, padding)), { x: PAD / 2 + f.width / 2, y: PAD / 2 + f.width / 2, w: width - PAD - f.width, h: height - PAD - f.width });
+            if (route) {
+                const candidate = smoothPolyline([f.start, ...route, f.end], turnSpan);
+                if (score(f, candidate) < score(f, f.route)) f.route = candidate;
+                if (!routeCollisions(f.route, boxes, f.width / 2 + 2)) break;
+            }
         }
     }
     // A fixed two-pass budget avoids combinatorial search or hover-time layout work.
@@ -530,12 +543,25 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             if (convergenceTrials++ >= 64) break;
             const conflicting = edgeInputs.filter(other => ribbonOverlap(f.route, f.width, other.route, other.width) > .05);
             if (!conflicting.length) continue;
-            const arrivalX = Math.min(...conflicting.map(other =>
-                (byKey.get(other.from)!.corridor ?? other.start.x) - (f.width + other.width) / 2 - 16));
+            const arrivalX = Math.min(...conflicting.map(other => {
+                // A detoured or curved input need not follow its source's x or
+                // nominal corridor. Find its actual envelope near this approach.
+                const padding = (f.width + other.width) / 2 + 16;
+                const lo = Math.min(f.start.y, f.end.y) - padding, hi = Math.max(f.start.y, f.end.y) + padding;
+                let x = Infinity;
+                for (let i = 1; i < other.route.points.length; i++) {
+                    const a = other.route.points[i - 1], b = other.route.points[i];
+                    if (Math.max(a.y, b.y) < lo || Math.min(a.y, b.y) > hi) continue;
+                    const t1 = b.y === a.y ? 0 : clamp((lo - a.y) / (b.y - a.y), 0, 1);
+                    const t2 = b.y === a.y ? 1 : clamp((hi - a.y) / (b.y - a.y), 0, 1);
+                    x = Math.min(x, a.x + (b.x - a.x) * t1, a.x + (b.x - a.x) * t2);
+                }
+                return x - padding;
+            }));
             if (arrivalX < f.start.x + CLEAR || arrivalX >= f.end.x - CLEAR) continue;
             const end = { x: arrivalX, y: f.end.y }, control = (arrivalX - f.start.x) * .48;
             const curve = cubic(f.start, { x: f.start.x + control, y: f.start.y }, { x: arrivalX - control, y: end.y }, end);
-            const candidate = describe(`${curve.path} L${f.end.x} ${f.end.y}`, [...curve.points, f.end]);
+            const candidate = joinRoutes([curve, flowCurve(end, f.end, { x: 1, y: 0 }, { x: 1, y: 0 })]);
             const boxes = obstacles(f);
             if (routeCollisions(candidate, boxes, f.width / 2 + 2) > routeCollisions(f.route, boxes, f.width / 2 + 2)) continue;
             const others = links.filter(other => other !== f);

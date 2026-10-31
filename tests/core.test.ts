@@ -93,6 +93,7 @@ for (const width of [1440, 960, 600, 360])
         }
         for (const f of scene.links) {
             assert.ok(!/NaN|Infinity/.test(f.route.path));
+            assert.deepEqual([...new Set(f.route.path.match(/[A-Za-z]/g))].sort(), ['C', 'M'], 'one cubic rendering style, including obstacle detours');
             const a = nodes.get(f.from)!, b = nodes.get(f.to)!;
             if (a.edge)
                 assert.equal(f.start.y, a.edge === 'top' ? a.y + a.h : a.y);
@@ -150,7 +151,9 @@ test('bottom sources leave upward and top sources leave downward', () => {
         const graph: SankeyGraph = { stages: ['a'], nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' } }, { key: 'edge', title: 'Edge', placement: { edge } }], links: [{ key: 'flow', from: 'edge', to: 'a', amount: 100 }] };
         const f = layoutGraph(resolveGraph(graph), { width: 600 }).links[0];
         const next = f.route.points.find(p => Math.hypot(p.x - f.start.x, p.y - f.start.y) > .1)!;
-        assert.equal(next.x, f.start.x);
+        const control = f.route.path.split('C')[1].trim().split(/\s+/).map(Number);
+        assert.ok(Math.abs(control[0] - f.start.x) < .001, 'the cubic leaves perpendicular to the edge bar');
+        assert.ok(edge === 'top' ? control[1] > f.start.y : control[1] < f.start.y);
         assert.ok(edge === 'top' ? next.y > f.start.y : next.y < f.start.y);
     }
 });
@@ -214,6 +217,7 @@ test('edge-to-edge links have finite paths and inward endpoint faces', () => {
             const graph: SankeyGraph = { stages: [], nodes: [{ key: 'a', title: 'A', placement: { edge: from } }, { key: 'b', title: 'B', placement: { edge: to } }], links: [{ key: 'ab', from: 'a', to: 'b', amount: 100 }] };
             const scene = layoutGraph(resolveGraph(graph), { width: 600 }), f = scene.links[0];
             assert.ok(!/NaN|Infinity/.test(f.route.path));
+            assert.deepEqual([...new Set(f.route.path.match(/[A-Za-z]/g))].sort(), ['C', 'M'], 'one cubic rendering style, including obstacle detours');
             assert.ok(f.route.length > 0);
             const after = f.route.points.find(p => Math.hypot(p.x - f.start.x, p.y - f.start.y) > .1)!;
             const before = [...f.route.points].reverse().find(p => Math.hypot(p.x - f.end.x, p.y - f.end.y) > .1)!;
@@ -342,7 +346,7 @@ for (const edge of ['top', 'bottom'] as const) test(`${edge} and side inputs con
     }
 });
 
-for (const edge of ['top', 'bottom'] as const) test(`${edge} wrapped bundles keep a 4px gap through the turn`, () => {
+for (const edge of ['top', 'bottom'] as const) test(`${edge} wrapped waves retain corridor gaps, touching ports and smooth joins`, () => {
     for (const unequal of [false, true]) for (const width of [600, 960, 1126, 1440]) {
         const initial = fan(edge, 12);
         const graph: SankeyGraph = { ...initial, links: initial.links.map((f, i) => ({ ...f, amount: unequal ? [40, 100, 180, 70][i % 4] : 100 })) };
@@ -351,26 +355,25 @@ for (const edge of ['top', 'bottom'] as const) test(`${edge} wrapped bundles kee
         const scene = layoutGraph(model, { width, labels });
         const nodes = scene.nodes.filter(n => n.edge && n.row > 0).sort((a, b) => a.corridor! - b.corridor!);
         const flows = nodes.map(n => scene.links.find(f => f.to === n.key)!);
-        const lanes = flows.map((f, i) => {
-            const segments = f.route.points.slice(1).map((end, j) => ({ start: f.route.points[j], end }));
-            const vertical = segments.filter(s => Math.abs(s.start.x - nodes[i].corridor!) < 1e-5 && Math.abs(s.end.x - s.start.x) < 1e-5 && Math.abs(s.end.y - s.start.y) > 1);
-            const horizontal = segments.filter(s => Math.abs(s.start.y - f.start.y) > 1 && Math.abs(s.end.y - s.start.y) < 1e-5 && Math.abs(s.end.x - s.start.x) > 1);
-            assert.ok(vertical.length && horizontal.length, 'both legs of a wrapped route must remain visible');
-            return { verticalEnd: vertical.at(-1)!.end, y: horizontal[0].start.y };
-        });
+        for (const f of flows) {
+            assert.deepEqual([...new Set(f.route.path.match(/[A-Za-z]/g))].sort(), ['C', 'M']);
+            const curves = f.route.path.split(' C').slice(1).map(part => part.trim().split(/\s+/).map(Number));
+            for (let i = 1; i < curves.length; i++) {
+                const a = curves[i - 1], b = curves[i];
+                const incoming = { x: a[4] - a[2], y: a[5] - a[3] }, outgoing = { x: b[0] - a[4], y: b[1] - a[5] };
+                const lengths = Math.hypot(incoming.x, incoming.y) * Math.hypot(outgoing.x, outgoing.y);
+                if (lengths < .001) continue;
+                assert.ok(Math.abs(incoming.x * outgoing.y - incoming.y * outgoing.x) / lengths < .02, 'cubic joins have matching tangent directions');
+                assert.ok(incoming.x * outgoing.x + incoming.y * outgoing.y > 0, 'no cusp at a join');
+            }
+            const envelope = ribbonBounds(f.route, f.width);
+            assert.ok(envelope.x >= -.15 && envelope.y >= -.15 && envelope.x + envelope.w <= scene.width + .15 && envelope.y + envelope.h <= scene.height + .15);
+        }
         for (let i = 1; i < flows.length; i++) {
             const a = flows[i - 1], b = flows[i], halfWidths = (a.width + b.width) / 2;
-            assert.ok(Math.abs(nodes[i].corridor! - nodes[i - 1].corridor! - halfWidths - 4) < .01, 'vertical gap');
+            assert.ok(Math.abs(nodes[i].corridor! - nodes[i - 1].corridor! - halfWidths - 4) < .01, 'reserved corridor gap');
             assert.ok(Math.abs(Math.abs(a.start.y - b.start.y) - halfWidths) < .01, 'ports touch to preserve the quantitative total');
-            if (nodes[i].row !== nodes[i - 1].row) continue;
-            assert.ok(Math.abs(Math.abs(lanes[i].y - lanes[i - 1].y) - halfWidths - 4) < .01, 'horizontal gap');
-            const direction = edge === 'bottom' ? 1 : -1;
-            const bend = a.route.points.filter(p => p.x >= nodes[i - 1].corridor! && direction * (p.y - lanes[i - 1].verticalEnd.y) > 1 && direction * (lanes[i - 1].y - p.y) > 1);
-            assert.ok(bend.length > 8, 'sample the turn, not just its straight ends');
-            for (const p of bend) {
-                const gap = distanceToRoute(p, b.route) - halfWidths;
-                assert.ok(Math.abs(gap - 4) < .25, `${width}px ${a.key}/${b.key}: turn gap ${gap}`);
-            }
+            assert.ok(separation(a, b) > -.6, 'broad waves preserve ribbon separation');
         }
     }
 });
