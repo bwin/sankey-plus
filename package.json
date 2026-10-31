@@ -1,13 +1,14 @@
 {
-  "name": "@local/flow-diagram",
+  "name": "@bwin/sankey-plus",
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "A standalone React flow diagram with four-sided nodes and controlled selection.",
+  "description": "An interactive React Sankey component with four-sided node placement, partial allocations and controlled selection.",
+  "keywords": ["sankey", "react", "flow-diagram", "data-visualization", "typescript"],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/flow-diagram.js"
+      "import": "./dist/sankey-plus.js"
     },
     "./style.css": "./dist/style.css"
   },

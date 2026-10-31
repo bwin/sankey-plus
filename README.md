@@ -1,6 +1,6 @@
-# Flow diagram
+# Sankey Plus
 
-A standalone React + TypeScript component for quantitative flows across ordered stages, with full nodes above and below the main sequence. SVG drawing, layout, routing, hit testing and interactions are implemented in this package. Runtime dependencies are React and React DOM only.
+`@bwin/sankey-plus` is an interactive React + TypeScript Sankey component with four-sided node placement, partial allocations and controlled selection. SVG drawing, layout, routing, hit testing and interactions are implemented in this package. Runtime dependencies are React and React DOM only.
 
 The default demo includes the supplied transaction, statement and invoice data, including Client Balance above and Unallocated, Unpaid, Written Off and Bad Debt below. The component has no business-domain logic.
 
@@ -47,8 +47,8 @@ The packaged library is ESM and includes TypeScript declarations. Import its sty
 
 ```tsx
 import {useState} from 'react';
-import {FlowDiagram, type FlowGraph, type FlowSubject} from '@local/flow-diagram';
-import '@local/flow-diagram/style.css';
+import {FlowDiagram, type FlowGraph, type FlowSubject} from '@bwin/sankey-plus';
+import '@bwin/sankey-plus/style.css';
 
 const graph: FlowGraph = {
   stages: ['available', 'allocated'],

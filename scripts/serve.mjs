@@ -19,7 +19,7 @@ export function serve() {
       res.writeHead(200,{'Content-Type':mime[path.extname(file)]??'application/octet-stream','Cache-Control':'no-store'});
       res.end(req.method==='HEAD'?undefined:content);
     } catch {res.writeHead(404).end('Not found');}
-  }).listen(port,'127.0.0.1',()=>console.log(`Flow diagram demo: http://127.0.0.1:${port}`));
+  }).listen(port,'127.0.0.1',()=>console.log(`Sankey Plus demo: http://127.0.0.1:${port}`));
 }
 
 if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.url))serve();
