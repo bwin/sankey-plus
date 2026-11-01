@@ -211,7 +211,6 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         if (e.pointerType === 'touch' || e.buttons)
             return;
         input.current = 'pointer';
-        setKeyboardFocus(null);
         inspect(locate(e), e.clientX, e.clientY);
     }
     function activate(subject: SankeySubject, event: SankeyActivationEvent) {
