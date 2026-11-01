@@ -59,7 +59,7 @@ export function joinRoutes(routes: Route[]): Route {
     return describe(routes[0].path + routes.slice(1).map(route => route.path.slice(route.path.indexOf(' C'))).join(''),
         [routes[0].points[0], ...routes.flatMap(route => route.points.slice(1))]);
 }
-/** Follow a shared wave between perpendicular axis-aligned tangents. Offsets ease in/out so the
+/** Follow a shared wave between axis-aligned tangents. Equal offsets also support parallel tangents. Offsets ease in/out so the
  * endpoint tangents stay on the node faces. Fit the offset itself with cubics;
  * painting and collision checks therefore never use different centerlines. */
 export function parallelCurve(start: Point, end: Point, outgoing: Point, incoming: Point, fromOffset: number, toOffset: number, side: number, tension = BEND_HANDLE): Route {
@@ -162,8 +162,8 @@ export function distanceToRoute(p: Point, route: Route) {
     return d;
 }
 /** Approximate overlapping ribbon length. Merely touching edges are allowed. */
-export function ribbonOverlap(a: Route, aWidth: number, b: Route, bWidth: number): number {
-    const clearance = (aWidth + bWidth) / 2 - .25;
+export function ribbonOverlap(a: Route, aWidth: number, b: Route, bWidth: number, tolerance = .25): number {
+    const clearance = (aWidth + bWidth) / 2 - tolerance;
     if (clearance <= 0 || !intersects(inflate(a.bounds, clearance), b.bounds))
         return 0;
     const covered = (route: Route, other: Route) => {
@@ -191,6 +191,40 @@ export function ribbonBounds(route: Route, width: number): Rect {
         points.push({ x: p.x + dx, y: p.y + dy }, { x: p.x - dx, y: p.y - dy });
     }
     return describe('', points).bounds;
+}
+/** A variable-width ribbon, sampled from the same centerline used for routing.
+ * Ease width along arc length; flat caps meet the axis-aligned node faces. */
+export function taperedRibbon(route: Route, startWidth: number, endWidth: number) {
+    const centers: { p: Point; distance: number }[] = [{ p: route.points[0], distance: 0 }];
+    let distance = 0;
+    for (let i = 1; i < route.points.length; i++) {
+        const a = route.points[i - 1], b = route.points[i], span = Math.hypot(b.x - a.x, b.y - a.y);
+        const count = Math.max(1, Math.ceil(span / 4));
+        for (let j = 1; j <= count; j++) centers.push({ p: mix(a, b, j / count), distance: distance + span * j / count });
+        distance += span;
+    }
+    const left: Point[] = [], right: Point[] = [];
+    for (let i = 0; i < centers.length; i++) {
+        const p = centers[i].p, a = centers[Math.max(0, i - 1)].p, b = centers[Math.min(centers.length - 1, i + 1)].p;
+        let dx = b.x - a.x, dy = b.y - a.y;
+        if (i === 0 || i === centers.length - 1) { if (Math.abs(dx) >= Math.abs(dy)) dy = 0; else dx = 0; }
+        const length = Math.hypot(dx, dy) || 1, t = distance ? centers[i].distance / distance : 0;
+        const half = (startWidth + (endWidth - startWidth) * t * t * (3 - 2 * t)) / 2;
+        left.push({ x: p.x - dy / length * half, y: p.y + dx / length * half });
+        right.push({ x: p.x + dy / length * half, y: p.y - dx / length * half });
+    }
+    const points = [...left, ...right.reverse()];
+    return { points, path: `M${points.map(xy).join(' L')} Z` };
+}
+/** Painted-envelope hit testing for a tapered ribbon, including its boundary. */
+export function insidePolygon(point: Point, polygon: readonly Point[]): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const a = polygon[j], b = polygon[i];
+        if (distanceToSegment(point, a, b) < .001) return true;
+        if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
 }
 function segmentHits(a: Point, b: Point, r: Rect): boolean {
     // Most visibility-grid edges and curve samples are nowhere near this box.

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
 import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
 import { runInChunks } from './layout-task.js';
-import { identity, presentation, same, subjectName } from './presentation.js';
+import { defaultLabel, identity, presentation, same, showConverted, subjectName } from './presentation.js';
 import type { SankeyActivationEvent, SankeyDiagramProps, SankeySubject, SankeyPresentation } from './types.js';
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 type Inspection = {
@@ -26,7 +26,17 @@ function DefaultDetails({ view }: {
     view: SankeyPresentation;
 }) {
     return <><strong className="flow-tip-title">{view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`}</strong>
-    <dl>{view.kind === 'node' ? <><dt>Total</dt><dd>{view.text.total}</dd><dt>Incoming</dt><dd>{view.text.incoming}</dd><dt>Outgoing</dt><dd>{view.text.outgoing}</dd></> : <><dt>Amount</dt><dd>{view.text.amount}</dd></>}</dl></>;
+    {view.kind === 'node' ? <>
+        {view.text.totals.map((row, index) => <div className="flow-tip-balance" key={row.unit ?? ''}>
+            {row.unit && <strong>{row.unit} <span className="flow-tip-source">{view.totals[index].totalSource}</span></strong>}
+            <dl><dt>Total</dt><dd>{row.total}</dd><dt>Incoming</dt><dd>{row.incoming}</dd><dt>Outgoing</dt><dd>{row.outgoing}</dd></dl>
+        </div>)}
+        {showConverted(view) && <div className="flow-tip-balance flow-tip-combined"><strong>Combined in {view.converted!.unit}</strong><dl><dt>Total</dt><dd>{view.text.converted!.total}</dd><dt>Incoming</dt><dd>{view.text.converted!.incoming}</dd><dt>Outgoing</dt><dd>{view.text.converted!.outgoing}</dd></dl></div>}
+    </> : <>
+        <dl><dt>Input</dt><dd>{view.text.amount}</dd><dt>Output</dt><dd>{view.text.outputAmount}</dd>{view.converted && <><dt>Valued input</dt><dd>{view.text.convertedAmount}</dd><dt>Valued output</dt><dd>{view.text.convertedOutputAmount}</dd></>}</dl>
+        {view.text.conversionRate && <div className="flow-tip-rates"><strong>Transfer rate</strong>{view.text.conversionRate}</div>}
+        {view.text.referenceRates.length > 0 && <div className="flow-tip-rates"><strong>Reference valuation</strong>{view.text.referenceRates.map((rate, index) => <div key={index}>{rate}</div>)}</div>}
+    </>}</>;
 }
 function Details({ id, anchor, children, theme }: {
     id: string;
@@ -62,7 +72,7 @@ function Details({ id, anchor, children, theme }: {
     return createPortal(<div ref={ref} id={id} role="tooltip" className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }}>{children}</div>, document.body);
 }
 export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProps<I, T>) {
-    const { graph, accessibleName, className, plotHeight = 336, selection, onNodeClick, onLinkClick, formatAmount, getLabel, renderTooltip } = props;
+    const { graph, accessibleName, className, plotHeight = 336, minLinkWidth = 0, selection, onNodeClick, onLinkClick, formatAmount, getLabel, renderTooltip } = props;
     const root = useRef<HTMLDivElement>(null), svg = useRef<SVGSVGElement>(null), controls = useRef(new Map<string, SVGGElement>());
     const uid = useId(), tooltipId = `${uid}-details`, helpId = `${uid}-help`;
     const [measurement, setMeasurement] = useState({ width: 0, font: '12px sans-serif', lineHeight: 16 });
@@ -118,13 +128,13 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         const result = new Map<string, readonly string[]>();
         for (const subject of model.subjects) {
             const view = presentation(model, subject, formatAmount, 'label');
-            const value = getLabel ? getLabel(view) : view.kind === 'node' ? view.node.title : view.text.amount;
-            result.set(`${subject.kind}:${subject.key}`, value === null ? [] : typeof value === 'string' ? (value ? [value] : []) : value.slice(0, 2));
+            const value = getLabel ? getLabel(view) : defaultLabel(view);
+            result.set(`${subject.kind}:${subject.key}`, value === null ? [] : typeof value === 'string' ? (value ? [value] : []) : [...value]);
         }
         return result;
     }, [model, formatAmount, getLabel]);
     const names = useMemo(() => new Map(model.subjects.map(s => [identity(s), subjectName(presentation(model, s, formatAmount, 'accessible'))])), [model, formatAmount]);
-    const layoutRequest = useMemo(() => ({ model, options: { width: measurement.width, plotHeight, labels, measureText, lineHeight: measurement.lineHeight } }), [model, measurement, plotHeight, labels, measureText]);
+    const layoutRequest = useMemo(() => ({ model, options: { width: measurement.width, plotHeight, minLinkWidth, labels, measureText, lineHeight: measurement.lineHeight } }), [model, measurement, plotHeight, minLinkWidth, labels, measureText]);
     const [layoutResult, setLayoutResult] = useState<({ request: typeof layoutRequest } & ({ scene: Scene } | { error: unknown })) | null>(null);
     useEffect(() => {
         if (layoutRequest.options.width <= 0 || !layoutRequest.model.nodes.size) return;
@@ -310,8 +320,8 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         {ordered.map(f => {
                     const subject: SankeySubject = { kind: 'link', key: f.key }, isSelected = same(subject, selected), focused = same(subject, keyboardFocus), strongFlow = strong.links.has(f.key), opacity = strongFlow ? (same(subject, active?.subject ?? null) ? .75 : .4) : .1;
                     return <g key={f.key} {...subjectProps(subject)} data-emphasis={strongFlow ? 'strong' : 'faded'}>
-            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 8}/><path d={f.route.path} stroke={f.color} strokeWidth={f.width + 5}/><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 2}/></g>}
-            <path data-link-paint="" d={f.route.path} fill="none" stroke={f.color} strokeWidth={f.width} opacity={opacity} pointerEvents="none" aria-hidden="true"/>
+            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.ribbon?.path ?? f.route.path} stroke="var(--flow-surface, white)" strokeWidth={(f.ribbon ? 0 : f.width) + 8}/><path d={f.ribbon?.path ?? f.route.path} stroke={f.color} strokeWidth={(f.ribbon ? 0 : f.width) + 5}/><path d={f.ribbon?.path ?? f.route.path} stroke="var(--flow-surface, white)" strokeWidth={(f.ribbon ? 0 : f.width) + 2}/></g>}
+            <path data-link-paint="" d={f.ribbon?.path ?? f.route.path} fill={f.ribbon ? f.color : 'none'} stroke={f.ribbon ? 'none' : f.color} strokeWidth={f.width} opacity={opacity} pointerEvents="none" aria-hidden="true"/>
             {focused && <g className="flow-decoration" aria-hidden="true"><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={4}/><path d={f.route.path} stroke="var(--flow-focus, #2644af)" strokeWidth={2} strokeDasharray="4 4"/></g>}
           </g>;
                 })}

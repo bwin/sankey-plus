@@ -6,10 +6,15 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Optional `minLinkWidth` in CSS pixels, with matching port, bar and routing space. Defaults to proportional widths; exact amounts remain unchanged.
+- Wide range example with 200–500,000-unit transfers, a top reserve release and bottom retained flow, all on one proportional scale.
+- Optional graph default units, separate declared/automatic node balances, explicit link input/output units and per-transfer rates. Graph reference rates value both ribbon endpoints and node totals in one common unit; unequal endpoint values taper. Labels and tooltips distinguish actual amounts and transfer rates from reference valuations.
+- Currencies example with EUR/USD/GBP/COP balances, partial declarations, a reserve release and retained funds. Actual conversions demonstrate equal-value ribbons and a 2.5% taper; default and custom presentation distinguish transfer rates from reference valuation.
 - World trade example with exporting/importing countries, top reserve releases, bottom inventory outflows, balanced totals per good, commodity colors and illustrative USD-billion formatting.
 
 ### Changed
 
+- Node labels support multiple lines and reserve room for all unit balances; custom label arrays are no longer capped at two lines.
 - Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
 - Spread fan curves gradually along both axes and reserve more arrival space in wrapped rows. Try broad edge curves before elbow-like detours while preserving ribbon separation and label clearance.
 
@@ -19,6 +24,8 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Fixed
 
+- Parallel stage links use shared offset curves when needed to prevent their thick ribbons overlapping along a slope, while preserving widths, ports and existing obstacle detours.
+- Parallel links sharing a top/bottom node keep separate ribbons through the turn, including narrow layouts where a neighboring label requires a different shared curve.
 - Tooltips size and position within the visible viewport, excluding classic scrollbars, so narrow layouts do not clip their right column.
 
 ## [1.1.0] - 2026-10-31

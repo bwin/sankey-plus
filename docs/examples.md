@@ -9,6 +9,8 @@
 | Distribution | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata. |
 | Stages | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare. |
 | World trade | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors. |
+| Currencies | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
+| Wide range | 200–500,000-unit transfers with a 4px minimum visible thickness; exact amounts stay in labels and tooltips. |
 | Four-sided flow | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps. |
 | Fan-out / Top fan-out | Separate ordered turns below and above the main sequence. |
 | Fan-in | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total. |
@@ -50,6 +52,33 @@ Exports ($800 bn) plus reserves released ($50 bn) equal imports ($810 bn) plus i
 Inspect Energy to emphasize its exporters, reserve source, importers and seven incident links. Inspect a reserve or inventory link to read why it enters or leaves the annual flow in the endpoint descriptions. These are aggregate flows: the example does not claim which exporter supplies a particular importer. Turning custom labels off retains currency formatting while using the component's default presentation.
 
 ![World trade with reserve releases above and inventory outflows below](../screenshots/33-trade-inventories.jpg)
+
+## Currencies
+
+The [Currencies fixture](../demo/currencies.json) has 9 nodes and 12 links. All amounts and rates are illustrative. The graph's default unit is USD, with reference rates of **1 EUR = 1.10 USD**, **1 GBP = 1.25 USD** and **1 USD = 4,000 COP**. Each link explicitly names its input and output currency. Reference rates determine all widths; each transfer's own rate determines the amount delivered.
+
+Treasury declares `totals: { EUR: 'auto', USD: 600, GBP: 'auto' }`. It shows 1,000 EUR, 600 USD and 200 GBP separately, plus a combined total of 1,950 USD. Incoming value is 1,850 USD and outgoing value is 1,950 USD: its declared USD balance includes 100 USD of opening funds for the COP payout. Euro receipts declares more than it transfers: 1,200 EUR versus 1,000 EUR. Destination nodes derive their balances from the amounts actually received.
+
+Two links demonstrate currency conversion:
+
+- Treasury sends **150 GBP → 750,000 COP** to Operations at 5,000 COP/GBP. Both ends are worth 187.50 USD at the reference rates, so the ribbon stays the same width. Operations receives 200 EUR on another link, giving it two separate balances and a combined total of 407.50 USD.
+- Treasury sends **100 USD → 390,000 COP** to COP payout at 3,900 COP/USD. The destination receives a value of 97.50 USD at the reference rate of 4,000, so this ribbon narrows by 2.5%. The large numerical FX ratio does not produce a wider ribbon.
+
+Inspect either conversion link to see its actual input/output amounts and transfer rate, followed by USD valuations and the graph's reference rates. Source and destination details stay in two columns below. Inspect Treasury to see declared and derived balances. Turning custom presentation off retains these distinctions in the library defaults. The top reserve releases USD; Retained funds at the bottom holds separate EUR/USD/GBP balances. [Unit semantics and the public interface](units.md).
+
+![Explicit currency conversions with all widths valued in USD](../screenshots/38-directional-currencies.jpg)
+
+![Actual transfer amounts and rate separated from reference valuation](../screenshots/39-directional-fx-tooltip.jpg)
+
+## Wide range
+
+The [Wide range fixture](../demo/wide-range.json) has 9 nodes and 8 links with amounts of **200, 2,000, 25,000 and 500,000 units**. Three sources and a top reserve release feed Distribution, which passes 527,200 units to three destinations and a bottom retained balance.
+
+This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; the 200-unit and 2,000-unit transfers are both raised to 4 CSS pixels. Their widths are therefore not strictly proportional, as the description explains. Labels, tooltips, callbacks and totals retain exact amounts. Node bars and routing reserve the displayed widths. Try the Trial supply link and the bottom Retained link.
+
+The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/40-wide-range.jpg). [Minimum-width semantics](api.md#quantities).
+
+![Wide range with a 4px minimum thickness](../screenshots/41-wide-range-minimum.jpg)
 
 ## Fan-in
 

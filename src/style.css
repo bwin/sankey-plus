@@ -16,5 +16,6 @@
 .flow-measuring{width:100%;display:grid;place-items:center;color:var(--flow-muted-text);font-size:12px}
 .flow-tooltip{position:fixed;z-index:10000;pointer-events:none;box-sizing:border-box;min-width:min(220px,calc(100% - 16px));max-width:min(320px,calc(100% - 16px));padding:15px 17px;border:1px solid color-mix(in srgb,var(--flow-muted-text,#68758b) 24%,transparent);border-radius:8px;background:var(--flow-surface,#fff);color:var(--flow-text,#24334a);box-shadow:0 8px 32px #142b4b20;font:12px/1.5 system-ui,sans-serif;overflow:hidden;overflow-wrap:anywhere}
 .flow-tip-title{font-size:13px;font-weight:650;display:block;margin-bottom:10px}
+.flow-tip-balance+.flow-tip-balance,.flow-tip-rates{margin-top:10px}.flow-tip-balance>strong,.flow-tip-rates>strong{display:block;margin-bottom:4px}.flow-tip-source{color:var(--flow-muted-text,#68758b);font-size:10px;font-weight:400}.flow-tip-combined{border-top:1px solid color-mix(in srgb,var(--flow-muted-text,#68758b) 24%,transparent);padding-top:10px}
 .flow-tooltip dl{display:grid;grid-template-columns:1fr auto;gap:4px 24px;margin:0}.flow-tooltip dt{color:var(--flow-muted-text,#68758b)}.flow-tooltip dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
 @media(prefers-reduced-motion:reduce){.flow-diagram *{transition:none!important;animation:none!important}}
