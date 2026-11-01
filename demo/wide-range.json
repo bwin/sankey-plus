@@ -3,9 +3,9 @@
   "nodes": [
     { "key": "bulk", "title": "Bulk supply", "placement": { "stage": "sources" }, "color": "#5265cc", "meta": { "note": "500,000 units: the largest transfer is 2,500 times the smallest." } },
     { "key": "regional", "title": "Regional supply", "placement": { "stage": "sources" }, "color": "#c58a29" },
-    { "key": "trial", "title": "Trial supply", "placement": { "stage": "sources" }, "color": "#9b6ab5", "meta": { "note": "Only 200 units. The ribbon keeps its proportional width; inspect its label or use keyboard navigation for details." } },
+    { "key": "trial", "title": "Trial supply", "placement": { "stage": "sources" }, "color": "#9b6ab5", "meta": { "note": "Only 200 units, displayed at the example's 4px minimum thickness. The amount is unchanged." } },
     { "key": "reserve", "title": "Reserve release", "placement": { "edge": "top" }, "color": "#3589ac", "meta": { "note": "An additional 2,000 units enter from the top." } },
-    { "key": "distribution", "title": "Distribution", "placement": { "stage": "distribution" }, "color": "#168e9d", "meta": { "note": "Combines 527,200 units and distributes the same total. All widths share one linear scale." } },
+    { "key": "distribution", "title": "Distribution", "placement": { "stage": "distribution" }, "color": "#168e9d", "meta": { "note": "Combines 527,200 units and distributes the same total. Small transfers use a 4px minimum; the bar reserves room for their displayed widths." } },
     { "key": "core", "title": "Core delivery", "placement": { "stage": "destinations" }, "color": "#688670" },
     { "key": "local", "title": "Local delivery", "placement": { "stage": "destinations" }, "color": "#8170b4" },
     { "key": "pilot", "title": "Pilot delivery", "placement": { "stage": "destinations" }, "color": "#d76c91" },
