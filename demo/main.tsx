@@ -4,6 +4,7 @@ import { SankeyDiagram, type SankeySubject, type SankeyPresentation, type Sankey
 import { examples } from './fixtures.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
+import '../src/style.css';
 const format = (value: number, context?: { unit?: string }) => `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${context?.unit ?? 'units'}`;
 const nodeName = (node: SankeyNode, graph: SankeyGraph) => graph.nodes.some(other => other.key !== node.key && other.title === node.title) ? `${node.title} · ${node.placement.stage ?? node.placement.edge}` : node.title;
 const linkName = (link: SankeyLink, graph: SankeyGraph, formatAmount = format) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${formatAmount(link.amount, { unit: link.inputUnit })}${link.inputUnit !== link.outputUnit || (link.conversionRate ?? 1) !== 1 ? ` → ${formatAmount(link.amount * (link.conversionRate ?? 1), { unit: link.outputUnit })}` : ''}`;

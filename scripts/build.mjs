@@ -47,13 +47,9 @@ export async function build() {
   compile('tsconfig.json');
   const library=await rollup({input:path.join(project,'src/index.ts'),external:['react','react-dom','react/jsx-runtime'],plugins:[sourcePlugin()]});
   await library.write({file:path.join(project,'dist/sankey-plus.js'),format:'es',sourcemap:false});await library.close();compile('tsconfig.lib.json');
-  // The CSS import emits the extracted asset during bundling; the published JS
-  // has no such side effect. Match the declaration to that optional CSS export.
-  const declarationPath=path.join(project,'dist/index.d.ts');
-  const declaration=await fs.readFile(declarationPath,'utf8');
-  const cssImport=/^import ['"]\.\/style\.css['"];\r?\n?/m;
-  if(!cssImport.test(declaration))throw Error('Expected source-only CSS import in emitted index declaration.');
-  await fs.writeFile(declarationPath,declaration.replace(cssImport,''));
+  // The stylesheet is a separate package export, not a side effect of the
+  // library entry, so copy it like the declarations instead of importing it.
+  await fs.copyFile(path.join(project,'src/style.css'),path.join(project,'dist/style.css'));
   await fs.copyFile(path.join(project,'src/style.css.d.ts'),path.join(project,'dist/style.css.d.ts'));
   await verifyPackageTypes();
   const demo=await rollup({input:path.join(project,'demo/main.tsx'),plugins:[sourcePlugin(),nodeResolve({extensions:['.js','.ts','.tsx','.json'],browser:true}),commonjs()]});
