@@ -64,6 +64,8 @@ export interface LayoutOptions {
 }
 const PAD = 24, BAR = 14, GAP = 24, CLEAR = 32;
 const LANE_GAP = 4;
+/** Upper bound that keeps every SVG coordinate well inside browser float precision. */
+const MAX_EXTENT = 10_000_000;
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 function fitted(lines: readonly string[], width: number, measure: (s: string) => number): string[] {
@@ -115,11 +117,11 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
 }
 /** Checkpoints are at phase/item boundaries; an individual geometry helper remains synchronous. */
 export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: LayoutOptions, attempt = 0): Generator<void, Scene, void> {
-    const requested = options.width, plotHeight = options.plotHeight ?? 336, minLinkWidth = options.minLinkWidth ?? 0;
-    if (!Number.isFinite(requested) || requested <= 0 || !Number.isFinite(plotHeight) || plotHeight <= 0)
-        throw new SankeyInputError([{ code: 'invalid-number', message: 'Layout width and plotHeight must be finite and positive.' }]);
-    if (!Number.isFinite(minLinkWidth) || minLinkWidth < 0)
-        throw new SankeyInputError([{ code: 'invalid-number', message: 'minLinkWidth must be finite and non-negative.' }]);
+    const requested = options.width, plotHeight = options.plotHeight ?? 336, minLinkWidth = options.minLinkWidth ?? 0, lineHeight = options.lineHeight ?? 16;
+    if (!Number.isFinite(requested) || requested <= 0 || requested > MAX_EXTENT || !Number.isFinite(plotHeight) || plotHeight <= 0 || plotHeight > MAX_EXTENT || !Number.isFinite(lineHeight) || lineHeight <= 0 || lineHeight > MAX_EXTENT)
+        throw new SankeyInputError([{ code: 'invalid-number', message: `Layout width, plotHeight and lineHeight must be finite, positive and at most ${MAX_EXTENT} pixels.` }]);
+    if (!Number.isFinite(minLinkWidth) || minLinkWidth < 0 || minLinkWidth > MAX_EXTENT)
+        throw new SankeyInputError([{ code: 'invalid-number', message: `minLinkWidth must be finite, between 0 and ${MAX_EXTENT} pixels.` }]);
     yield;
     // Scoring revisits the same route pairs during port swaps and diagnostics.
     // Routes are replaced, never mutated, during one layout attempt. Keep this
@@ -135,7 +137,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         row.set(b, result);
         return result;
     };
-    const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
+    const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6);
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
     const amount = (link: { key: string }) => { const f = model.links.get(link.key)!; return Math.max(f.layoutInputAmount, f.layoutOutputAmount); };
     const endpointWidth = (link: { key: string }, out: boolean, valueScale: number) => {
@@ -151,6 +153,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     const slots = Math.max(1, stages.length - 1 + leftExtra + rightExtra);
     const minWidth = stages.length ? 2 * PAD + BAR + slots * 112 : 180;
     const width = Math.max(requested, minWidth);
+    if (!Number.isFinite(width) || width > MAX_EXTENT)
+        throw new SankeyInputError([{ code: 'invalid-number', message: `The layout needs more than ${MAX_EXTENT} pixels of width. Reduce the number of stages.` }]);
     const step = (width - 2 * PAD - BAR) / slots;
     const axis = (index: number) => stages.length === 1 && !leftExtra && !rightExtra ? width / 2 - BAR / 2 : PAD + (index + leftExtra) * step;
     const maxCount = Math.max(0, ...stages.map(s => s.length));
@@ -166,6 +170,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     // Fixed pixel floors cannot shrink with the value scale. Grow the central
     // region when their port stacks alone exceed the preferred plot height.
     const centralHeight = Math.max(plotHeight, maxCount * (lineHeight * 2 + GAP), ...stages.map((stage, i) => expandedStages[i] ? sum(stage.map(n => Math.max(lineHeight * 2, labelHeight(n), nodeSize(n, 0)) + GAP)) + GAP : 0));
+    if (!Number.isFinite(centralHeight) || centralHeight > MAX_EXTENT)
+        throw new SankeyInputError([{ code: 'invalid-number', message: `The layout needs more than ${MAX_EXTENT} pixels of height. Reduce plotHeight, minLinkWidth or the number of nodes.` }]);
     let scale = Infinity;
     for (const stage of stages) {
         const total = sum(stage.map(geomTotal));
@@ -196,8 +202,12 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         limits.set(n.node.key, { lo, hi });
         if (minLinkWidth > 0) {
             const available = Math.max(8, hi - lo - 28), minimum = nodeSize(n, 0);
-            if (minimum > available) // Even a zero value scale cannot fit this edge's port stack.
-                return yield* layoutGraphSteps(model, { ...options, width: width + (minimum - available + 1) * slots * 2 }, attempt);
+            if (minimum > available) { // Even a zero value scale cannot fit this edge's port stack.
+                const nextWidth = width + (minimum - available + 1) * slots * 2;
+                if (!Number.isFinite(nextWidth) || nextWidth > MAX_EXTENT)
+                    throw new SankeyInputError([{ code: 'invalid-number', message: `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of edge links.` }]);
+                return yield* layoutGraphSteps(model, { ...options, width: nextWidth }, attempt);
+            }
             fitScale(valueScale => nodeSize(n, valueScale), available);
         } else if (geomTotal(n) > 0)
             scale = Math.min(scale, Math.max(8, hi - lo - 28) / geomTotal(n));
@@ -227,8 +237,12 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                 const channelWidth = Math.max(8, strip - labelWidth / 2 - 10 - Math.max(0, links.length - 2) * LANE_GAP);
                 if (minLinkWidth > 0) {
                     const minimum = links.length * minLinkWidth;
-                    if (minimum > channelWidth)
-                        return yield* layoutGraphSteps(model, { ...options, width: width + (minimum - channelWidth + 1) * slots * 4 }, attempt);
+                    if (minimum > channelWidth) {
+                        const nextWidth = width + (minimum - channelWidth + 1) * slots * 4;
+                        if (!Number.isFinite(nextWidth) || nextWidth > MAX_EXTENT)
+                            throw new SankeyInputError([{ code: 'invalid-number', message: `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of wrapped fan links.` }]);
+                        return yield* layoutGraphSteps(model, { ...options, width: nextWidth }, attempt);
+                    }
                     fitScale(valueScale => sum(links.map(f => linkWidth(f, valueScale))), channelWidth);
                 } else scale = Math.min(scale, channelWidth / sum(links.map(amount)));
                 for (const n of targets)
@@ -364,6 +378,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             rowOffsets[side][row] = rowOffsets[side][row - 1] + rowPitches[side][row];
     const band = (side: 'top' | 'bottom') => rows[side].length ? clearance + BAR + Math.max(lineHeight * 2, ...rows[side].flat().map(n => n.label.h)) + 12 + rowOffsets[side].at(-1)! : 0;
     const topBand = band('top'), bottomBand = band('bottom'), centralTop = PAD + topBand, height = PAD + topBand + centralHeight + bottomBand + PAD;
+    if (!Number.isFinite(height) || height > MAX_EXTENT)
+        throw new SankeyInputError([{ code: 'invalid-number', message: `The layout needs more than ${MAX_EXTENT} pixels of height. Reduce plotHeight, minLinkWidth or the number of edge nodes.` }]);
     for (const n of nodes) {
         if (!n.edge) {
             n.y += centralTop;
@@ -749,8 +765,9 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     // A single wide route may not fit between measured labels and stage bars.
     // Fixed pixel floors were fitted above; this later retry only grows the canvas
     // for unresolved obstacles, not row count or labels. Every resize starts fresh.
-    if (obstacleCount && attempt < 5) {
-        const retry = yield* layoutGraphSteps(model, { ...options, width: width + Math.max(80, maxRibbon + 32) }, attempt + 1);
+    const retryWidth = width + Math.max(80, maxRibbon + 32);
+    if (obstacleCount && attempt < 5 && retryWidth <= MAX_EXTENT) {
+        const retry = yield* layoutGraphSteps(model, { ...options, width: retryWidth }, attempt + 1);
         if (retry.diagnostics.obstacleCollisions < obstacleCount) {
             if (attempt === 0 && retry.diagnostics.obstacleCollisions === 0) {
                 let best = retry, lower = width;
@@ -770,8 +787,10 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     }
     return scene;
 }
-/** Bars and visible labels win, then a real ribbon hit or thin hit corridor. */
-export function hitTest(scene: Scene, point: Point) {
+/** Bars and visible labels win, then a real ribbon hit or thin hit corridor.
+ * `activeLink` names a link whose otherwise-hidden label is temporarily painted
+ * during inspection, so that painted label remains clickable and wins over faded link labels. */
+export function hitTest(scene: Scene, point: Point, activeLink?: string | null) {
     for (let i = scene.nodes.length - 1; i >= 0; i--) {
         const n = scene.nodes[i];
         if (point.x >= n.x - 2 && point.x <= n.x + n.w + 2 && point.y >= n.y - 2 && point.y <= n.y + n.h + 2)
@@ -782,6 +801,10 @@ export function hitTest(scene: Scene, point: Point) {
     // a link that happens to pass underneath it.
     for (let i = scene.nodes.length - 1; i >= 0; i--)
         if (onLabel(scene.nodes[i].label)) return { kind: 'node' as const, key: scene.nodes[i].key };
+    if (activeLink) {
+        const active = scene.links.find(f => f.key === activeLink);
+        if (active && onLabel(active.label)) return { kind: 'link' as const, key: active.key };
+    }
     for (let i = scene.links.length - 1; i >= 0; i--)
         if (!scene.links[i].labelHidden && onLabel(scene.links[i].label)) return { kind: 'link' as const, key: scene.links[i].key };
     let best: {
