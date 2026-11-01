@@ -1,4 +1,4 @@
-import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
 import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
@@ -38,7 +38,14 @@ function DefaultDetails({ view }: {
         {view.text.referenceRates.length > 0 && <div className="flow-tip-rates"><strong>Reference valuation</strong>{view.text.referenceRates.map((rate, index) => <div key={index}>{rate}</div>)}</div>}
     </>}</>;
 }
-function Details({ id, anchor, children, theme, onPointerEnter, onPointerLeave, onPointerDown }: {
+type DetailsHandle = {
+    move: (anchor: {
+        x: number;
+        y: number;
+    }) => void;
+    contains: (node: Node | null) => boolean;
+};
+const Details = forwardRef<DetailsHandle, {
     id: string;
     anchor: {
         x: number;
@@ -49,20 +56,31 @@ function Details({ id, anchor, children, theme, onPointerEnter, onPointerLeave, 
     onPointerEnter: () => void;
     onPointerLeave: () => void;
     onPointerDown: () => void;
-}) {
+}>(function Details({ id, anchor, children, theme, onPointerEnter, onPointerLeave, onPointerDown }, handle) {
     // client dimensions exclude classic scrollbars, unlike innerWidth/Height.
     const readViewport = () => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight });
-    const ref = useRef<HTMLDivElement>(null), [size, setSize] = useState({ width: 260, height: 140 }), [viewport, setViewport] = useState(readViewport);
+    const ref = useRef<HTMLDivElement>(null), [position, setPosition] = useState(anchor), [size, setSize] = useState({ width: 260, height: 140 }), [viewport, setViewport] = useState(readViewport);
+    useBrowserLayoutEffect(() => { setPosition(old => old.x === anchor.x && old.y === anchor.y ? old : anchor); }, [anchor.x, anchor.y]);
+    useImperativeHandle(handle, () => ({
+        move: next => setPosition(old => Math.abs(old.x - next.x) + Math.abs(old.y - next.y) < 1 ? old : next),
+        contains: node => !!node && !!ref.current?.contains(node),
+    }), []);
+    const measureSize = () => {
+        const el = ref.current;
+        if (!el)
+            return;
+        const r = el.getBoundingClientRect();
+        setSize(old => Math.abs(old.width - r.width) + Math.abs(old.height - r.height) < .5 ? old : { width: r.width, height: r.height });
+    };
+    useBrowserLayoutEffect(measureSize, [children]);
     useBrowserLayoutEffect(() => {
         const el = ref.current;
         if (!el)
             return;
-        const update = () => { const r = el.getBoundingClientRect(); setSize(old => Math.abs(old.width - r.width) + Math.abs(old.height - r.height) < .5 ? old : { width: r.width, height: r.height }); };
-        update();
-        const observer = new ResizeObserver(update);
+        const observer = new ResizeObserver(measureSize);
         observer.observe(el);
         return () => observer.disconnect();
-    }, [children]);
+    }, []);
     useEffect(() => {
         const update = () => { const next = readViewport(); setViewport(old => old.width === next.width && old.height === next.height ? old : next); };
         const observer = new ResizeObserver(update);
@@ -70,14 +88,14 @@ function Details({ id, anchor, children, theme, onPointerEnter, onPointerLeave, 
         window.addEventListener('resize', update);
         return () => { observer.disconnect(); window.removeEventListener('resize', update); };
     }, []);
-    const x = Math.max(8, Math.min(viewport.width - size.width - 8, anchor.x + 16 + size.width > viewport.width - 8 ? anchor.x - size.width - 16 : anchor.x + 16));
-    const y = Math.max(8, Math.min(viewport.height - size.height - 8, anchor.y + 16 + size.height > viewport.height - 8 ? anchor.y - size.height - 16 : anchor.y + 16));
+    const x = Math.max(8, Math.min(viewport.width - size.width - 8, position.x + 16 + size.width > viewport.width - 8 ? position.x - size.width - 16 : position.x + 16));
+    const y = Math.max(8, Math.min(viewport.height - size.height - 8, position.y + 16 + size.height > viewport.height - 8 ? position.y - size.height - 16 : position.y + 16));
     return createPortal(<div ref={ref} id={id} role="tooltip" tabIndex={-1} className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave} onPointerDown={onPointerDown}>{children}</div>, document.body);
-}
+});
 export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProps<I, T>) {
     const { graph, accessibleName, className, plotHeight = 336, minLinkWidth = 0, selection, onNodeClick, onLinkClick, formatAmount, getLabel, renderTooltip } = props;
     const root = useRef<HTMLDivElement>(null), svg = useRef<SVGSVGElement>(null), controls = useRef(new Map<string, SVGGElement>());
-    const closeTimer = useRef<number | null>(null), interactingWithTooltip = useRef(false);
+    const closeTimer = useRef<number | null>(null), interactingWithTooltip = useRef(false), tooltipHandle = useRef<DetailsHandle>(null), lastAnchor = useRef({ x: 0, y: 0 });
     const uid = useId(), tooltipId = `${uid}-details`, helpId = `${uid}-help`;
     const [measurement, setMeasurement] = useState({ width: 0, font: '12px sans-serif', lineHeight: 16 });
     const [theme, setTheme] = useState<CSSProperties>({});
@@ -90,6 +108,12 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         type: string;
     } | null>(null);
     const model = useMemo(() => resolveGraph(graph), [graph]);
+    const subjectIndex = useMemo(() => {
+        const nodes = new Map<string, number>(), links = new Map<string, number>();
+        model.subjects.forEach((subject, index) => (subject.kind === 'node' ? nodes : links).set(subject.key, index));
+        return { nodes, links };
+    }, [model]);
+    const indexOf = (subject: SankeySubject) => subject.kind === 'node' ? subjectIndex.nodes.get(subject.key) ?? -1 : subjectIndex.links.get(subject.key) ?? -1;
     useBrowserLayoutEffect(() => {
         const el = root.current;
         if (!el)
@@ -168,6 +192,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
             const box = controls.current.get(identity(old.subject))?.getBoundingClientRect();
             if (!box) return null;
             const anchor = { x: box.right, y: box.top + box.height / 2 };
+            lastAnchor.current = anchor;
             return Math.abs(anchor.x - old.anchor.x) + Math.abs(anchor.y - old.anchor.y) < .5 ? old : { ...old, anchor };
         });
     }
@@ -188,7 +213,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         window.clearTimeout(closeTimer.current); }, []);
     useEffect(() => {
         const outside = (e: globalThis.PointerEvent) => {
-            if (document.getElementById(tooltipId)?.contains(e.target as Node)) {
+            if (tooltipHandle.current?.contains(e.target as Node)) {
                 interactingWithTooltip.current = true;
                 cancelClose();
                 return;
@@ -203,7 +228,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         };
         // A pointer entering the portal is outside the diagram, so keep its close
         // delay alive even when React does not synthesize pointerenter.
-        const over = (e: globalThis.PointerEvent) => { if (document.getElementById(tooltipId)?.contains(e.target as Node))
+        const over = (e: globalThis.PointerEvent) => { if (tooltipHandle.current?.contains(e.target as Node))
             cancelClose(); };
         // Tab is dispatched on the previous control, before focus enters us.
         const keyboard = () => { input.current = 'keyboard'; };
@@ -240,7 +265,15 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
             return;
         suppressed.current = null;
         cancelClose();
-        setInspection(old => same(old?.subject ?? null, subject) && Math.abs((old?.anchor.x ?? 0) - x) + Math.abs((old?.anchor.y ?? 0) - y) < 1 && old?.modality === modality && old?.pinned === pinned ? old : { subject, anchor: { x, y }, modality, pinned });
+        if (inspection && same(inspection.subject, subject) && inspection.modality === modality && inspection.pinned === pinned) {
+            if (Math.abs(lastAnchor.current.x - x) + Math.abs(lastAnchor.current.y - y) >= 1) {
+                lastAnchor.current = { x, y };
+                tooltipHandle.current?.move(lastAnchor.current);
+            }
+            return;
+        }
+        lastAnchor.current = { x, y };
+        setInspection({ subject, anchor: lastAnchor.current, modality, pinned });
     }
     function pointerMove(e: PointerEvent<SVGSVGElement>) {
         if (gesture.current && Math.hypot(e.clientX - gesture.current.x, e.clientY - gesture.current.y) > 8)
@@ -274,7 +307,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         input.current = 'pointer';
         setKeyboardFocus(null);
         suppressed.current = null;
-        const index = model.subjects.findIndex(s => same(s, subject));
+        const index = indexOf(subject);
         setRoving(index);
         controls.current.get(identity(subject))?.focus({ preventScroll: true });
         inspect(subject, e.clientX, e.clientY, touch ? 'touch' : 'pointer', touch);
@@ -310,7 +343,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         }
     }
     const subjectProps = (subject: SankeySubject) => {
-        const index = model.subjects.findIndex(s => same(s, subject));
+        const index = indexOf(subject);
         return {
             ref: (el: SVGGElement | null) => { if (el)
                 controls.current.set(identity(subject), el);
@@ -341,7 +374,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
     if (layoutResult?.request === layoutRequest && 'error' in layoutResult) throw layoutResult.error;
     return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => {
         const next = e.relatedTarget as Node | null;
-        if (e.currentTarget.contains(next) || document.getElementById(tooltipId)?.contains(next) || interactingWithTooltip.current) {
+        if (e.currentTarget.contains(next) || tooltipHandle.current?.contains(next) || interactingWithTooltip.current) {
             interactingWithTooltip.current = false;
             return;
         }
@@ -379,6 +412,6 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         {scene.nodes.map(n => <Text key={`i-${n.key}`} box={n.label} className="flow-label" opacity={strong.nodes.has(n.key) ? 1 : .25}/>)}
       </svg>
     </div>}
-    {active && tooltip && typeof document !== 'undefined' ? <Details id={tooltipId} anchor={active.anchor} theme={theme} onPointerEnter={cancelClose} onPointerLeave={() => closeSoon(true)} onPointerDown={() => { interactingWithTooltip.current = true; cancelClose(); }}>{tooltip}</Details> : null}
+    {active && tooltip && typeof document !== 'undefined' ? <Details ref={tooltipHandle} id={tooltipId} anchor={active.modality === 'pointer' ? lastAnchor.current : active.anchor} theme={theme} onPointerEnter={cancelClose} onPointerLeave={() => closeSoon(true)} onPointerDown={() => { interactingWithTooltip.current = true; cancelClose(); }}>{tooltip}</Details> : null}
   </div>;
 }
