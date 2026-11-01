@@ -3,7 +3,7 @@
 /* Only create a scroll container for a genuinely wider canvas. Leave scroll
    chaining native so vertical wheel gestures can reach the surrounding page. */
 .flow-scroll--overflow{overflow:auto;overscroll-behavior:auto}
-.flow-canvas{display:block;max-width:none;overflow:clip;touch-action:pan-x pan-y;background:var(--flow-surface)}
+.flow-canvas{display:block;max-width:none;overflow:clip;touch-action:pan-x pan-y pinch-zoom;background:var(--flow-surface)}
 .flow-canvas [role=button]{cursor:pointer;pointer-events:none}
 .flow-decoration{fill:none;pointer-events:none}
 .flow-label{fill:var(--flow-text);paint-order:stroke;stroke:var(--flow-surface);stroke-width:3px;stroke-linejoin:round;font-weight:450}
