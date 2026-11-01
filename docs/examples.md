@@ -10,6 +10,7 @@
 | Stages | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare. |
 | World trade | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors. |
 | Currencies | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
+| Wide range | 200–500,000-unit transfers on one linear scale; inspect subpixel ribbons through their labels, keyboard navigation or external selection. |
 | Four-sided flow | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps. |
 | Fan-out / Top fan-out | Separate ordered turns below and above the main sequence. |
 | Fan-in | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total. |
@@ -68,6 +69,14 @@ Inspect either conversion link to see its actual input/output amounts and transf
 ![Explicit currency conversions with all widths valued in USD](../screenshots/38-directional-currencies.jpg)
 
 ![Actual transfer amounts and rate separated from reference valuation](../screenshots/39-directional-fx-tooltip.jpg)
+
+## Wide range
+
+The [Wide range fixture](../demo/wide-range.json) has 9 nodes and 8 links with amounts of **200, 2,000, 25,000 and 500,000 units**. Three sources and a top reserve release feed Distribution, which passes 527,200 units to three destinations and a bottom retained balance.
+
+All values use one linear scale: the 500,000-unit ribbon is exactly 2,500 times as thick as a 200-unit ribbon. Small ribbons can be thinner than a screen pixel. Their numeric labels, keyboard navigation and external selection remain available for inspection; selection adds an outline without altering the underlying quantitative width. Try the Trial supply link and the bottom Retained link.
+
+![Wide range from 200 to 500,000 units](../screenshots/40-wide-range.jpg)
 
 ## Fan-in
 

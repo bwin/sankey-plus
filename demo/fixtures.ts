@@ -6,6 +6,7 @@ import fanInData from './fan-in.json';
 import parallelData from './parallel-links.json';
 import tradeData from './trade.json';
 import currenciesData from './currencies.json';
+import wideRangeData from './wide-range.json';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
@@ -38,6 +39,7 @@ export const examples: {
         },
     },
     { key: 'currencies', name: 'Currencies', description: 'Actual input/output currencies, with every width valued in USD. GBP → COP preserves value; the USD → COP payout narrows by 2.5% against its reference rate. All rates are illustrative.', graph: currenciesData as SankeyGraph, plotHeight: 440 },
+    { key: 'wide-range', name: 'Wide range', description: 'Transfers from 200 to 500,000 units — a 2,500:1 range on one linear scale. Small flows stay proportionally thin; inspect their labels or use the keyboard to see details.', graph: wideRangeData as SankeyGraph, plotHeight: 440 },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },
     { key: 'fanin', name: 'Fan-in', description: 'Three unequal inputs share one bottom destination. Reversed arrival order keeps the ribbons separate; the total is derived as 1,000.', graph: fanInData as SankeyGraph },
