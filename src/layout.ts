@@ -662,7 +662,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             const first = flows[0], last = flows.at(-1)!;
             if (flows.some(f => Math.abs((f.start.y - first.start.y) - (f.end.y - first.end.y)) > .01 ||
                 f.route.path !== flowCurve(f.start, f.end, right, right, .48).path)) continue;
-            if (!flows.some((f, i) => flows.slice(i + 1).some(o => ribbonOverlap(f.route, f.width, o.route, o.width) > .05))) continue;
+            if (!flows.some((f, i) => flows.slice(i + 1).some(o => ribbonOverlap(f.route, f.width, o.route, o.width, .1) > .01))) continue;
             const others = links.filter(f => !flows.includes(f));
             // Anchor on the outside of the bend first, keeping the adjacent
             // departure unchanged; try the other side if an obstacle blocks it.

@@ -162,8 +162,8 @@ export function distanceToRoute(p: Point, route: Route) {
     return d;
 }
 /** Approximate overlapping ribbon length. Merely touching edges are allowed. */
-export function ribbonOverlap(a: Route, aWidth: number, b: Route, bWidth: number): number {
-    const clearance = (aWidth + bWidth) / 2 - .25;
+export function ribbonOverlap(a: Route, aWidth: number, b: Route, bWidth: number, tolerance = .25): number {
+    const clearance = (aWidth + bWidth) / 2 - tolerance;
     if (clearance <= 0 || !intersects(inflate(a.bounds, clearance), b.bounds))
         return 0;
     const covered = (route: Route, other: Route) => {
