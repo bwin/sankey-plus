@@ -642,6 +642,48 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             if (!worse && improvement > .05) f.route = candidate;
         }
     }
+    // Vertically translated stage curves squeeze touching strokes together on
+    // their sloping section. For parallel links with matching port spacing,
+    // follow a shared normal-offset wave instead. Leave detours and all other
+    // routes alone; accept the whole bundle only if its surroundings stay clear.
+    const right = { x: 1, y: 0 };
+    for (const group of portGroups.filter(g => !g.out && !g.node.edge)) {
+        for (const from of new Set(group.links.map(f => f.from))) {
+            if (byKey.get(from)!.edge) continue;
+            const flows = group.links.filter(f => f.from === from).sort((a, b) => a.start.y - b.start.y);
+            if (flows.length < 2) continue;
+            yield;
+            const first = flows[0], last = flows.at(-1)!;
+            if (flows.some(f => Math.abs((f.start.y - first.start.y) - (f.end.y - first.end.y)) > .01 ||
+                f.route.path !== flowCurve(f.start, f.end, right, right, .48).path)) continue;
+            if (!flows.some((f, i) => flows.slice(i + 1).some(o => ribbonOverlap(f.route, f.width, o.route, o.width) > .05))) continue;
+            const others = links.filter(f => !flows.includes(f));
+            // Anchor on the outside of the bend first, keeping the adjacent
+            // departure unchanged; try the other side if an obstacle blocks it.
+            const anchors = first.end.y >= first.start.y ? [last, first] : [first, last];
+            for (const anchor of anchors) {
+                yield;
+                const trial = flows.map(f => parallelCurve(anchor.start, anchor.end, right, right,
+                    f.start.y - anchor.start.y, f.end.y - anchor.end.y, -1, .48));
+                let safe = true;
+                for (let i = 0; i < flows.length && safe; i++) {
+                    yield;
+                    const f = flows[i], route = trial[i];
+                    if (route.points.some((p, j) => j > 0 && p.x < route.points[j - 1].x - .001) ||
+                        routeCollisions(route, obstacles(f), f.width / 2 + 2)) { safe = false; break; }
+                    for (let j = i + 1; j < flows.length; j++) {
+                        if (crossings(route, trial[j]) || ribbonOverlap(route, f.width, trial[j], flows[j].width) > .05) { safe = false; break; }
+                    }
+                    for (const other of others) {
+                        if (!safe) break;
+                        if (crossings(route, other.route) > crossings(f.route, other.route) ||
+                            ribbonOverlap(route, f.width, other.route, other.width) > ribbonOverlap(f.route, f.width, other.route, other.width) + .25) safe = false;
+                    }
+                }
+                if (safe) { flows.forEach((f, i) => { f.route = trial[i]; }); break; }
+            }
+        }
+    }
     const occupied: Rect[] = nodes.flatMap(n => [inflate(n, 3), ...(n.label.w ? [inflate(n.label, 3)] : [])]);
     for (const f of [...links].sort((a, b) => b.width - a.width || positions.get(a.key)! - positions.get(b.key)!)) {
         yield;

@@ -60,7 +60,7 @@ Treasury declares `totals: { EUR: 'auto', USD: 600, GBP: 'auto' }`. It shows 1,0
 
 Inspect a EUR or GBP link to see its native amount, USD equivalent, conversion rate and both endpoint descriptions. Inspect Treasury to see which balances are declared or derived. Turning custom presentation off still displays per-unit labels, combined totals and conversion equations using the library defaults. The top reserve releases USD; the bottom node retains three separate currency balances. [Unit semantics and the public interface](units.md).
 
-![Currency balances with USD-equivalent widths and separate retained-funds ribbons](../screenshots/36-separated-retained-funds.jpg)
+![Currency balances with USD-equivalent widths and separate parallel ribbons](../screenshots/37-separated-operations.jpg)
 
 ![Native amount, equivalent value and rate in the link tooltip](../screenshots/35-currency-tooltip.jpg)
 

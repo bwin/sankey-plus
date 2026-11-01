@@ -59,7 +59,7 @@ export function joinRoutes(routes: Route[]): Route {
     return describe(routes[0].path + routes.slice(1).map(route => route.path.slice(route.path.indexOf(' C'))).join(''),
         [routes[0].points[0], ...routes.flatMap(route => route.points.slice(1))]);
 }
-/** Follow a shared wave between perpendicular axis-aligned tangents. Offsets ease in/out so the
+/** Follow a shared wave between axis-aligned tangents. Equal offsets also support parallel tangents. Offsets ease in/out so the
  * endpoint tangents stay on the node faces. Fit the offset itself with cubics;
  * painting and collision checks therefore never use different centerlines. */
 export function parallelCurve(start: Point, end: Point, outgoing: Point, incoming: Point, fromOffset: number, toOffset: number, side: number, tension = BEND_HANDLE): Route {

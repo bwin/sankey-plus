@@ -277,6 +277,47 @@ test('currency retained-funds ribbons stay separate with full balance labels', (
     }
 });
 
+test('parallel Operations ribbons touch without overlapping along the wave', () => {
+    const graph = JSON.parse(readFileSync(new URL('../../demo/currencies.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(graph);
+    const labels = new Map(model.subjects.map(subject => {
+        const value = defaultLabel(presentation(model, subject, undefined, 'label'));
+        return [`${subject.kind}:${subject.key}`, typeof value === 'string' ? [value] : value] as const;
+    }));
+    for (const width of [360, 600, 960, 1107, 1440]) {
+        const scene = layoutGraph(model, { width, plotHeight: 440, labels });
+        const [eur, gbp] = scene.links.filter(f => f.to === 'operations');
+        assert.ok(separation(eur, gbp) > -.15, `${width}px Operations overlap: ${separation(eur, gbp)}`);
+        assert.equal(scene.diagnostics.crossings, 0);
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (const link of [eur, gbp]) {
+            assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutAmount) < 1e-8);
+            assert.deepEqual(link.route.points[0], link.start);
+            assert.deepEqual(link.route.points.at(-1), link.end);
+        }
+    }
+});
+
+for (const bend of ['up', 'down'] as const) test(`unequal parallel stage ribbons stay separate bending ${bend}`, () => {
+    const graph: SankeyGraph = {
+        stages: ['a', 'b'],
+        nodes: [
+            { key: 'space', title: 'Other', total: 120, placement: { stage: bend === 'up' ? 'a' : 'b' } },
+            { key: 'a', title: 'Source', placement: { stage: 'a' } },
+            { key: 'b', title: 'Destination', placement: { stage: 'b' } },
+        ],
+        links: [220, 187.5, 62.5].map((amount, i) => ({ key: `parallel-${i}`, from: 'a', to: 'b', amount })),
+    };
+    for (const width of [360, 960, 1440]) for (const reverse of [false, true]) {
+        const scene = layoutGraph(resolveGraph({ ...graph, links: reverse ? [...graph.links].reverse() : graph.links }), { width });
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++) {
+            assert.ok(separation(scene.links[i], scene.links[j]) > -.15, `${width}px/${reverse}: parallel ribbon overlap`);
+            assert.equal(crossings(scene.links[i].route, scene.links[j].route), 0);
+        }
+    }
+});
+
 test('skipping a stage uses the available gap without a vertical detour', () => {
     const graph = JSON.parse(readFileSync(new URL('../../demo/stages.json', import.meta.url), 'utf8')) as SankeyGraph;
     const model = resolveGraph(graph);

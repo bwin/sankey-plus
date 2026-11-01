@@ -22,6 +22,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Fixed
 
+- Parallel stage links use shared offset curves when needed to prevent their thick ribbons overlapping along a slope, while preserving widths, ports and existing obstacle detours.
 - Parallel links sharing a top/bottom node keep separate ribbons through the turn, including narrow layouts where a neighboring label requires a different shared curve.
 - Tooltips size and position within the visible viewport, excluding classic scrollbars, so narrow layouts do not clip their right column.
 
