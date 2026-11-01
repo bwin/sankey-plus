@@ -281,3 +281,32 @@ for (const edge of ['top', 'bottom'] as const) for (const reverse of [false, tru
         }
         assert.deepEqual(g, copy);
     });
+
+test('default formatting preserves integer precision without exposing IEEE-754 float noise', () => {
+    const g: SankeyGraph = {
+        defaultUnit: 'USD',
+        conversionRates: [{ from: 'EUR', to: 'USD', rate: 1.13 }],
+        stages: ['a', 'b', 'c'],
+        nodes: [
+            { key: 'a', title: 'A', total: 1234567, placement: { stage: 'a' } },
+            { key: 'b', title: 'B', placement: { stage: 'b' } },
+            { key: 'c', title: 'C', placement: { stage: 'c' } },
+        ],
+        links: [
+            { key: 'ab1', from: 'a', to: 'b', amount: .1, inputUnit: 'USD', outputUnit: 'USD' },
+            { key: 'ab2', from: 'a', to: 'b', amount: .2, inputUnit: 'USD', outputUnit: 'USD' },
+            { key: 'bc', from: 'b', to: 'c', amount: 100, inputUnit: 'EUR', outputUnit: 'EUR' },
+        ],
+    };
+    const model = resolveGraph(g), fmt = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 15 });
+    const nodeA = presentation(model, { kind: 'node', key: 'a' }, undefined, 'tooltip');
+    const nodeB = presentation(model, { kind: 'node', key: 'b' }, undefined, 'tooltip');
+    const linkBC = presentation(model, { kind: 'link', key: 'bc' }, undefined, 'tooltip');
+    if (nodeA.kind !== 'node' || nodeB.kind !== 'node' || linkBC.kind !== 'link') throw new Error('unexpected presentation kind');
+    const expectedInt = `${fmt.format(1234567)} USD`;
+    assert.equal(nodeA.text.totals[0].total, expectedInt);
+    assert.ok(subjectName(nodeA).includes(expectedInt));
+    assert.deepEqual(defaultLabel(presentation(model, { kind: 'node', key: 'a' }, undefined, 'label')), ['A', expectedInt]);
+    assert.equal(nodeB.text.totals[0].incoming, `${fmt.format(.3)} USD`);
+    assert.equal(linkBC.text.convertedAmount, `${fmt.format(113)} USD`);
+});

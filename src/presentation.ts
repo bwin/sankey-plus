@@ -1,6 +1,6 @@
 import type { SankeyAmountContext, SankeyDiagramProps, SankeySubject, SankeyPresentation, SankeyUnitTotals } from './types.js';
 import type { ResolvedGraph } from './model.js';
-const numeric = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 6 });
+const numeric = new Intl.NumberFormat(undefined, { maximumSignificantDigits: 15 });
 export function presentation<I, T>(model: ResolvedGraph<I, T>, subject: SankeySubject, format: SankeyDiagramProps<I, T>['formatAmount'], surface: SankeyAmountContext['surface']): SankeyPresentation<I, T> {
     const facts = subject.kind === 'node' ? model.nodes.get(subject.key)! : model.links.get(subject.key)!;
     if (facts.kind === 'node') {
