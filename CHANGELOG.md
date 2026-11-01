@@ -4,6 +4,40 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-01
+
+### Breaking changes
+
+- TypeScript consumers with exhaustive checks must handle the new `mixed` node total source, the `outputAmount` link formatter field, and additional unit-related `SankeyIssueCode` values. Link formatters can receive `outputAmount` even for unitless links. Existing unitless graph inputs remain supported.
+
+### Added
+
+- Optional `minLinkWidth` in CSS pixels, with matching port, bar and routing space. Defaults to proportional widths; exact amounts remain unchanged.
+- Wide range example with 200–500,000-unit transfers, a top reserve release, a bottom retained flow and an optional 4px visual minimum.
+- Optional graph default units, separate declared/automatic node balances, explicit link input/output units and per-transfer rates. Graph reference rates value both ribbon endpoints and node totals in one common unit; unequal endpoint values taper. Labels and tooltips distinguish actual amounts and transfer rates from reference valuations.
+- Currencies example with EUR/USD/GBP/COP balances, partial declarations, a reserve release and retained funds. Actual conversions demonstrate equal-value ribbons and a 2.5% taper; default and custom presentation distinguish transfer rates from reference valuation.
+- World trade example with exporting/importing countries, top reserve releases, bottom inventory outflows, balanced totals per good, commodity colors and illustrative USD-billion formatting.
+
+### Changed
+
+- Node labels support multiple lines and reserve room for all unit balances; custom label arrays are no longer capped at two lines.
+- Try direct curved approaches before obstacle detours, so stage-skipping links use available gaps without unnecessary excursions.
+- Spread fan curves gradually along both axes and reserve more arrival space in wrapped rows. Try broad edge curves before elbow-like detours while preserving ribbon separation and label clearance.
+
+- Node/link inspection fades paint and labels over 120 ms, respecting reduced motion. Tooltips and selection/focus outlines remain instant.
+- Demo link tooltips use aligned two-column rows: transfer details and amount above source and destination details, without the click-to-select hint.
+- All links use smooth cubic curves, including top/bottom connections, wrapped fans and obstacle detours. Crossing, ribbon-overlap, hit-testing and label calculations follow adaptively sampled curves; convergence checks use the actual approach path.
+- Default amounts retain up to 15 significant digits, and the stylesheet export includes a declaration for strict TypeScript consumers.
+
+### Fixed
+
+- Escape dismisses focused tooltips and returns keyboard focus to the inspected node/link without reopening details or changing selection.
+- Scrolling inside an oversized tooltip keeps pointer-opened details visible; page and chart scrolling retain their normal dismissal/repositioning behavior.
+- Keyboard focus remains visible during pointer inspection; inspected hidden labels are clickable, and native pinch zoom works over the chart.
+- Parallel stage links use shared offset curves when needed to prevent their thick ribbons overlapping along a slope, while preserving widths, ports and existing obstacle detours.
+- Parallel links sharing a top/bottom node keep separate ribbons through the turn, including narrow layouts where a neighboring label requires a different shared curve.
+- Tooltips size and position within the visible viewport, excluding classic scrollbars, so narrow layouts do not clip their right column.
+
 ## [1.1.0] - 2026-10-31
 
 ### Added
@@ -34,6 +68,7 @@ The public component props and exported TypeScript API remain compatible with 1.
 - Custom labels/tooltips, one-hop inspection, controlled selection, click callbacks and keyboard navigation.
 - Responsive edge wrapping, routing/collision diagnostics, React 18.2+ peer support, MIT license and author metadata for Benjamin Winkler | bwin.
 
-[Unreleased]: https://github.com/bwin/sankey-plus/compare/v1.1.0...dev
+[Unreleased]: https://github.com/bwin/sankey-plus/compare/v2.0.0...dev
+[2.0.0]: https://github.com/bwin/sankey-plus/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/bwin/sankey-plus/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bwin/sankey-plus/tree/v1.0.0

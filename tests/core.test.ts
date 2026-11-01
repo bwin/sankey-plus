@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
+import { defaultLabel, presentation } from '../src/presentation.js';
 import { crossings, distanceToRoute, distanceToSegment, inflate, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode } from '../src/types.js';
 import { stressGraph } from '../fixtures/stress.js';
@@ -47,6 +48,24 @@ test('validation catches bad totals, identities, numbers, placement and backward
     error({ ...base, links: [{ ...base.links[0], amount: NaN }] }, 'invalid-number');
     error({ ...base, nodes: [{ ...base.nodes[0], placement: { stage: 'missing' } }, base.nodes[1]] }, 'unknown-stage');
     error({ ...base, links: [{ ...base.links[0], from: 'b', to: 'a' }] }, 'backward-stage-link');
+});
+test('layout rejects dimensions beyond finite SVG precision while preserving valid near-limit layouts', () => {
+    const model = resolveGraph(base);
+    for (const options of [
+        { width: 1e308 },
+        { width: 960, plotHeight: 1e308 },
+        { width: 960, minLinkWidth: 1e308 },
+        { width: 960, minLinkWidth: 1e7 },
+        { width: 960, lineHeight: NaN },
+    ])
+        assert.throws(() => layoutGraph(model, options), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === 'invalid-number' && issue.message.includes('10000000')));
+    const edgeFan = resolveGraph({
+        stages: ['a'],
+        nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' } }, { key: 'e', title: 'E', placement: { edge: 'top' } }],
+        links: [{ key: 'l1', from: 'a', to: 'e', amount: 1 }, { key: 'l2', from: 'a', to: 'e', amount: 1 }],
+    });
+    assert.throws(() => layoutGraph(edgeFan, { width: 960, minLinkWidth: 3_000_000 }), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === 'invalid-number' && issue.message.includes('minLinkWidth')));
+    assert.equal(layoutGraph(resolveGraph(full), { width: 9_999_950 }).width, 9_999_950);
 });
 test('cycles through edge nodes and incompatible relays fail before layout', () => {
     const graph: SankeyGraph = { stages: ['a', 'b'], nodes: [...base.nodes, { key: 'edge', title: 'Relay', placement: { edge: 'top' } }], links: [...base.links, { key: 'be', from: 'b', to: 'edge', amount: 100 }, { key: 'ea', from: 'edge', to: 'a', amount: 100 }] };
@@ -93,6 +112,7 @@ for (const width of [1440, 960, 600, 360])
         }
         for (const f of scene.links) {
             assert.ok(!/NaN|Infinity/.test(f.route.path));
+            assert.deepEqual([...new Set(f.route.path.match(/[A-Za-z]/g))].sort(), ['C', 'M'], 'one cubic rendering style, including obstacle detours');
             const a = nodes.get(f.from)!, b = nodes.get(f.to)!;
             if (a.edge)
                 assert.equal(f.start.y, a.edge === 'top' ? a.y + a.h : a.y);
@@ -150,7 +170,9 @@ test('bottom sources leave upward and top sources leave downward', () => {
         const graph: SankeyGraph = { stages: ['a'], nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' } }, { key: 'edge', title: 'Edge', placement: { edge } }], links: [{ key: 'flow', from: 'edge', to: 'a', amount: 100 }] };
         const f = layoutGraph(resolveGraph(graph), { width: 600 }).links[0];
         const next = f.route.points.find(p => Math.hypot(p.x - f.start.x, p.y - f.start.y) > .1)!;
-        assert.equal(next.x, f.start.x);
+        const control = f.route.path.split('C')[1].trim().split(/\s+/).map(Number);
+        assert.ok(Math.abs(control[0] - f.start.x) < .001, 'the cubic leaves perpendicular to the edge bar');
+        assert.ok(edge === 'top' ? control[1] > f.start.y : control[1] < f.start.y);
         assert.ok(edge === 'top' ? next.y > f.start.y : next.y < f.start.y);
     }
 });
@@ -168,19 +190,23 @@ test('clicking a node label selects that node instead of a ribbon underneath', (
 });
 
 test('visible link labels are clickable beyond thin strokes; hidden labels are not', () => {
-    const graph = { ...base, links: [{ ...base.links[0], amount: 1 }] };
+    const graph = { ...base, links: [{ ...base.links[0], amount: 1 }, { key: 'ab2', from: 'a', to: 'b', amount: 1 }] };
     const scene = layoutGraph(resolveGraph(graph), { width: 900 });
-    const link = scene.links[0], label = link.label;
+    const link = scene.links[0], other = scene.links[1], label = link.label;
     const point = { x: label.x + label.w / 2, y: label.y + .5 };
     assert.ok(distanceToRoute(point, link.route) > 5, 'point is outside the thin ribbon hit corridor');
     assert.deepEqual(hitTest(scene, point), { kind: 'link', key: link.key });
     link.labelHidden = true;
     assert.equal(hitTest(scene, point), null);
+    other.label = { ...label };
+    other.labelHidden = false;
+    assert.deepEqual(hitTest(scene, point), { kind: 'link', key: other.key });
+    assert.deepEqual(hitTest(scene, point, link.key), { kind: 'link', key: link.key }, 'the inspected link label is painted and wins over faded link labels');
 });
-test('text is measured, clipped to two lines and remains inside the canvas', () => {
+test('text is measured, keeps all lines and truncates horizontally', () => {
     const labels = new Map([['node:a', ['This is a particularly long title', 'Second line', 'Third line']], ['link:ab', []]]);
     const scene = layoutGraph(resolveGraph(base), { width: 360, labels, measureText: s => s.length * 9 });
-    assert.equal(scene.nodes[0].label.lines.length, 2);
+    assert.equal(scene.nodes[0].label.lines.length, 3);
     assert.ok(scene.nodes[0].label.lines[0].endsWith('…'));
     assert.equal(scene.links[0].label.lines.length, 0);
 });
@@ -208,12 +234,134 @@ for (const edge of ['top', 'bottom'] as const)
             assert.equal(scene.diagnostics.obstacleCollisions, 0);
         }
     });
+test('three unequal fan-in links keep broad bends clear of sibling labels', () => {
+    const initial = JSON.parse(readFileSync(new URL('../../demo/fan-in.json', import.meta.url), 'utf8')) as SankeyGraph;
+    for (const edge of ['top', 'bottom'] as const) for (const width of [360, 960, 1126, 1440]) {
+        const graph = { ...initial, nodes: initial.nodes.map(n => n.placement.edge ? { ...n, placement: { edge } } : n) };
+        const model = resolveGraph(graph);
+        const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total.toLocaleString('en-US')} units total`]]));
+        const scene = layoutGraph(model, { width, labels });
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        assert.equal(scene.diagnostics.crossings, 0);
+        for (const link of scene.links) {
+            const middle = link.route.points.filter(p => {
+                const progress = (p.y - link.start.y) / (link.end.y - link.start.y);
+                return progress > .4 && progress < .6;
+            });
+            assert.ok(middle.some(p => link.end.x - p.x > (link.end.x - link.start.x) * .01), `${edge}/${width}/${link.key}: the bend spans the route instead of finishing in an early elbow`);
+        }
+        for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++)
+            assert.ok(separation(scene.links[i], scene.links[j]) > -.6, 'direct curve repair must retain fan separation');
+    }
+});
+
+for (const edge of ['top', 'bottom'] as const) for (const incoming of [false, true])
+    test(`parallel ${edge} ${incoming ? 'inflows' : 'outflows'} stay separate through the bend`, () => {
+        const graph: SankeyGraph = {
+            defaultUnit: 'USD', conversionRates: [{ from: 'EUR', to: 'USD', rate: 1.1 }, { from: 'GBP', to: 'USD', rate: 1.25 }],
+            stages: ['main'], nodes: [{ key: 'main', title: 'Main', placement: { stage: 'main' } }, { key: 'edge', title: 'Edge', placement: { edge } }],
+            links: [{ key: 'eur', amount: 100, unit: 'EUR' }, { key: 'usd', amount: 200, unit: 'USD' }, { key: 'gbp', amount: 50, unit: 'GBP' }].map(({ unit, ...link }) => ({ ...link, inputUnit: unit, outputUnit: unit, from: incoming ? 'edge' : 'main', to: incoming ? 'main' : 'edge' })),
+        };
+        for (const width of [360, 960, 1107, 1440]) for (const reverseOrder of [false, true]) {
+            const input = { ...graph, links: reverseOrder ? [...graph.links].reverse() : graph.links };
+            const model = resolveGraph(input), scene = layoutGraph(model, { width });
+            assert.equal(scene.diagnostics.obstacleCollisions, 0);
+            for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++) {
+                const a = scene.links[i], b = scene.links[j];
+                assert.equal(crossings(a.route, b.route), 0, `${width}px/${reverseOrder}: ${a.key}/${b.key}`);
+                assert.ok(separation(a, b) > -.6, `${width}px/${reverseOrder}: ${a.key}/${b.key} overlap ${separation(a, b)}`);
+            }
+            const edgeNode = scene.nodes.find(n => n.edge)!;
+            for (const link of scene.links) {
+                const atEdge = incoming ? link.start : link.end;
+                assert.equal(atEdge.y, edge === 'top' ? edgeNode.y + edgeNode.h : edgeNode.y);
+                assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutInputAmount) < 1e-8);
+            }
+        }
+    });
+
+test('currency retained-funds ribbons stay separate with full balance labels', () => {
+    const graph = JSON.parse(readFileSync(new URL('../../demo/currencies.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(graph);
+    const labels = new Map(model.subjects.map(subject => {
+        const value = defaultLabel(presentation(model, subject, undefined, 'label'));
+        return [`${subject.kind}:${subject.key}`, typeof value === 'string' ? [value] : value] as const;
+    }));
+    for (const width of [360, 960, 1107, 1440]) {
+        const scene = layoutGraph(model, { width, plotHeight: 440, labels });
+        const retained = scene.links.filter(f => f.to === 'retained');
+        assert.equal(retained.length, 3);
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (let i = 0; i < retained.length; i++) for (let j = i + 1; j < retained.length; j++) {
+            assert.equal(crossings(retained[i].route, retained[j].route), 0, `${width}px retained crossover`);
+            assert.ok(separation(retained[i], retained[j]) > -.6, `${width}px retained ribbon overlap`);
+        }
+    }
+});
+
+test('parallel Operations ribbons touch without overlapping along the wave', () => {
+    const graph = JSON.parse(readFileSync(new URL('../../demo/currencies.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(graph);
+    const labels = new Map(model.subjects.map(subject => {
+        const value = defaultLabel(presentation(model, subject, undefined, 'label'));
+        return [`${subject.kind}:${subject.key}`, typeof value === 'string' ? [value] : value] as const;
+    }));
+    for (const width of [360, 600, 960, 1107, 1440]) {
+        const scene = layoutGraph(model, { width, plotHeight: 440, labels });
+        const [eur, gbp] = scene.links.filter(f => f.to === 'operations');
+        assert.ok(separation(eur, gbp) > -.15, `${width}px Operations overlap: ${separation(eur, gbp)}`);
+        assert.equal(scene.diagnostics.crossings, 0);
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (const link of [eur, gbp]) {
+            assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutInputAmount) < 1e-8);
+            assert.deepEqual(link.route.points[0], link.start);
+            assert.deepEqual(link.route.points.at(-1), link.end);
+        }
+    }
+});
+
+for (const bend of ['up', 'down'] as const) test(`unequal parallel stage ribbons stay separate bending ${bend}`, () => {
+    const graph: SankeyGraph = {
+        stages: ['a', 'b'],
+        nodes: [
+            { key: 'space', title: 'Other', total: 120, placement: { stage: bend === 'up' ? 'a' : 'b' } },
+            { key: 'a', title: 'Source', placement: { stage: 'a' } },
+            { key: 'b', title: 'Destination', placement: { stage: 'b' } },
+        ],
+        links: [220, 187.5, 62.5].map((amount, i) => ({ key: `parallel-${i}`, from: 'a', to: 'b', amount })),
+    };
+    for (const width of [360, 960, 1440]) for (const reverse of [false, true]) {
+        const scene = layoutGraph(resolveGraph({ ...graph, links: reverse ? [...graph.links].reverse() : graph.links }), { width });
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++) {
+            assert.ok(separation(scene.links[i], scene.links[j]) > -.15, `${width}px/${reverse}: parallel ribbon overlap`);
+            assert.equal(crossings(scene.links[i].route, scene.links[j].route), 0);
+        }
+    }
+});
+
+test('skipping a stage uses the available gap without a vertical detour', () => {
+    const graph = JSON.parse(readFileSync(new URL('../../demo/stages.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(graph);
+    const labels = new Map(graph.nodes.map(n => [`node:${n.key}`, [n.title, `${model.nodes.get(n.key)!.total} units total`]]));
+    for (const width of [960, 1126, 1440]) {
+        const scene = layoutGraph(model, { width, labels }), link = scene.links.find(f => f.key === 'bypass')!;
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        assert.equal((link.route.path.match(/ C/g) ?? []).length, 1, 'one broad curve fits between the middle-stage bars');
+        for (const point of link.route.points) {
+            assert.ok(point.y >= Math.min(link.start.y, link.end.y) - .01);
+            assert.ok(point.y <= Math.max(link.start.y, link.end.y) + .01, 'no excursion below the destination');
+        }
+    }
+});
+
 test('edge-to-edge links have finite paths and inward endpoint faces', () => {
     for (const from of ['top', 'bottom'] as const)
         for (const to of ['top', 'bottom'] as const) {
             const graph: SankeyGraph = { stages: [], nodes: [{ key: 'a', title: 'A', placement: { edge: from } }, { key: 'b', title: 'B', placement: { edge: to } }], links: [{ key: 'ab', from: 'a', to: 'b', amount: 100 }] };
             const scene = layoutGraph(resolveGraph(graph), { width: 600 }), f = scene.links[0];
             assert.ok(!/NaN|Infinity/.test(f.route.path));
+            assert.deepEqual([...new Set(f.route.path.match(/[A-Za-z]/g))].sort(), ['C', 'M'], 'one cubic rendering style, including obstacle detours');
             assert.ok(f.route.length > 0);
             const after = f.route.points.find(p => Math.hypot(p.x - f.start.x, p.y - f.start.y) > .1)!;
             const before = [...f.route.points].reverse().find(p => Math.hypot(p.x - f.end.x, p.y - f.end.y) > .1)!;
@@ -342,7 +490,7 @@ for (const edge of ['top', 'bottom'] as const) test(`${edge} and side inputs con
     }
 });
 
-for (const edge of ['top', 'bottom'] as const) test(`${edge} wrapped bundles keep a 4px gap through the turn`, () => {
+for (const edge of ['top', 'bottom'] as const) test(`${edge} wrapped waves retain corridor gaps, touching ports and smooth joins`, () => {
     for (const unequal of [false, true]) for (const width of [600, 960, 1126, 1440]) {
         const initial = fan(edge, 12);
         const graph: SankeyGraph = { ...initial, links: initial.links.map((f, i) => ({ ...f, amount: unequal ? [40, 100, 180, 70][i % 4] : 100 })) };
@@ -351,26 +499,25 @@ for (const edge of ['top', 'bottom'] as const) test(`${edge} wrapped bundles kee
         const scene = layoutGraph(model, { width, labels });
         const nodes = scene.nodes.filter(n => n.edge && n.row > 0).sort((a, b) => a.corridor! - b.corridor!);
         const flows = nodes.map(n => scene.links.find(f => f.to === n.key)!);
-        const lanes = flows.map((f, i) => {
-            const segments = f.route.points.slice(1).map((end, j) => ({ start: f.route.points[j], end }));
-            const vertical = segments.filter(s => Math.abs(s.start.x - nodes[i].corridor!) < 1e-5 && Math.abs(s.end.x - s.start.x) < 1e-5 && Math.abs(s.end.y - s.start.y) > 1);
-            const horizontal = segments.filter(s => Math.abs(s.start.y - f.start.y) > 1 && Math.abs(s.end.y - s.start.y) < 1e-5 && Math.abs(s.end.x - s.start.x) > 1);
-            assert.ok(vertical.length && horizontal.length, 'both legs of a wrapped route must remain visible');
-            return { verticalEnd: vertical.at(-1)!.end, y: horizontal[0].start.y };
-        });
+        for (const f of flows) {
+            assert.deepEqual([...new Set(f.route.path.match(/[A-Za-z]/g))].sort(), ['C', 'M']);
+            const curves = f.route.path.split(' C').slice(1).map(part => part.trim().split(/\s+/).map(Number));
+            for (let i = 1; i < curves.length; i++) {
+                const a = curves[i - 1], b = curves[i];
+                const incoming = { x: a[4] - a[2], y: a[5] - a[3] }, outgoing = { x: b[0] - a[4], y: b[1] - a[5] };
+                const lengths = Math.hypot(incoming.x, incoming.y) * Math.hypot(outgoing.x, outgoing.y);
+                if (lengths < .001) continue;
+                assert.ok(Math.abs(incoming.x * outgoing.y - incoming.y * outgoing.x) / lengths < .02, 'cubic joins have matching tangent directions');
+                assert.ok(incoming.x * outgoing.x + incoming.y * outgoing.y > 0, 'no cusp at a join');
+            }
+            const envelope = ribbonBounds(f.route, f.width);
+            assert.ok(envelope.x >= -.15 && envelope.y >= -.15 && envelope.x + envelope.w <= scene.width + .15 && envelope.y + envelope.h <= scene.height + .15);
+        }
         for (let i = 1; i < flows.length; i++) {
             const a = flows[i - 1], b = flows[i], halfWidths = (a.width + b.width) / 2;
-            assert.ok(Math.abs(nodes[i].corridor! - nodes[i - 1].corridor! - halfWidths - 4) < .01, 'vertical gap');
+            assert.ok(Math.abs(nodes[i].corridor! - nodes[i - 1].corridor! - halfWidths - 4) < .01, 'reserved corridor gap');
             assert.ok(Math.abs(Math.abs(a.start.y - b.start.y) - halfWidths) < .01, 'ports touch to preserve the quantitative total');
-            if (nodes[i].row !== nodes[i - 1].row) continue;
-            assert.ok(Math.abs(Math.abs(lanes[i].y - lanes[i - 1].y) - halfWidths - 4) < .01, 'horizontal gap');
-            const direction = edge === 'bottom' ? 1 : -1;
-            const bend = a.route.points.filter(p => p.x >= nodes[i - 1].corridor! && direction * (p.y - lanes[i - 1].verticalEnd.y) > 1 && direction * (lanes[i - 1].y - p.y) > 1);
-            assert.ok(bend.length > 8, 'sample the turn, not just its straight ends');
-            for (const p of bend) {
-                const gap = distanceToRoute(p, b.route) - halfWidths;
-                assert.ok(Math.abs(gap - 4) < .25, `${width}px ${a.key}/${b.key}: turn gap ${gap}`);
-            }
+            assert.ok(separation(a, b) > -.6, 'broad waves preserve ribbon separation');
         }
     }
 });

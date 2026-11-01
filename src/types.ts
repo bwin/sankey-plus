@@ -16,11 +16,39 @@ export type SankeyPlacement = {
     readonly edge: 'top' | 'bottom';
     readonly stage?: never;
 };
+/** One unit of `from` equals `rate` units of `to`. Rates must be positive. */
+export interface SankeyConversionRate {
+    readonly from: string;
+    readonly to: string;
+    readonly rate: number;
+}
+/** Separate balances, not alternative representations of the same quantity. */
+export type SankeyTotals = Readonly<Record<string, number | 'auto'>>;
+export interface SankeyUnitTotals {
+    /** Undefined only for a legacy unitless graph. */
+    readonly unit?: string;
+    readonly total: number;
+    readonly incoming: number;
+    readonly outgoing: number;
+    readonly totalSource: 'declared' | 'derived' | 'mixed';
+}
+export interface SankeyFormattedTotals {
+    readonly unit?: string;
+    readonly total: string;
+    readonly incoming: string;
+    readonly outgoing: string;
+}
+export interface SankeyQuantity {
+    readonly amount: number;
+    readonly unit?: string;
+}
 export interface SankeyNode<Meta = unknown> {
     readonly key: string;
     readonly title: string;
     readonly placement: SankeyPlacement;
     readonly total?: number;
+    /** Per-unit totals; omitted units and 'auto' derive from incident links. Cannot combine with total. */
+    readonly totals?: SankeyTotals;
     readonly color?: string;
     readonly meta?: Meta;
 }
@@ -28,11 +56,20 @@ export interface SankeyLink<Meta = unknown> {
     readonly key: string;
     readonly from: string;
     readonly to: string;
+    /** Amount leaving the source, in inputUnit. */
     readonly amount: number;
+    /** Supply both units for a named-unit transfer; omit both for unitless data. */
+    readonly inputUnit?: string;
+    readonly outputUnit?: string;
+    /** Output units delivered per input unit. Required when the units differ; otherwise defaults to 1. */
+    readonly conversionRate?: number;
     readonly color?: string;
     readonly meta?: Meta;
 }
 export interface SankeyGraph<NodeMeta = unknown, LinkMeta = unknown> {
+    readonly defaultUnit?: string;
+    /** Reference valuation rates for widths and combined node totals. Independent of each link's transfer rate. */
+    readonly conversionRates?: readonly SankeyConversionRate[];
     readonly stages: readonly string[];
     readonly nodes: readonly SankeyNode<NodeMeta>[];
     readonly links: readonly SankeyLink<LinkMeta>[];
@@ -43,7 +80,12 @@ export interface SankeyNodeFacts<NodeMeta = unknown, LinkMeta = unknown> {
     readonly total: number;
     readonly incoming: number;
     readonly outgoing: number;
-    readonly totalSource: 'declared' | 'derived';
+    readonly totalSource: 'declared' | 'derived' | 'mixed';
+    /** Unit used by the scalar total/incoming/outgoing and layout. */
+    readonly unit?: string;
+    readonly totals: readonly SankeyUnitTotals[];
+    /** Combined balances in graph.defaultUnit; absent when no default was supplied. */
+    readonly converted?: SankeyUnitTotals;
     readonly incomingLinks: readonly SankeyLink<LinkMeta>[];
     readonly outgoingLinks: readonly SankeyLink<LinkMeta>[];
 }
@@ -52,23 +94,41 @@ export interface SankeyLinkFacts<NodeMeta = unknown, LinkMeta = unknown> {
     readonly link: SankeyLink<LinkMeta>;
     readonly fromNode: SankeyNode<NodeMeta>;
     readonly toNode: SankeyNode<NodeMeta>;
+    readonly input: SankeyQuantity;
+    readonly output: SankeyQuantity;
+    readonly conversionRate: number;
+    /** Each endpoint valued in the graph's common layout unit. */
+    readonly layoutInputAmount: number;
+    readonly layoutOutputAmount: number;
+    readonly converted?: { readonly unit: string; readonly inputAmount: number; readonly outputAmount: number };
+    /** Graph reference rates used to value the endpoints; not the actual transfer rate. */
+    readonly referenceRates: readonly SankeyConversionRate[];
 }
 export type SankeyAmountContext<I = unknown, T = unknown> = ((SankeyNodeFacts<I, T> & {
     readonly field: 'total' | 'incoming' | 'outgoing';
 }) | (SankeyLinkFacts<I, T> & {
-    readonly field: 'amount';
+    readonly field: 'amount' | 'outputAmount';
 })) & {
     readonly surface: 'label' | 'tooltip' | 'accessible';
+    readonly unit?: string;
+    readonly isConverted: boolean;
 };
 export type SankeyPresentation<I = unknown, T = unknown> = (SankeyNodeFacts<I, T> & {
     readonly text: Readonly<{
         total: string;
         incoming: string;
         outgoing: string;
+        totals: readonly SankeyFormattedTotals[];
+        converted?: SankeyFormattedTotals;
     }>;
 }) | (SankeyLinkFacts<I, T> & {
     readonly text: Readonly<{
         amount: string;
+        outputAmount: string;
+        convertedAmount?: string;
+        convertedOutputAmount?: string;
+        conversionRate?: string;
+        referenceRates: readonly string[];
     }>;
 });
 export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
@@ -83,13 +143,15 @@ export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
     readonly className?: string;
     /** Preferred height of the central stage region, not the entire component. Default: 336 CSS px. */
     readonly plotHeight?: number;
+    /** Minimum displayed ribbon thickness in CSS px. Default: 0 (proportional). Enlarges ports/bars as needed; values stay unchanged. */
+    readonly minLinkWidth?: number;
     readonly formatAmount?: (value: number, context: SankeyAmountContext<NodeMeta, LinkMeta>) => string;
-    /** Plain text, up to two lines, or null to suppress this visible label. */
+    /** Plain text, one string per line, or null to suppress this visible label. */
     readonly getLabel?: (context: SankeyPresentation<NodeMeta, LinkMeta>) => string | readonly string[] | null;
     /** Non-interactive content; placement, sizing, dismissal and accessibility are owned by the component. */
     readonly renderTooltip?: (context: SankeyPresentation<NodeMeta, LinkMeta>) => ReactNode;
 }
-export type SankeyIssueCode = 'invalid-key' | 'invalid-title' | 'duplicate-key' | 'unknown-endpoint' | 'unknown-stage' | 'invalid-placement' | 'invalid-number' | 'total-too-small' | 'backward-stage-link' | 'cycle' | 'incompatible-placement';
+export type SankeyIssueCode = 'invalid-key' | 'invalid-title' | 'duplicate-key' | 'unknown-endpoint' | 'unknown-stage' | 'invalid-placement' | 'invalid-number' | 'total-too-small' | 'backward-stage-link' | 'cycle' | 'incompatible-placement' | 'invalid-unit' | 'invalid-rate' | 'conflicting-rate' | 'missing-conversion' | 'incompatible-totals';
 export interface SankeyIssue {
     readonly code: SankeyIssueCode;
     readonly message: string;

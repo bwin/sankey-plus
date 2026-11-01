@@ -1,9 +1,12 @@
-import type { SankeyGraph } from '../src/index.js';
+import type { SankeyGraph, SankeyDiagramProps } from '../src/index.js';
 import full from './feature-demo.json';
 import distributionData from './distribution.json';
 import stagesData from './stages.json';
 import fanInData from './fan-in.json';
 import parallelData from './parallel-links.json';
+import tradeData from './trade.json';
+import currenciesData from './currencies.json';
+import wideRangeData from './wide-range.json';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
@@ -16,9 +19,28 @@ export const examples: {
     name: string;
     description: string;
     graph: SankeyGraph;
+    formatAmount?: (value: number, context?: { unit?: string }) => string;
+    getLabel?: SankeyDiagramProps['getLabel'];
+    plotHeight?: number;
+    minLinkWidth?: number;
 }[] = [
     { key: 'distribution', name: 'Distribution', description: 'Two inputs, shared processing and partial totals, with a supplement above and deferred flow below.', graph: distribution },
     { key: 'stages', name: 'Stages', description: 'Collect → Prepare → Deliver. Node order keeps Prepare B above Prepare A; the gold 100-unit link skips Prepare without moving either column.', graph: stagesData as SankeyGraph },
+    {
+        key: 'trade', name: 'World trade',
+        description: 'Countries trade four goods, with reserves released above and stock held for next year below. Illustrative annual values in USD billions; not actual trade statistics.',
+        graph: tradeData as SankeyGraph, plotHeight: 420,
+        formatAmount: value => `$${value.toLocaleString('en-US')} bn`,
+        getLabel: view => {
+            if (view.kind === 'link') return view.text.amount;
+            const { stage, edge } = view.node.placement;
+            const role = edge === 'top' ? 'released' : edge === 'bottom' ? 'stored'
+                : stage === 'global-goods' ? 'available' : stage === 'exporters' ? 'exports' : 'imports';
+            return [view.node.title, `${view.text.total} ${role}`];
+        },
+    },
+    { key: 'currencies', name: 'Currencies', description: 'Actual input/output currencies, with every width valued in USD. GBP → COP preserves value; the USD → COP payout narrows by 2.5% against its reference rate. All rates are illustrative.', graph: currenciesData as SankeyGraph, plotHeight: 440 },
+    { key: 'wide-range', name: 'Wide range', description: 'Transfers from 200 to 500,000 units. Small flows have a minimum visible thickness of 4px, so their widths are not strictly proportional. Labels and tooltips show the exact amounts.', graph: wideRangeData as SankeyGraph, plotHeight: 440, minLinkWidth: 4 },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },
     { key: 'fanin', name: 'Fan-in', description: 'Three unequal inputs share one bottom destination. Reversed arrival order keeps the ribbons separate; the total is derived as 1,000.', graph: fanInData as SankeyGraph },
