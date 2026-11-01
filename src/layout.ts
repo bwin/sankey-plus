@@ -1,7 +1,7 @@
 import type { ResolvedGraph } from './model.js';
 import { nodeColor } from './model.js';
 import { SankeyInputError } from './types.js';
-import { avoidObstacles, crossings as countCrossings, cubic, distanceToRoute, flowCurve, inflate, intersects, joinRoutes, parallelCurve, pointAt, ribbonOverlap, smoothPolyline, routeCollisions, type Point, type Rect, type Route } from './paths.js';
+import { avoidObstacles, crossings as countCrossings, cubic, distanceToRoute, flowCurve, inflate, intersects, insidePolygon, joinRoutes, parallelCurve, pointAt, ribbonOverlap, smoothPolyline, routeCollisions, taperedRibbon, type Point, type Rect, type Route } from './paths.js';
 export interface TextBox extends Rect {
     lines: string[];
     anchor: 'start' | 'middle' | 'end';
@@ -30,6 +30,9 @@ export interface LinkGeometry {
     amount: number;
     color: string;
     width: number;
+    startWidth: number;
+    endWidth: number;
+    ribbon?: ReturnType<typeof taperedRibbon>;
     start: Point;
     end: Point;
     route: Route;
@@ -131,7 +134,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     };
     const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
-    const amount = (link: { key: string }) => model.links.get(link.key)!.layoutAmount;
+    const amount = (link: { key: string }) => { const f = model.links.get(link.key)!; return Math.max(f.layoutInputAmount, f.layoutOutputAmount); };
     const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
     const stages = model.stages.map(s => [...model.nodes.values()].filter(n => n.node.placement.stage === s));
     const edges = [...model.nodes.values()].filter(n => n.node.placement.edge);
@@ -358,7 +361,9 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             cursor += traffic + LANE_GAP;
         }
     }
-    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: amount(f) * scale, color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
+    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: amount(f) * scale,
+        startWidth: model.links.get(f.key)!.layoutInputAmount * scale, endWidth: model.links.get(f.key)!.layoutOutputAmount * scale,
+        color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
     const positions = new Map(links.map((f, i) => [f.key, i]));
     const portGroups: {
         node: NodeGeometry;
@@ -409,12 +414,13 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         const { node: n, out, links } = group;
         let offset = 0;
         for (const f of links) {
-            const p = n.edge ? { x: n.x + offset + f.width / 2, y: n.edge === 'top' ? n.y + BAR : n.y } : { x: out ? n.x + BAR : n.x, y: n.y + offset + f.width / 2 };
+            const portWidth = out ? f.startWidth : f.endWidth;
+            const p = n.edge ? { x: n.x + offset + portWidth / 2, y: n.edge === 'top' ? n.y + BAR : n.y } : { x: out ? n.x + BAR : n.x, y: n.y + offset + portWidth / 2 };
             if (out)
                 f.start = p;
             else
                 f.end = p;
-            offset += f.width;
+            offset += portWidth;
         }
     }
     portGroups.forEach(setPorts);
@@ -706,6 +712,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     let crossingCount = 0, obstacleCount = 0;
     for (let i = 0; i < links.length; i++) {
         yield;
+        const f = links[i];
+        if (Math.abs(f.startWidth - f.endWidth) > 1e-9 * f.width) f.ribbon = taperedRibbon(f.route, f.startWidth, f.endWidth);
         obstacleCount += routeCollisions(links[i].route, obstacles(links[i]), links[i].width / 2);
         for (let j = i + 1; j < links.length; j++)
             crossingCount += crossings(links[i].route, links[j].route);
@@ -759,8 +767,8 @@ export function hitTest(scene: Scene, point: Point) {
         const f = scene.links[i];
         if (!intersects(inflate(f.route.bounds, Math.max(5, f.width / 2)), { x: point.x - .01, y: point.y - .01, w: .02, h: .02 }))
             continue;
-        const d = distanceToRoute(point, f.route), painted = d <= f.width / 2;
-        if (d > Math.max(5, f.width / 2))
+        const d = distanceToRoute(point, f.route), painted = f.ribbon ? insidePolygon(point, f.ribbon.points) : d <= f.width / 2;
+        if (!painted && d > 5)
             continue;
         if (!best || (+painted > +best.painted) || painted === best.painted && (d < best.distance - .01 || Math.abs(d - best.distance) < .01 && i > best.index))
             best = { key: f.key, distance: d, painted, index: i };

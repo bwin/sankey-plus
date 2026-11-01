@@ -60,13 +60,17 @@ export function resolveGraph<I, T>(graph: SankeyGraph<I, T>): ResolvedGraph<I, T
         const a = from.node.placement?.stage, b = to.node.placement?.stage;
         if (a !== undefined && b !== undefined && graph.stages.indexOf(a) >= graph.stages.indexOf(b))
             issues.push({ code: 'backward-stage-link', message: `Link ${link.key} must move to a later stage.`, ...context });
-        const unit = link.unit ?? graph.defaultUnit, conversion = units.conversion(unit), layoutAmount = link.amount * conversion.factor;
-        if (!Number.isFinite(layoutAmount) || layoutAmount <= 0)
-            issues.push({ code: 'invalid-number', message: `Converted amount on ${link.key} must be finite and positive.`, ...context });
-        const conversionRates = [...(link.conversionRates ?? [])];
-        for (const rate of conversion.rates)
-            if (!conversionRates.some(r => r.from === rate.from && r.to === rate.to && r.rate === rate.rate)) conversionRates.push(rate);
-        links.set(link.key, { kind: 'link', link, fromNode: from.node, toNode: to.node, unit, layoutAmount, conversionRates, converted: graph.defaultUnit ? { unit: graph.defaultUnit, amount: layoutAmount } : undefined });
+        const conversionRate = link.conversionRate ?? (link.inputUnit === link.outputUnit ? 1 : NaN);
+        if (!Number.isFinite(conversionRate) || conversionRate <= 0 || !Number.isFinite(1 / conversionRate))
+            issues.push({ code: 'invalid-rate', message: `Link ${link.key} needs a finite positive conversionRate when its input and output units differ.`, ...context });
+        const input = { amount: link.amount, unit: link.inputUnit }, output = { amount: link.amount * conversionRate, unit: link.outputUnit };
+        const inputValuation = units.conversion(input.unit), outputValuation = units.conversion(output.unit);
+        const layoutInputAmount = input.amount * inputValuation.factor, layoutOutputAmount = output.amount * outputValuation.factor;
+        if ([output.amount, layoutInputAmount, layoutOutputAmount].some(value => !Number.isFinite(value) || value <= 0))
+            issues.push({ code: 'invalid-number', message: `Transfer and valued endpoint amounts on ${link.key} must be finite and positive.`, ...context });
+        const referenceRates = [...new Set([...inputValuation.rates, ...outputValuation.rates])];
+        links.set(link.key, { kind: 'link', link, fromNode: from.node, toNode: to.node, input, output, conversionRate, layoutInputAmount, layoutOutputAmount, referenceRates,
+            converted: graph.defaultUnit ? { unit: graph.defaultUnit, inputAmount: layoutInputAmount, outputAmount: layoutOutputAmount } : undefined });
     }
     // Kahn's algorithm includes edge nodes, so a detour cannot conceal a cycle.
     const degree = new Map([...nodes.keys()].map(k => [k, incoming.get(k)!.length]));
@@ -91,8 +95,8 @@ export function resolveGraph<I, T>(graph: SankeyGraph<I, T>): ResolvedGraph<I, T
             if (value !== 'auto') { row.total = value; row.totalSource = 'declared'; }
         }
         if (facts.node.total !== undefined) { const row = balance(graph.defaultUnit); row.total = facts.node.total; row.totalSource = 'declared'; }
-        for (const link of ins) balance(link.unit ?? graph.defaultUnit).incoming += link.amount;
-        for (const link of outs) balance(link.unit ?? graph.defaultUnit).outgoing += link.amount;
+        for (const link of ins) { const value = links.get(link.key)!.output; balance(value.unit).incoming += value.amount; }
+        for (const link of outs) { const value = links.get(link.key)!.input; balance(value.unit).outgoing += value.amount; }
         if (!balances.size) balance(graph.defaultUnit ?? units.layoutUnit);
         for (const row of balances.values()) {
             const required = Math.max(row.incoming, row.outgoing);

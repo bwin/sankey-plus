@@ -38,6 +38,10 @@ export interface SankeyFormattedTotals {
     readonly incoming: string;
     readonly outgoing: string;
 }
+export interface SankeyQuantity {
+    readonly amount: number;
+    readonly unit?: string;
+}
 export interface SankeyNode<Meta = unknown> {
     readonly key: string;
     readonly title: string;
@@ -52,16 +56,19 @@ export interface SankeyLink<Meta = unknown> {
     readonly key: string;
     readonly from: string;
     readonly to: string;
+    /** Amount leaving the source, in inputUnit. */
     readonly amount: number;
-    /** Defaults to graph.defaultUnit; otherwise the amount is unitless. */
-    readonly unit?: string;
-    readonly conversionRates?: readonly SankeyConversionRate[];
+    /** Supply both units for a named-unit transfer; omit both for unitless data. */
+    readonly inputUnit?: string;
+    readonly outputUnit?: string;
+    /** Output units delivered per input unit. Required when the units differ; otherwise defaults to 1. */
+    readonly conversionRate?: number;
     readonly color?: string;
     readonly meta?: Meta;
 }
 export interface SankeyGraph<NodeMeta = unknown, LinkMeta = unknown> {
     readonly defaultUnit?: string;
-    /** Shared rates, combined with link rates into one consistent conversion table. */
+    /** Reference valuation rates for widths and combined node totals. Independent of each link's transfer rate. */
     readonly conversionRates?: readonly SankeyConversionRate[];
     readonly stages: readonly string[];
     readonly nodes: readonly SankeyNode<NodeMeta>[];
@@ -87,17 +94,20 @@ export interface SankeyLinkFacts<NodeMeta = unknown, LinkMeta = unknown> {
     readonly link: SankeyLink<LinkMeta>;
     readonly fromNode: SankeyNode<NodeMeta>;
     readonly toNode: SankeyNode<NodeMeta>;
-    readonly unit?: string;
-    /** Amount in the graph's common layout unit. Original link.amount is unchanged. */
-    readonly layoutAmount: number;
-    readonly converted?: { readonly unit: string; readonly amount: number };
-    /** Explicit link rates plus any additional rates used to convert this link. */
-    readonly conversionRates: readonly SankeyConversionRate[];
+    readonly input: SankeyQuantity;
+    readonly output: SankeyQuantity;
+    readonly conversionRate: number;
+    /** Each endpoint valued in the graph's common layout unit. */
+    readonly layoutInputAmount: number;
+    readonly layoutOutputAmount: number;
+    readonly converted?: { readonly unit: string; readonly inputAmount: number; readonly outputAmount: number };
+    /** Graph reference rates used to value the endpoints; not the actual transfer rate. */
+    readonly referenceRates: readonly SankeyConversionRate[];
 }
 export type SankeyAmountContext<I = unknown, T = unknown> = ((SankeyNodeFacts<I, T> & {
     readonly field: 'total' | 'incoming' | 'outgoing';
 }) | (SankeyLinkFacts<I, T> & {
-    readonly field: 'amount';
+    readonly field: 'amount' | 'outputAmount';
 })) & {
     readonly surface: 'label' | 'tooltip' | 'accessible';
     readonly unit?: string;
@@ -114,8 +124,11 @@ export type SankeyPresentation<I = unknown, T = unknown> = (SankeyNodeFacts<I, T
 }) | (SankeyLinkFacts<I, T> & {
     readonly text: Readonly<{
         amount: string;
+        outputAmount: string;
         convertedAmount?: string;
-        conversionRates: readonly string[];
+        convertedOutputAmount?: string;
+        conversionRate?: string;
+        referenceRates: readonly string[];
     }>;
 });
 export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {

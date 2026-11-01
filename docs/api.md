@@ -17,7 +17,7 @@
 | `plotHeight` | Preferred central region height; default 336 CSS pixels. Edge bands add height. |
 | `className` | Host styling, including the four theme tokens below. |
 
-A node has `key`, `title`, and exactly one placement: `{stage: 'stage-key'}` or `{edge: 'top' | 'bottom'}`. It can have `total` or per-unit `totals`, `color`, and `meta`. A link has `key`, `from`, `to`, and `amount`, plus optional `unit`, `conversionRates`, `color` and `meta`. The graph can provide `defaultUnit` and shared `conversionRates`. See [units and conversion](units.md).
+A node has `key`, `title`, and exactly one placement: `{stage: 'stage-key'}` or `{edge: 'top' | 'bottom'}`. It can have `total` or per-unit `totals`, `color`, and `meta`. A link has `key`, `from`, `to`, and input `amount`, plus explicit `inputUnit`/`outputUnit` for named-unit data, `conversionRate`, `color` and `meta`. The graph can provide `defaultUnit` and reference `conversionRates` for widths and combined totals. See [units and conversion](units.md).
 
 ## Stages and order
 
@@ -33,9 +33,9 @@ Keys are unique within each kind. Parallel links need different keys. Invalid da
 
 ## Callback context
 
-Node contexts expose the original `node`, scalar `total`/`incoming`/`outgoing` in the layout `unit`, `totalSource` (declared/derived/mixed), per-unit `totals`, optional default-unit `converted` summary, and incoming/outgoing link arrays. Link contexts expose the original `link`, `fromNode`, `toNode`, resolved `unit`, `layoutAmount`, optional `converted` amount and `conversionRates`. Endpoint totals are the optional declared values on those original nodes. Resolved node facts are not nested inside link contexts.
+Node contexts expose the original `node`, scalar `total`/`incoming`/`outgoing` in the layout `unit`, `totalSource` (declared/derived/mixed), per-unit `totals`, optional default-unit `converted` summary, and incoming/outgoing link arrays. Link contexts expose the original `link`, `fromNode`, `toNode`, actual `input`/`output` quantities and `conversionRate`, `layoutInputAmount`/`layoutOutputAmount`, optional default-unit `converted` endpoints and `referenceRates`. Endpoint totals are the optional declared values on those original nodes. Resolved node facts are not nested inside link contexts.
 
-Presentation contexts contain formatted `text`: total/incoming/outgoing, per-unit `totals` and optional `converted` for nodes; amount, optional `convertedAmount` and conversion-rate equations for links. The amount formatter receives `field`, `unit`, `isConverted` and `surface` (label, tooltip or accessible). Metadata stays typed independently through `SankeyGraph<NodeMeta, LinkMeta>` and the callback types.
+Presentation contexts contain formatted `text`: total/incoming/outgoing, per-unit `totals` and optional `converted` for nodes; `amount`/`outputAmount`, optional `convertedAmount`/`convertedOutputAmount`, `conversionRate` and `referenceRates` equations for links. The amount formatter receives `field`, `unit`, `isConverted` and `surface` (label, tooltip or accessible). Metadata stays typed independently through `SankeyGraph<NodeMeta, LinkMeta>` and the callback types.
 
 Click handlers receive facts plus a React mouse or keyboard activation event. Selection is a separate controlled prop; callbacks do not change it internally. See [getting started](getting-started.md) for a working selection example.
 

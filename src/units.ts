@@ -13,12 +13,15 @@ export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
         else units.add(unit);
     };
     if (graph.defaultUnit !== undefined) register(graph.defaultUnit, {});
-    for (const link of graph.links) register(link.unit ?? graph.defaultUnit, { linkKey: link.key });
+    for (const link of graph.links) {
+        register(link.inputUnit, { linkKey: link.key });
+        register(link.outputUnit, { linkKey: link.key });
+    }
     for (const node of graph.nodes) {
         if (node.total !== undefined) register(graph.defaultUnit, { nodeKey: node.key });
         for (const unit of Object.keys(node.totals ?? {})) register(unit, { nodeKey: node.key });
     }
-    if (unitless && units.size) issues.push({ code: 'invalid-unit', message: 'Unitless amounts cannot be mixed with named units. Set defaultUnit or give every amount an explicit unit.' });
+    if (unitless && units.size) issues.push({ code: 'invalid-unit', message: 'Unitless amounts cannot be mixed with named units. Give every link explicit inputUnit and outputUnit values.' });
     const layoutUnit = graph.defaultUnit ?? units.values().next().value;
     type Edge = { unit: string; rate: number; original: SankeyConversionRate };
     const adjacency = new Map<string, Edge[]>();
@@ -49,7 +52,6 @@ export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
         add(rate.to, { unit: rate.from, rate: 1 / rate.rate, original: rate });
     };
     for (const rate of graph.conversionRates ?? []) insert(rate, {});
-    for (const link of graph.links) for (const rate of link.conversionRates ?? []) insert(rate, { linkKey: link.key });
     const conversions = new Map<string, { factor: number; rates: SankeyConversionRate[] }>();
     for (const unit of units) {
         const found = layoutUnit ? path(unit, layoutUnit) : undefined;

@@ -6,12 +6,12 @@ import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 const format = (value: number, context?: { unit?: string }) => `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${context?.unit ?? 'units'}`;
 const nodeName = (node: SankeyNode, graph: SankeyGraph) => graph.nodes.some(other => other.key !== node.key && other.title === node.title) ? `${node.title} · ${node.placement.stage ?? node.placement.edge}` : node.title;
-const linkName = (link: SankeyLink, graph: SankeyGraph, formatAmount = format) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${formatAmount(link.amount, { unit: link.unit ?? graph.defaultUnit })}`;
+const linkName = (link: SankeyLink, graph: SankeyGraph, formatAmount = format) => `${graph.nodes.find(n => n.key === link.from)?.title} → ${graph.nodes.find(n => n.key === link.to)?.title} · ${formatAmount(link.amount, { unit: link.inputUnit })}${link.inputUnit !== link.outputUnit || (link.conversionRate ?? 1) !== 1 ? ` → ${formatAmount(link.amount * (link.conversionRate ?? 1), { unit: link.outputUnit })}` : ''}`;
 const title = (view: SankeyPresentation) => view.kind === 'node' ? view.node.title : `${view.fromNode.title} → ${view.toNode.title}`;
 const hasCombined = (view: Extract<SankeyPresentation, { kind: 'node' }>) => !!view.converted && (view.totals.length > 1 || view.totals[0]?.unit !== view.converted.unit);
 const labels = (view: SankeyPresentation) => view.kind === 'node'
     ? [view.node.title, ...view.text.totals.map(row => `${row.total}${row.unit ? '' : ' total'}`), ...(hasCombined(view) ? [`Σ ${view.text.converted!.total}`] : [])]
-    : view.converted && view.converted.unit !== view.unit ? [view.text.amount, `= ${view.text.convertedAmount}`] : view.text.amount;
+    : view.input.unit !== view.output.unit || view.input.amount !== view.output.amount ? [view.text.amount, `→ ${view.text.outputAmount}`] : view.text.amount;
 function EndpointDetails({ node, label, formatAmount, defaultUnit }: { node: SankeyNode; label: string; formatAmount: typeof format; defaultUnit?: string }) {
     const note = node.meta && typeof node.meta === 'object' && 'note' in node.meta && typeof node.meta.note === 'string' ? node.meta.note : null;
     return <div className="detail-endpoint"><span className="detail-eyebrow">{label}</span><strong>{node.title}</strong><span>{node.placement.stage !== undefined ? `Stage: ${node.placement.stage}` : `Edge: ${node.placement.edge}`}</span>{node.total !== undefined && <span>Declared total: {formatAmount(node.total, { unit: defaultUnit })}</span>}{Object.entries(node.totals ?? {}).map(([unit, total]) => <span key={unit}>{total === 'auto' ? `${unit}: automatic` : `Declared: ${formatAmount(total, { unit })}`}</span>)}{note && <span>{note}</span>}</div>;
@@ -25,9 +25,10 @@ const details = (view: SankeyPresentation, formatAmount = format, defaultUnit?: 
 </> : <>
         <div className="detail-transfer">
             <div><span className="detail-eyebrow">TRANSFER DETAILS</span><strong className="flow-tip-title">{title(view)}</strong></div>
-            <dl className="detail-amount"><dt>Amount</dt><dd>{view.text.amount}</dd>{view.converted && view.converted.unit !== view.unit && <><dt>Equivalent</dt><dd>{view.text.convertedAmount}</dd></>}</dl>
+            <dl className="detail-amount"><dt>Input</dt><dd>{view.text.amount}</dd><dt>Output</dt><dd>{view.text.outputAmount}</dd>{view.converted && <><dt>Valued input</dt><dd>{view.text.convertedAmount}</dd><dt>Valued output</dt><dd>{view.text.convertedOutputAmount}</dd></>}</dl>
         </div>
-        {view.text.conversionRates.length > 0 && <div className="flow-tip-rates"><span className="detail-eyebrow">CONVERSION RATES</span>{view.text.conversionRates.map((rate, i) => <div key={i}>{rate}</div>)}</div>}
+        {view.text.conversionRate && <div className="flow-tip-rates"><span className="detail-eyebrow">TRANSFER RATE</span><div>{view.text.conversionRate}</div></div>}
+        {view.text.referenceRates.length > 0 && <div className="flow-tip-rates"><span className="detail-eyebrow">REFERENCE VALUATION</span>{view.text.referenceRates.map((rate, i) => <div key={i}>{rate}</div>)}</div>}
         <div className="detail-endpoints">
             <EndpointDetails node={view.fromNode} label="Source" formatAmount={formatAmount} defaultUnit={defaultUnit}/>
             <EndpointDetails node={view.toNode} label="Destination" formatAmount={formatAmount} defaultUnit={defaultUnit}/>

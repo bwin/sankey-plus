@@ -33,8 +33,9 @@ function DefaultDetails({ view }: {
         </div>)}
         {showConverted(view) && <div className="flow-tip-balance flow-tip-combined"><strong>Combined in {view.converted!.unit}</strong><dl><dt>Total</dt><dd>{view.text.converted!.total}</dd><dt>Incoming</dt><dd>{view.text.converted!.incoming}</dd><dt>Outgoing</dt><dd>{view.text.converted!.outgoing}</dd></dl></div>}
     </> : <>
-        <dl><dt>Amount</dt><dd>{view.text.amount}</dd>{view.converted && view.converted.unit !== view.unit && <><dt>Equivalent</dt><dd>{view.text.convertedAmount}</dd></>}</dl>
-        {view.text.conversionRates.length > 0 && <div className="flow-tip-rates"><strong>Conversion rates</strong>{view.text.conversionRates.map((rate, index) => <div key={index}>{rate}</div>)}</div>}
+        <dl><dt>Input</dt><dd>{view.text.amount}</dd><dt>Output</dt><dd>{view.text.outputAmount}</dd>{view.converted && <><dt>Valued input</dt><dd>{view.text.convertedAmount}</dd><dt>Valued output</dt><dd>{view.text.convertedOutputAmount}</dd></>}</dl>
+        {view.text.conversionRate && <div className="flow-tip-rates"><strong>Transfer rate</strong>{view.text.conversionRate}</div>}
+        {view.text.referenceRates.length > 0 && <div className="flow-tip-rates"><strong>Reference valuation</strong>{view.text.referenceRates.map((rate, index) => <div key={index}>{rate}</div>)}</div>}
     </>}</>;
 }
 function Details({ id, anchor, children, theme }: {
@@ -319,8 +320,8 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         {ordered.map(f => {
                     const subject: SankeySubject = { kind: 'link', key: f.key }, isSelected = same(subject, selected), focused = same(subject, keyboardFocus), strongFlow = strong.links.has(f.key), opacity = strongFlow ? (same(subject, active?.subject ?? null) ? .75 : .4) : .1;
                     return <g key={f.key} {...subjectProps(subject)} data-emphasis={strongFlow ? 'strong' : 'faded'}>
-            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 8}/><path d={f.route.path} stroke={f.color} strokeWidth={f.width + 5}/><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={f.width + 2}/></g>}
-            <path data-link-paint="" d={f.route.path} fill="none" stroke={f.color} strokeWidth={f.width} opacity={opacity} pointerEvents="none" aria-hidden="true"/>
+            {isSelected && <g aria-hidden="true" className="flow-decoration" data-selection-outline=""><path d={f.ribbon?.path ?? f.route.path} stroke="var(--flow-surface, white)" strokeWidth={(f.ribbon ? 0 : f.width) + 8}/><path d={f.ribbon?.path ?? f.route.path} stroke={f.color} strokeWidth={(f.ribbon ? 0 : f.width) + 5}/><path d={f.ribbon?.path ?? f.route.path} stroke="var(--flow-surface, white)" strokeWidth={(f.ribbon ? 0 : f.width) + 2}/></g>}
+            <path data-link-paint="" d={f.ribbon?.path ?? f.route.path} fill={f.ribbon ? f.color : 'none'} stroke={f.ribbon ? 'none' : f.color} strokeWidth={f.width} opacity={opacity} pointerEvents="none" aria-hidden="true"/>
             {focused && <g className="flow-decoration" aria-hidden="true"><path d={f.route.path} stroke="var(--flow-surface, white)" strokeWidth={4}/><path d={f.route.path} stroke="var(--flow-focus, #2644af)" strokeWidth={2} strokeDasharray="4 4"/></g>}
           </g>;
                 })}

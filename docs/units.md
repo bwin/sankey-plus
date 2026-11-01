@@ -2,62 +2,62 @@
 
 [Back to API](api.md)
 
-Units are arbitrary, case-sensitive identifiers such as `USD`, `EUR`, `kg` or `MWh`. The library does not fetch exchange rates or infer which units are compatible. Supply the rates appropriate to your data.
+Units are arbitrary, case-sensitive identifiers such as `USD`, `EUR`, `kg` or `MWh`. The library does not fetch exchange rates. Supply two distinct kinds of rate: the **actual transfer rate on each link**, and **graph reference rates** for widths and combined node totals.
 
 ```ts
 const graph: SankeyGraph = {
   defaultUnit: 'USD',
+  conversionRates: [{ from: 'USD', to: 'COP', rate: 4000 }],
   stages: ['accounts', 'payments'],
   nodes: [
-    {
-      key: 'wallet', title: 'Wallet', placement: { stage: 'accounts' },
-      totals: { EUR: 200, USD: 'auto' },
-    },
+    { key: 'wallet', title: 'Wallet', placement: { stage: 'accounts' }, totals: { USD: 150 } },
     { key: 'supplier', title: 'Supplier', placement: { stage: 'payments' } },
   ],
-  links: [
-    {
-      key: 'eur', from: 'wallet', to: 'supplier', amount: 100, unit: 'EUR',
-      conversionRates: [{ from: 'EUR', to: 'USD', rate: 1.1 }],
-    },
-    { key: 'usd', from: 'wallet', to: 'supplier', amount: 50 },
-  ],
+  links: [{
+    key: 'payment', from: 'wallet', to: 'supplier', amount: 100,
+    inputUnit: 'USD', outputUnit: 'COP', conversionRate: 3900,
+  }],
 };
 ```
 
-The wallet holds **200 EUR plus 50 USD**, with a combined total of **270 USD**. Its EUR link transfers only 100 EUR (equivalent to 110 USD), so it is partially allocated. The supplier derives 100 EUR plus 50 USD, or 160 USD combined. The two ribbons have a width ratio of 110:50, not 100:50.
+The wallet sends **100 USD** and the supplier receives **390,000 COP**. At the graph's illustrative reference rate of 4,000 COP/USD, the link starts at a width representing **100 USD** and ends at **97.50 USD**. It narrows by 2.5%, rather than growing 3,900 times wider. A transfer rate of 4,000 gives equal widths. A difference in reference value does not tell the component whether it represents fees, a spread or something else.
 
-## Balances
+## Link endpoints
 
-- `graph.defaultUnit` supplies the unit for links without `unit` and for scalar `node.total`. It also selects the combined display and width basis.
-- `node.totals` is a map from unit to a non-negative number or `'auto'`. These are **separate balances**, not multiple valuations of one amount. A numeric entry declares that unit's total. `'auto'` and omitted units derive `max(incoming, outgoing)` **within that unit**. There is no double-counting of a relay's incoming and outgoing links.
-- A declared balance must cover both its incoming and outgoing amounts independently. A larger balance in another unit cannot compensate for an undersized declaration.
-- Use either `total` or `totals` on a node. Scalar `total` declares the default-unit balance; any other incident units still derive separately. For an explicit all-currency declaration use `totals`.
-- The combined total is the sum of converted **per-unit totals**, not `max(sum(incoming), sum(outgoing))`. The distinction matters when incoming and outgoing unit mixes differ: those are still separate balances, not an implicit currency exchange.
-- A link retains one original amount/unit at both ends. Conversion rates express equivalence; they do not change the destination unit, add balances, execute trades, or model fees. Model those separately.
+- `amount` is the positive amount leaving the source.
+- `inputUnit` and `outputUnit` must both be explicit for named-unit transfers. The graph default never fills either field. Omit both for entirely unitless graphs, which retain their existing behavior.
+- `conversionRate` is output units delivered per input unit. Output equals `amount * conversionRate`. The rate is required when units differ; otherwise it defaults to 1. A rate other than 1 in the same unit can represent a change in quantity.
+- The source records outgoing amounts in `inputUnit`; the destination records incoming amounts in `outputUnit`. The destination does not also receive the input balance.
+- Rates on different transfers may differ. They do not change the graph's reference rates and need not agree with them.
 
-## Rates and widths
+## Reference valuation and widths
 
-`{ from: 'EUR', to: 'USD', rate: 1.1 }` means **1 EUR = 1.1 USD**. A rate must be finite and positive. Reverse conversion and chained paths are supported automatically. A graph may provide shared `conversionRates`, including for declared balances on isolated nodes. Rates on links and on the graph form one consistent conversion table for the entire diagram. A link's explicit rates and any additional rates used for its width conversion are available in its tooltip context.
+`graph.conversionRates` contains `{ from, to, rate }` entries. One EUR valued at 1.1 USD is `{ from: 'EUR', to: 'USD', rate: 1.1 }`. Inverse and chained reference conversions are supported. Reference paths must agree; conflicting rates and inconsistent cycles are rejected (relative tolerance `1e-9`).
 
-Conflicting rates or inconsistent cycles are rejected (relative tolerance `1e-9`). This interface models one valuation basis. Different transaction-time exchange rates for the same unit pair require separate graphs or pre-normalized data; the component never silently picks a favorable path or averages conflicting rates.
+`graph.defaultUnit` determines the unit for **all quantitative widths and combined node totals**. Both link endpoints are independently valued in that unit. Equivalent values retain a constant-width ribbon; unequal values produce a smooth taper. All bars and both ends of every ribbon share one scale. A transfer's rate never substitutes for missing reference conversions.
 
-Every used unit needs a conversion path to the width basis. Missing conversions, overflow or underflow turning a positive amount/balance into zero raise an input error. One common scale applies to node bars and links, including top/bottom nodes.
+Without a default, widths use the first encountered named unit and combined totals are hidden. Multiple named units still need consistent reference conversions. Unitless and named amounts cannot be mixed. Entirely unitless graphs need no rate table.
 
-Without `defaultUnit`, a single explicitly named unit works directly. A multi-unit graph still needs rates: the first encountered unit is used internally for widths, while labels/tooltips omit the combined total. Choosing another basis in a consistent rate table changes absolute numbers but not width ratios. Unitless and named amounts cannot be mixed without an explicit default. Existing entirely unitless graphs retain their behavior.
+Rates and endpoint amounts must be finite and positive. Missing reference paths, invalid rates, overflow and underflow turning a positive amount into zero raise `SankeyInputError`.
 
-## Context and presentation
+## Node balances
 
-`SankeyNodeFacts.totals` lists each unit's numeric total, incoming, outgoing and `totalSource`. `converted` contains the combined summary when a graph default exists. The existing scalar `total`, `incoming`, `outgoing` fields use the common layout `unit`; `totalSource` can be `mixed` if some balances are declared and others derived.
+- `node.totals` maps units to non-negative numbers or `'auto'`. These are **separate balances**, not alternative representations of the same money. Numeric entries declare a balance. Omitted units and `'auto'` derive `max(incoming, outgoing)` within that unit.
+- A declared balance must cover incoming and outgoing independently. Extra value in another unit cannot compensate for an undersized declaration.
+- Use either `total` or `totals`. Scalar `total` declares a balance in `defaultUnit`, or a unitless balance in unitless data.
+- The combined total and bar size sum converted per-unit balances. This can exceed `max(combined incoming, combined outgoing)` when the incoming and outgoing currency mixes differ. Separate currencies are not netted or exchanged inside a node; represent an actual conversion on a link.
+- A relay counts incoming and outgoing only once within each unit: 100 EUR incoming and 80 EUR outgoing derive 100 EUR, not 180 EUR.
 
-`SankeyLinkFacts` retains `link`, `fromNode`, `toNode` and adds resolved `unit`, `layoutAmount`, optional default-unit `converted` amount, and `conversionRates`. Original graph objects are never rewritten. Link endpoint nodes remain original inputs, not resolved nested facts.
+## Callback and presentation fields
 
-Presentation adds `text.totals` and optional `text.converted` for nodes; links have `text.amount`, optional `text.convertedAmount` and `text.conversionRates`. `formatAmount` receives `context.unit` and `context.isConverted` alongside the existing field/surface and facts. A custom formatter owns the whole formatted string, including unit suffixes. Conversion-rate equations use the supplied rates independently of amount formatting.
+Node facts expose the original `node`, `totals` per unit, optional default-unit `converted` summary, and scalar `total`, `incoming`, `outgoing` in the layout `unit`. Each balance records declared/derived status; the combined `totalSource` may be `mixed`.
 
-```tsx
-formatAmount={(value, context) =>
-  `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })}${context.unit ? ` ${context.unit}` : ''}`
-}
-```
+Link facts expose the original `link`, `fromNode`, `toNode`, resolved `input` and `output` quantities (`{ amount, unit }`), actual `conversionRate`, `layoutInputAmount`, `layoutOutputAmount`, optional `converted: { unit, inputAmount, outputAmount }`, and graph `referenceRates` used for valuation. Endpoint nodes remain original inputs, not nested resolved facts. Original data is never rewritten.
 
-Node labels list balances individually and add a combined `Σ` line when useful. Default tooltips list the same balances with incoming/outgoing amounts and the combined summary. Single default-unit balances avoid a redundant combined line. Links show their native amount and, when different, its default-unit equivalent; tooltips also show conversion-rate equations. Custom label/tooltip callbacks can use the structured fields to choose their own presentation.
+Formatted node fields are `text.total`, `incoming`, `outgoing`, per-unit `totals`, and optional `converted`. Link text exposes `amount` (input), `outputAmount`, optional `convertedAmount` and `convertedOutputAmount`, optional transfer-rate equation `conversionRate`, and `referenceRates` equations.
+
+`formatAmount` receives `field` (`amount` or `outputAmount` for links), `unit`, `isConverted`, `surface`, and subject facts. A custom formatter owns the whole string including unit suffixes. Rate equations are independent of amount formatting.
+
+Node labels list balances plus a combined `Σ` line when useful. Link labels show `input → output` when the unit or amount changes; unchanged transfers show one amount. Tooltips distinguish actual endpoints and the transfer rate from default-unit valuations and reference rates.
+
+The directional interface replaces the unreleased branch's single `link.unit` and link-level `conversionRates`: provide both endpoint units, move reference rates to the graph, and specify `conversionRate` for actual cross-unit transfers. Published unitless inputs are unchanged.

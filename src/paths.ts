@@ -192,6 +192,40 @@ export function ribbonBounds(route: Route, width: number): Rect {
     }
     return describe('', points).bounds;
 }
+/** A variable-width ribbon, sampled from the same centerline used for routing.
+ * Ease width along arc length; flat caps meet the axis-aligned node faces. */
+export function taperedRibbon(route: Route, startWidth: number, endWidth: number) {
+    const centers: { p: Point; distance: number }[] = [{ p: route.points[0], distance: 0 }];
+    let distance = 0;
+    for (let i = 1; i < route.points.length; i++) {
+        const a = route.points[i - 1], b = route.points[i], span = Math.hypot(b.x - a.x, b.y - a.y);
+        const count = Math.max(1, Math.ceil(span / 4));
+        for (let j = 1; j <= count; j++) centers.push({ p: mix(a, b, j / count), distance: distance + span * j / count });
+        distance += span;
+    }
+    const left: Point[] = [], right: Point[] = [];
+    for (let i = 0; i < centers.length; i++) {
+        const p = centers[i].p, a = centers[Math.max(0, i - 1)].p, b = centers[Math.min(centers.length - 1, i + 1)].p;
+        let dx = b.x - a.x, dy = b.y - a.y;
+        if (i === 0 || i === centers.length - 1) { if (Math.abs(dx) >= Math.abs(dy)) dy = 0; else dx = 0; }
+        const length = Math.hypot(dx, dy) || 1, t = distance ? centers[i].distance / distance : 0;
+        const half = (startWidth + (endWidth - startWidth) * t * t * (3 - 2 * t)) / 2;
+        left.push({ x: p.x - dy / length * half, y: p.y + dx / length * half });
+        right.push({ x: p.x + dy / length * half, y: p.y - dx / length * half });
+    }
+    const points = [...left, ...right.reverse()];
+    return { points, path: `M${points.map(xy).join(' L')} Z` };
+}
+/** Painted-envelope hit testing for a tapered ribbon, including its boundary. */
+export function insidePolygon(point: Point, polygon: readonly Point[]): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const a = polygon[j], b = polygon[i];
+        if (distanceToSegment(point, a, b) < .001) return true;
+        if ((a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+}
 function segmentHits(a: Point, b: Point, r: Rect): boolean {
     // Most visibility-grid edges and curve samples are nowhere near this box.
     // Reject those before doing slab clipping, including zero-length segments.

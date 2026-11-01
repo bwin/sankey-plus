@@ -238,7 +238,7 @@ for (const edge of ['top', 'bottom'] as const) for (const incoming of [false, tr
         const graph: SankeyGraph = {
             defaultUnit: 'USD', conversionRates: [{ from: 'EUR', to: 'USD', rate: 1.1 }, { from: 'GBP', to: 'USD', rate: 1.25 }],
             stages: ['main'], nodes: [{ key: 'main', title: 'Main', placement: { stage: 'main' } }, { key: 'edge', title: 'Edge', placement: { edge } }],
-            links: [{ key: 'eur', amount: 100, unit: 'EUR' }, { key: 'usd', amount: 200, unit: 'USD' }, { key: 'gbp', amount: 50, unit: 'GBP' }].map(link => ({ ...link, from: incoming ? 'edge' : 'main', to: incoming ? 'main' : 'edge' })),
+            links: [{ key: 'eur', amount: 100, unit: 'EUR' }, { key: 'usd', amount: 200, unit: 'USD' }, { key: 'gbp', amount: 50, unit: 'GBP' }].map(({ unit, ...link }) => ({ ...link, inputUnit: unit, outputUnit: unit, from: incoming ? 'edge' : 'main', to: incoming ? 'main' : 'edge' })),
         };
         for (const width of [360, 960, 1107, 1440]) for (const reverseOrder of [false, true]) {
             const input = { ...graph, links: reverseOrder ? [...graph.links].reverse() : graph.links };
@@ -253,7 +253,7 @@ for (const edge of ['top', 'bottom'] as const) for (const incoming of [false, tr
             for (const link of scene.links) {
                 const atEdge = incoming ? link.start : link.end;
                 assert.equal(atEdge.y, edge === 'top' ? edgeNode.y + edgeNode.h : edgeNode.y);
-                assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutAmount) < 1e-8);
+                assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutInputAmount) < 1e-8);
             }
         }
     });
@@ -291,7 +291,7 @@ test('parallel Operations ribbons touch without overlapping along the wave', () 
         assert.equal(scene.diagnostics.crossings, 0);
         assert.equal(scene.diagnostics.obstacleCollisions, 0);
         for (const link of [eur, gbp]) {
-            assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutAmount) < 1e-8);
+            assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutInputAmount) < 1e-8);
             assert.deepEqual(link.route.points[0], link.start);
             assert.deepEqual(link.route.points.at(-1), link.end);
         }

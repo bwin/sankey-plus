@@ -6,7 +6,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
-- Optional graph default units, separate declared/automatic node balances, consistent graph/link conversion rates and converted quantitative widths. Labels and tooltips retain per-unit amounts and show combined default-unit totals and rate equations.
+- Optional graph default units, separate declared/automatic node balances, explicit link input/output units and per-transfer rates. Graph reference rates value both ribbon endpoints and node totals in one common unit; unequal endpoint values taper. Labels and tooltips distinguish actual amounts and transfer rates from reference valuations.
 - Currencies example with EUR/USD/GBP balances, partial declarations, a reserve release and retained funds; default and custom presentation both expose conversions.
 - World trade example with exporting/importing countries, top reserve releases, bottom inventory outflows, balanced totals per good, commodity colors and illustrative USD-billion formatting.
 
