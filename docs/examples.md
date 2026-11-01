@@ -32,7 +32,7 @@ stages: ['collect', 'prepare', 'deliver']
 
 Within Prepare, `prepare-b` appears before `prepare-a`, so B stays above A. The gold 100-unit `bypass` link goes directly from Collect A to Deliver A without shifting either stage. Stage keys identify columns; they do not create built-in headings. Same-stage and backward links are invalid. See [stages and order](api.md#stages-and-order).
 
-![Stages with shared columns and a gold link skipping the middle stage](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/18-stages.jpg)
+![Stages with shared columns and a gold link skipping the middle stage](../screenshots/docs-stages.jpg)
 
 ## World trade
 
@@ -51,7 +51,7 @@ Exports ($800 bn) plus reserves released ($50 bn) equal imports ($810 bn) plus i
 
 Inspect Energy to emphasize its exporters, reserve source, importers and seven incident links. Inspect a reserve or inventory link to read why it enters or leaves the annual flow in the endpoint descriptions. These are aggregate flows: the example does not claim which exporter supplies a particular importer. Turning custom labels off retains currency formatting while using the component's default presentation.
 
-![World trade with reserve releases above and inventory outflows below](../screenshots/33-trade-inventories.jpg)
+![World trade with reserve releases above and inventory outflows below](../screenshots/docs-world-trade.jpg)
 
 ## Currencies
 
@@ -66,9 +66,9 @@ Two links demonstrate currency conversion:
 
 Inspect either conversion link to see its actual input/output amounts and transfer rate, followed by USD valuations and the graph's reference rates. Source and destination details stay in two columns below. Inspect Treasury to see declared and derived balances. Turning custom presentation off retains these distinctions in the library defaults. The top reserve releases USD; Retained funds at the bottom holds separate EUR/USD/GBP balances. [Unit semantics and the public interface](units.md).
 
-![Explicit currency conversions with all widths valued in USD](../screenshots/38-directional-currencies.jpg)
+![Explicit currency conversions with all widths valued in USD](../screenshots/docs-currencies.jpg)
 
-![Actual transfer amounts and rate separated from reference valuation](../screenshots/39-directional-fx-tooltip.jpg)
+![Actual transfer amounts and rate separated from reference valuation](../screenshots/docs-currency-tooltip.jpg)
 
 ## Wide range
 
@@ -76,15 +76,15 @@ The [Wide range fixture](../demo/wide-range.json) has 9 nodes and 8 links with a
 
 This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; the 200-unit and 2,000-unit transfers are both raised to 4 CSS pixels. Their widths are therefore not strictly proportional, as the description explains. Labels, tooltips, callbacks and totals retain exact amounts. Node bars and routing reserve the displayed widths. Try the Trial supply link and the bottom Retained link.
 
-The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/40-wide-range.jpg). [Minimum-width semantics](api.md#quantities).
+The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/docs-wide-range-proportional.jpg). [Minimum-width semantics](api.md#quantities).
 
-![Wide range with a 4px minimum thickness](../screenshots/41-wide-range-minimum.jpg)
+![Wide range with a 4px minimum thickness](../screenshots/docs-wide-range-minimum.jpg)
 
 ## Fan-in
 
 The [Fan-in fixture](https://github.com/bwin/sankey-plus/blob/master/demo/fan-in.json) sends 600, 250 and 150 units from three stage nodes to one bottom node. Combined derives its 1,000-unit total from these incoming links. The lowest source arrives at the leftmost slot on the horizontal destination bar; the upper sources arrive farther right, keeping the turns from crossing. This complements the existing fan-out examples.
 
-![Three unequal inputs converging on one bottom destination](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/19-fan-in.jpg)
+![Three unequal inputs converging on one bottom destination](../screenshots/docs-fan-in.jpg)
 
 ## Parallel links
 
@@ -100,8 +100,8 @@ links: [
 
 Inspect a node to emphasize all three links. Inspect a single ribbon to emphasize only it and its two endpoints. Click a ribbon or use the external selection control to select it; the demo includes each amount in the selection labels to distinguish these links. They are not aggregated into one transfer.
 
-![Parallel links with the 150-unit ribbon selected independently](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/20-parallel-links.jpg)
+![Parallel links with the 150-unit ribbon selected independently](../screenshots/docs-parallel-selected.jpg)
 
 Examples live in [demo/fixtures.ts](https://github.com/bwin/sankey-plus/blob/master/demo/fixtures.ts), with JSON scene files beside it.
 
-![Four-sided flow](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/01-complete-flow.jpg)
+![Four-sided flow](../screenshots/docs-four-sided.jpg)

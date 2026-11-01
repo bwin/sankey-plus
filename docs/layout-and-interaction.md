@@ -50,14 +50,14 @@ The routing search is bounded. Pathological custom graphs may still need a large
 
 The same curve style connects stages, top sources and bottom destinations:
 
-![Distribution with smooth links on all sides](../screenshots/24-smooth-distribution.jpg)
+![Distribution with smooth links on all sides](../screenshots/docs-distribution.jpg)
 
 Skipping-stage links can bend through the existing gap without a trip below the middle column:
 
-![Direct stage-skipping curve](../screenshots/26-direct-stage-bypass.jpg)
+![Direct stage-skipping curve](../screenshots/docs-stages.jpg)
 
 Wrapped destinations use separate lanes and gradual arrivals, with additional height reserved when necessary:
 
-![Wrapped fan-out with gradual arrivals](../screenshots/28-gradual-fan-arrivals.jpg)
+![Wrapped fan-out with gradual arrivals](../screenshots/docs-wrapped-fan.jpg)
 
 See [performance](performance.md) for cooperative scheduling and [verification](verification.md) for tested cases and remaining limits.

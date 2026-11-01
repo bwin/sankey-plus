@@ -30,11 +30,12 @@ Maintain [CHANGELOG.md](../CHANGELOG.md) under **Unreleased** as user-visible ch
 1. Move pending entries into `## [1.1.0] - YYYY-MM-DD` using the release date; leave an empty Unreleased section.
 2. Describe user-visible behavior, compatibility and migration notes rather than copying the commit log.
 3. Add the release compare link and advance Unreleased to `v1.1.0...dev`.
-4. Bump both manifests without an automatic commit or tag:
+4. If the README screenshot uses a repository-relative path, change it to its absolute `https://raw.githubusercontent.com/bwin/sankey-plus/master/...` URL for the release. Screenshots are excluded from the npm archive, so the published README needs an absolute URL; it becomes available when the release reaches `master`.
+5. Bump both manifests without an automatic commit or tag:
 
 ```sh
 npm version 1.1.0 --no-git-tag-version
-git add package.json package-lock.json CHANGELOG.md
+git add package.json package-lock.json CHANGELOG.md README.md
 git commit -m "Prepare 1.1.0 release"
 git push origin dev
 ```

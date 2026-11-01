@@ -6,7 +6,7 @@
 
 [Changelog](https://github.com/bwin/sankey-plus/blob/master/CHANGELOG.md)
 
-![Distribution chart at 960 pixels wide, with partial totals and top/bottom nodes](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/21-distribution-chart-960.jpg)
+![Distribution chart at 960 pixels wide, with partial totals and top/bottom nodes](screenshots/docs-distribution.jpg)
 
 ## Quick start
 

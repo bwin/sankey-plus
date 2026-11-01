@@ -43,7 +43,7 @@ Labels use measured text and horizontal truncation. Arrays retain all lines, inc
 
 For links, the tooltip context already includes both original nodes as `view.fromNode` and `view.toNode`, including their typed `meta`, `placement`, `color` and optional declared `total`. These are also available to label/amount formatters and `onLinkClick`. A missing `node.total` means it is derived; do not treat it as zero. The demo's custom link tooltip shows both endpoints, their placement, declared totals when present, and metadata notes. Try **Input A → Process A** in Distribution.
 
-![Custom link tooltip with both endpoint nodes and their metadata](https://raw.githubusercontent.com/bwin/sankey-plus/master/screenshots/17-endpoint-tooltip.jpg)
+![Custom link tooltip with both endpoint nodes and their metadata](../screenshots/docs-distribution-tooltip.jpg)
 
 ```tsx
 // For a SankeyGraph<{ note: string }>, node metadata stays typed here.
