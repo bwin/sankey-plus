@@ -38,7 +38,7 @@ function DefaultDetails({ view }: {
         {view.text.referenceRates.length > 0 && <div className="flow-tip-rates"><strong>Reference valuation</strong>{view.text.referenceRates.map((rate, index) => <div key={index}>{rate}</div>)}</div>}
     </>}</>;
 }
-function Details({ id, anchor, children, theme }: {
+function Details({ id, anchor, children, theme, onPointerEnter, onPointerLeave, onPointerDown }: {
     id: string;
     anchor: {
         x: number;
@@ -46,6 +46,9 @@ function Details({ id, anchor, children, theme }: {
     };
     children: ReactNode;
     theme: CSSProperties;
+    onPointerEnter: () => void;
+    onPointerLeave: () => void;
+    onPointerDown: () => void;
 }) {
     // client dimensions exclude classic scrollbars, unlike innerWidth/Height.
     const readViewport = () => ({ width: document.documentElement.clientWidth, height: document.documentElement.clientHeight });
@@ -69,11 +72,12 @@ function Details({ id, anchor, children, theme }: {
     }, []);
     const x = Math.max(8, Math.min(viewport.width - size.width - 8, anchor.x + 16 + size.width > viewport.width - 8 ? anchor.x - size.width - 16 : anchor.x + 16));
     const y = Math.max(8, Math.min(viewport.height - size.height - 8, anchor.y + 16 + size.height > viewport.height - 8 ? anchor.y - size.height - 16 : anchor.y + 16));
-    return createPortal(<div ref={ref} id={id} role="tooltip" className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }}>{children}</div>, document.body);
+    return createPortal(<div ref={ref} id={id} role="tooltip" tabIndex={-1} className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave} onPointerDown={onPointerDown}>{children}</div>, document.body);
 }
 export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProps<I, T>) {
     const { graph, accessibleName, className, plotHeight = 336, minLinkWidth = 0, selection, onNodeClick, onLinkClick, formatAmount, getLabel, renderTooltip } = props;
     const root = useRef<HTMLDivElement>(null), svg = useRef<SVGSVGElement>(null), controls = useRef(new Map<string, SVGGElement>());
+    const closeTimer = useRef<number | null>(null), interactingWithTooltip = useRef(false);
     const uid = useId(), tooltipId = `${uid}-details`, helpId = `${uid}-help`;
     const [measurement, setMeasurement] = useState({ width: 0, font: '12px sans-serif', lineHeight: 16 });
     const [theme, setTheme] = useState<CSSProperties>({});
@@ -169,17 +173,45 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
     }
     // Resizing/reflow can move a focused subject without scrolling the page.
     useBrowserLayoutEffect(() => { repositionInspection(); }, [scene]);
+    const cancelClose = () => { if (closeTimer.current !== null) { window.clearTimeout(closeTimer.current); closeTimer.current = null; } };
+    function closeSoon(restart = false) {
+        if (!active || active.modality !== 'pointer' || active.pinned)
+            return;
+        if (closeTimer.current !== null) {
+            if (!restart)
+                return;
+            cancelClose();
+        }
+        closeTimer.current = window.setTimeout(() => { closeTimer.current = null; setInspection(null); }, 300);
+    }
+    useEffect(() => () => { if (closeTimer.current !== null)
+        window.clearTimeout(closeTimer.current); }, []);
     useEffect(() => {
-        const outside = (e: globalThis.PointerEvent) => { if (!root.current?.contains(e.target as Node)) {
-            setInspection(null);
-            suppressed.current = null;
-        } };
+        const outside = (e: globalThis.PointerEvent) => {
+            if (document.getElementById(tooltipId)?.contains(e.target as Node)) {
+                interactingWithTooltip.current = true;
+                cancelClose();
+                return;
+            }
+            interactingWithTooltip.current = false;
+            if (!root.current?.contains(e.target as Node)) {
+                cancelClose();
+                setKeyboardFocus(null);
+                setInspection(null);
+                suppressed.current = null;
+            }
+        };
+        // A pointer entering the portal is outside the diagram, so keep its close
+        // delay alive even when React does not synthesize pointerenter.
+        const over = (e: globalThis.PointerEvent) => { if (document.getElementById(tooltipId)?.contains(e.target as Node))
+            cancelClose(); };
         // Tab is dispatched on the previous control, before focus enters us.
         const keyboard = () => { input.current = 'keyboard'; };
         document.addEventListener('pointerdown', outside);
+        document.addEventListener('pointerover', over);
         document.addEventListener('keydown', keyboard, true);
         window.addEventListener('scroll', repositionInspection, true);
-        return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('keydown', keyboard, true); window.removeEventListener('scroll', repositionInspection, true); };
+        return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('pointerover', over); document.removeEventListener('keydown', keyboard, true); window.removeEventListener('scroll', repositionInspection, true); };
     }, []);
     const locate = (event: {
         clientX: number;
@@ -195,14 +227,19 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
     };
     function inspect(subject: SankeySubject | null, x: number, y: number, modality: Inspection['modality'] = 'pointer', pinned = false) {
         if (!subject) {
-            if (!active?.pinned)
+            if (modality === 'pointer' && active?.modality === 'pointer' && !active.pinned)
+                closeSoon();
+            else if (!active?.pinned) {
+                cancelClose();
                 setInspection(null);
+            }
             suppressed.current = null;
             return;
         }
         if (same(subject, suppressed.current))
             return;
         suppressed.current = null;
+        cancelClose();
         setInspection(old => same(old?.subject ?? null, subject) && Math.abs((old?.anchor.x ?? 0) - x) + Math.abs((old?.anchor.y ?? 0) - y) < 1 && old?.modality === modality && old?.pinned === pinned ? old : { subject, anchor: { x, y }, modality, pinned });
     }
     function pointerMove(e: PointerEvent<SVGSVGElement>) {
@@ -229,6 +266,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         const touch = gesture.current?.type === 'touch';
         gesture.current = null;
         if (!subject) {
+            cancelClose();
             setInspection(null);
             suppressed.current = null;
             return;
@@ -301,17 +339,22 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         return rank(a.key) - rank(b.key);
     }) : [];
     if (layoutResult?.request === layoutRequest && 'error' in layoutResult) throw layoutResult.error;
-    return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) {
+    return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => {
+        const next = e.relatedTarget as Node | null;
+        if (e.currentTarget.contains(next) || document.getElementById(tooltipId)?.contains(next) || interactingWithTooltip.current) {
+            interactingWithTooltip.current = false;
+            return;
+        }
+        cancelClose();
         setKeyboardFocus(null);
         setInspection(null);
         suppressed.current = null;
         input.current = 'keyboard';
-    } }}>
+    }}>
     <span className="flow-sr-only" id={helpId}>Use arrow keys to inspect nodes and links. Enter or Space activates the focused subject. Escape dismisses details. Selection is controlled by the surrounding application.</span>
     {!model.nodes.size ? <div role="group" aria-label={accessibleName} className="flow-empty">No flow data</div> : !scene ? <div role="status" className="flow-measuring" aria-label={accessibleName} style={{ height: plotHeight }}>Preparing diagram…</div> :
             <div className={`flow-scroll${scene.width > measurement.width ? ' flow-scroll--overflow' : ''}`} data-flow-scroll="">
-      <svg ref={svg} role="group" aria-label={accessibleName} width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`} className="flow-canvas" style={{ font: measurement.font, cursor: active?.modality === 'pointer' ? 'pointer' : undefined }} data-top-band={scene.topBand} data-bottom-band={scene.bottomBand} data-crossings={scene.diagnostics.crossings} data-obstacle-collisions={scene.diagnostics.obstacleCollisions} onPointerMove={pointerMove} onPointerLeave={() => { if (active?.modality === 'pointer' && !active.pinned)
-                setInspection(null); suppressed.current = null; }} onPointerDown={e => { if (e.button === 0) {
+      <svg ref={svg} role="group" aria-label={accessibleName} width={scene.width} height={scene.height} viewBox={`0 0 ${scene.width} ${scene.height}`} className="flow-canvas" style={{ font: measurement.font, cursor: active?.modality === 'pointer' ? 'pointer' : undefined }} data-top-band={scene.topBand} data-bottom-band={scene.bottomBand} data-crossings={scene.diagnostics.crossings} data-obstacle-collisions={scene.diagnostics.obstacleCollisions} onPointerMove={pointerMove} onPointerLeave={() => { suppressed.current = null; closeSoon(true); }} onPointerDown={e => { if (e.button === 0) {
                 input.current = 'pointer';
                 gesture.current = { x: e.clientX, y: e.clientY, cancelled: false, type: e.pointerType };
             } }} onPointerCancel={() => { if (gesture.current)
@@ -336,6 +379,6 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         {scene.nodes.map(n => <Text key={`i-${n.key}`} box={n.label} className="flow-label" opacity={strong.nodes.has(n.key) ? 1 : .25}/>)}
       </svg>
     </div>}
-    {active && tooltip && typeof document !== 'undefined' ? <Details id={tooltipId} anchor={active.anchor} theme={theme}>{tooltip}</Details> : null}
+    {active && tooltip && typeof document !== 'undefined' ? <Details id={tooltipId} anchor={active.anchor} theme={theme} onPointerEnter={cancelClose} onPointerLeave={() => closeSoon(true)} onPointerDown={() => { interactingWithTooltip.current = true; cancelClose(); }}>{tooltip}</Details> : null}
   </div>;
 }
