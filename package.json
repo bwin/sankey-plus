@@ -31,11 +31,15 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/sankey-plus.js"
     },
-    "./style.css": "./dist/style.css"
+    "./style.css": {
+      "types": "./dist/style.css.d.ts",
+      "default": "./dist/style.css"
+    }
   },
   "files": [
     "dist/sankey-plus.js",
     "dist/style.css",
+    "dist/style.css.d.ts",
     "dist/index.d.ts",
     "dist/SankeyDiagram.d.ts",
     "dist/types.d.ts",
