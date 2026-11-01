@@ -24,6 +24,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Fixed
 
+- Escape dismisses focused tooltips and returns keyboard focus to the inspected node/link without reopening details or changing selection.
 - Scrolling inside an oversized tooltip keeps pointer-opened details visible; page and chart scrolling retain their normal dismissal/repositioning behavior.
 - Parallel stage links use shared offset curves when needed to prevent their thick ribbons overlapping along a slope, while preserving widths, ports and existing obstacle detours.
 - Parallel links sharing a top/bottom node keep separate ribbons through the turn, including narrow layouts where a neighboring label requires a different shared curve.

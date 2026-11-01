@@ -350,6 +350,20 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
             activate(subject, e);
         }
     }
+    function keyDownCapture(e: KeyboardEvent<HTMLDivElement>) {
+        input.current = 'keyboard';
+        if (e.key !== 'Escape' || !active || !tooltipHandle.current?.contains(e.target as Node))
+            return;
+        e.preventDefault();
+        e.stopPropagation();
+        cancelClose();
+        interactingWithTooltip.current = false;
+        suppressed.current = active.subject;
+        setInspection(null);
+        setKeyboardFocus(active.subject);
+        // Restore the diagram's roving tab stop without reopening dismissed details.
+        controls.current.get(identity(active.subject))?.focus({ preventScroll: true });
+    }
     const subjectProps = (subject: SankeySubject) => {
         const index = indexOf(subject);
         return {
@@ -365,7 +379,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
             onKeyDown: (e: KeyboardEvent<SVGGElement>) => keyDown(e, subject, index),
             onFocus: (e: React.FocusEvent<SVGGElement>) => {
                 setRoving(index);
-                if (input.current === 'pointer')
+                if (input.current === 'pointer' || same(subject, suppressed.current))
                     return;
                 setKeyboardFocus(subject);
                 suppressed.current = null;
@@ -380,7 +394,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         return rank(a.key) - rank(b.key);
     }) : [];
     if (layoutResult?.request === layoutRequest && 'error' in layoutResult) throw layoutResult.error;
-    return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={() => { input.current = 'keyboard'; }} onBlur={e => {
+    return <div ref={root} aria-busy={pending} className={['flow-diagram', className].filter(Boolean).join(' ')} onKeyDownCapture={keyDownCapture} onBlur={e => {
         const next = e.relatedTarget as Node | null;
         if (e.currentTarget.contains(next) || tooltipHandle.current?.contains(next) || interactingWithTooltip.current) {
             interactingWithTooltip.current = false;
