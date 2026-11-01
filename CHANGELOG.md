@@ -31,6 +31,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Fixed
 
+- Package declarations resolve under strict TypeScript side-effect import checks while retaining the optional stylesheet export.
 - Escape dismisses focused tooltips and returns keyboard focus to the inspected node/link without reopening details or changing selection.
 - Scrolling inside an oversized tooltip keeps pointer-opened details visible; page and chart scrolling retain their normal dismissal/repositioning behavior.
 - Keyboard focus remains visible during pointer inspection; inspected hidden labels are clickable, and native pinch zoom works over the chart.

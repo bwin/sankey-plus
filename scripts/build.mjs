@@ -33,11 +33,29 @@ function sourcePlugin() {
     }
   };
 }
+async function verifyPackageTypes() {
+  // Resolve the built package like a strict NodeNext consumer, including its
+  // explicitly imported stylesheet. This catches broken declaration imports.
+  const dir=path.join(project,'.tests');await fs.mkdir(dir,{recursive:true});
+  const example=path.join(dir,'built-package-consumer.ts');
+  await fs.writeFile(example,"import { SankeyDiagram, type SankeyGraph } from '@bwin/sankey-plus';\nimport '@bwin/sankey-plus/style.css';\nconst graph: SankeyGraph = {stages: [], nodes: [], links: []};\nvoid [SankeyDiagram, graph];\n");
+  const program=ts.createProgram([example],{noEmit:true,strict:true,noUncheckedSideEffectImports:true,target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.NodeNext,moduleResolution:ts.ModuleResolutionKind.NodeNext});
+  const diagnostics=ts.getPreEmitDiagnostics(program);
+  if(diagnostics.length)throw Error(ts.formatDiagnosticsWithColorAndContext(diagnostics,{getCanonicalFileName:f=>f,getCurrentDirectory:()=>project,getNewLine:()=> '\n'}));
+}
 export async function build() {
   compile('tsconfig.json');
   const library=await rollup({input:path.join(project,'src/index.ts'),external:['react','react-dom','react/jsx-runtime'],plugins:[sourcePlugin()]});
   await library.write({file:path.join(project,'dist/sankey-plus.js'),format:'es',sourcemap:false});await library.close();compile('tsconfig.lib.json');
+  // The CSS import emits the extracted asset during bundling; the published JS
+  // has no such side effect. Match the declaration to that optional CSS export.
+  const declarationPath=path.join(project,'dist/index.d.ts');
+  const declaration=await fs.readFile(declarationPath,'utf8');
+  const cssImport=/^import ['"]\.\/style\.css['"];\r?\n?/m;
+  if(!cssImport.test(declaration))throw Error('Expected source-only CSS import in emitted index declaration.');
+  await fs.writeFile(declarationPath,declaration.replace(cssImport,''));
   await fs.copyFile(path.join(project,'src/style.css.d.ts'),path.join(project,'dist/style.css.d.ts'));
+  await verifyPackageTypes();
   const demo=await rollup({input:path.join(project,'demo/main.tsx'),plugins:[sourcePlugin(),nodeResolve({extensions:['.js','.ts','.tsx','.json'],browser:true}),commonjs()]});
   await demo.write({file:path.join(project,'demo-dist/demo.js'),format:'es',sourcemap:true});await demo.close();
   await fs.copyFile(path.join(project,'demo/index.html'),path.join(project,'demo-dist/index.html'));
