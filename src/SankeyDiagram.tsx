@@ -231,11 +231,20 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
             cancelClose(); };
         // Tab is dispatched on the previous control, before focus enters us.
         const keyboard = () => { input.current = 'keyboard'; };
+        const scroll = (event: Event) => {
+            // A portal's own scrolling does not move the diagram or its anchor.
+            // Preserve pointer inspection while reading overflowing details.
+            if (event.target instanceof Node && tooltipHandle.current?.contains(event.target)) {
+                cancelClose();
+                return;
+            }
+            repositionInspection();
+        };
         document.addEventListener('pointerdown', outside);
         document.addEventListener('pointerover', over);
         document.addEventListener('keydown', keyboard, true);
-        window.addEventListener('scroll', repositionInspection, true);
-        return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('pointerover', over); document.removeEventListener('keydown', keyboard, true); window.removeEventListener('scroll', repositionInspection, true); };
+        window.addEventListener('scroll', scroll, true);
+        return () => { document.removeEventListener('pointerdown', outside); document.removeEventListener('pointerover', over); document.removeEventListener('keydown', keyboard, true); window.removeEventListener('scroll', scroll, true); };
     }, []);
     const locate = (event: {
         clientX: number;
