@@ -49,6 +49,24 @@ test('validation catches bad totals, identities, numbers, placement and backward
     error({ ...base, nodes: [{ ...base.nodes[0], placement: { stage: 'missing' } }, base.nodes[1]] }, 'unknown-stage');
     error({ ...base, links: [{ ...base.links[0], from: 'b', to: 'a' }] }, 'backward-stage-link');
 });
+test('layout rejects dimensions beyond finite SVG precision while preserving valid near-limit layouts', () => {
+    const model = resolveGraph(base);
+    for (const options of [
+        { width: 1e308 },
+        { width: 960, plotHeight: 1e308 },
+        { width: 960, minLinkWidth: 1e308 },
+        { width: 960, minLinkWidth: 1e7 },
+        { width: 960, lineHeight: NaN },
+    ])
+        assert.throws(() => layoutGraph(model, options), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === 'invalid-number' && issue.message.includes('10000000')));
+    const edgeFan = resolveGraph({
+        stages: ['a'],
+        nodes: [{ key: 'a', title: 'A', placement: { stage: 'a' } }, { key: 'e', title: 'E', placement: { edge: 'top' } }],
+        links: [{ key: 'l1', from: 'a', to: 'e', amount: 1 }, { key: 'l2', from: 'a', to: 'e', amount: 1 }],
+    });
+    assert.throws(() => layoutGraph(edgeFan, { width: 960, minLinkWidth: 3_000_000 }), (e: unknown) => e instanceof SankeyInputError && e.issues.some(issue => issue.code === 'invalid-number' && issue.message.includes('minLinkWidth')));
+    assert.equal(layoutGraph(resolveGraph(full), { width: 9_999_950 }).width, 9_999_950);
+});
 test('cycles through edge nodes and incompatible relays fail before layout', () => {
     const graph: SankeyGraph = { stages: ['a', 'b'], nodes: [...base.nodes, { key: 'edge', title: 'Relay', placement: { edge: 'top' } }], links: [...base.links, { key: 'be', from: 'b', to: 'edge', amount: 100 }, { key: 'ea', from: 'edge', to: 'a', amount: 100 }] };
     error(graph, 'cycle');
