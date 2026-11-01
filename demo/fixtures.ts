@@ -37,7 +37,7 @@ export const examples: {
             return [view.node.title, `${view.text.total} ${role}`];
         },
     },
-    { key: 'currencies', name: 'Currencies', description: 'Separate EUR, USD and GBP balances; widths use USD equivalents. Treasury mixes declared and automatic totals. Illustrative rates: 1 EUR = 1.10 USD · 1 GBP = 1.25 USD.', graph: currenciesData as SankeyGraph, plotHeight: 440 },
+    { key: 'currencies', name: 'Currencies', description: 'Actual input/output currencies, with every width valued in USD. GBP → COP preserves value; the USD → COP payout narrows by 2.5% against its reference rate. All rates are illustrative.', graph: currenciesData as SankeyGraph, plotHeight: 440 },
     { key: 'complete', name: 'Four-sided flow', description: 'Every direction, independent totals and multiple nodes on both edges.', graph: fullGraph },
     { key: 'fanout', name: 'Fan-out', description: 'Ordered turns keep links apart. Narrow the canvas to see the destinations wrap.', graph: fanOut() },
     { key: 'fanin', name: 'Fan-in', description: 'Three unequal inputs share one bottom destination. Reversed arrival order keeps the ribbons separate; the total is derived as 1,000.', graph: fanInData as SankeyGraph },

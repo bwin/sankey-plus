@@ -1,14 +1,15 @@
 {
   "defaultUnit": "USD",
-  "conversionRates": [{"from":"EUR","to":"USD","rate":1.1},{"from":"GBP","to":"USD","rate":1.25}],
+  "conversionRates": [{"from":"EUR","to":"USD","rate":1.1},{"from":"GBP","to":"USD","rate":1.25},{"from":"USD","to":"COP","rate":4000}],
   "stages": ["receipts","treasury","payments"],
   "nodes": [
     {"key":"euro-sales","title":"Euro receipts","placement":{"stage":"receipts"},"totals":{"EUR":1200},"color":"#5278c5","meta":{"note":"A declared EUR 1,200 balance; EUR 1,000 is transferred. Rates are illustrative, not live market quotes."}},
     {"key":"us-sales","title":"Dollar receipts","placement":{"stage":"receipts"},"color":"#258e80","meta":{"note":"USD 400 sent and received explicitly; this balance derives automatically."}},
     {"key":"uk-sales","title":"Sterling receipts","placement":{"stage":"receipts"},"color":"#9b6ab5","meta":{"note":"GBP 200 is valued at USD 250 for ribbon width, while remaining a GBP balance at both endpoints."}},
-    {"key":"treasury","title":"Treasury","placement":{"stage":"treasury"},"totals":{"EUR":"auto","USD":600,"GBP":"auto"},"color":"#64748b","meta":{"note":"EUR and GBP derive from links. USD 600 is declared, with only USD 500 transferred. These are separate balances."}},
+    {"key":"treasury","title":"Treasury","placement":{"stage":"treasury"},"totals":{"EUR":"auto","USD":600,"GBP":"auto"},"color":"#64748b","meta":{"note":"Separate EUR, USD and GBP balances. USD 600 is declared, including USD 100 from the opening balance used for the COP payout."}},
     {"key":"suppliers","title":"Suppliers","placement":{"stage":"payments"},"color":"#c59338","meta":{"note":"Receives EUR 700 plus USD 300, equivalent to USD 1,070 combined."}},
-    {"key":"operations","title":"Operations","placement":{"stage":"payments"},"color":"#3589ac","meta":{"note":"Receives EUR 200 plus GBP 150. Both balances derive automatically from incoming links."}},
+    {"key":"operations","title":"Operations","placement":{"stage":"payments"},"color":"#3589ac","meta":{"note":"Receives EUR 200 and COP 750,000. The GBP 150 transfer converts to COP at 5,000; both ends have the same USD 187.50 reference value."}},
+    {"key":"cop-payout","title":"COP payout","placement":{"stage":"payments"},"color":"#d68248","meta":{"note":"USD 100 sent at 3,900 COP/USD delivers COP 390,000. At the 4,000 reference rate this is USD 97.50, so the ribbon narrows by 2.5%. Rates are illustrative."}},
     {"key":"reserve","title":"Reserve release","placement":{"edge":"top"},"color":"#258e80","meta":{"note":"USD 100 released from an existing reserve into treasury."}},
     {"key":"retained","title":"Retained funds","placement":{"edge":"bottom"},"color":"#64748b","meta":{"note":"EUR 100, USD 200 and GBP 50 set aside. Separate balances, equivalent to USD 372.50 together."}}
   ],
@@ -20,7 +21,8 @@
     {"key":"eur-suppliers","from":"treasury","to":"suppliers","amount":700,"color":"#5278c5","inputUnit":"EUR","outputUnit":"EUR"},
     {"key":"usd-suppliers","from":"treasury","to":"suppliers","amount":300,"color":"#258e80","inputUnit":"USD","outputUnit":"USD"},
     {"key":"eur-operations","from":"treasury","to":"operations","amount":200,"color":"#5278c5","inputUnit":"EUR","outputUnit":"EUR"},
-    {"key":"gbp-operations","from":"treasury","to":"operations","amount":150,"color":"#9b6ab5","inputUnit":"GBP","outputUnit":"GBP"},
+    {"key":"gbp-operations","from":"treasury","to":"operations","amount":150,"color":"#9b6ab5","inputUnit":"GBP","outputUnit":"COP","conversionRate":5000},
+    {"key":"usd-cop-payout","from":"treasury","to":"cop-payout","amount":100,"inputUnit":"USD","outputUnit":"COP","conversionRate":3900,"color":"#d68248"},
     {"key":"eur-retained","from":"treasury","to":"retained","amount":100,"color":"#5278c5","inputUnit":"EUR","outputUnit":"EUR"},
     {"key":"usd-retained","from":"treasury","to":"retained","amount":200,"color":"#258e80","inputUnit":"USD","outputUnit":"USD"},
     {"key":"gbp-retained","from":"treasury","to":"retained","amount":50,"color":"#9b6ab5","inputUnit":"GBP","outputUnit":"GBP"}

@@ -9,7 +9,7 @@
 | Distribution | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata. |
 | Stages | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare. |
 | World trade | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors. |
-| Currencies | Separate EUR/USD/GBP balances, declared and automatic totals, a combined USD valuation, rate equations, top reserve and bottom retained funds. |
+| Currencies | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
 | Four-sided flow | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps. |
 | Fan-out / Top fan-out | Separate ordered turns below and above the main sequence. |
 | Fan-in | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total. |
@@ -54,15 +54,20 @@ Inspect Energy to emphasize its exporters, reserve source, importers and seven i
 
 ## Currencies
 
-The [Currencies fixture](../demo/currencies.json) has 8 nodes and 11 links. It uses invented rates of **1 EUR = 1.10 USD** and **1 GBP = 1.25 USD**, supplied on the receipt links. The graph's default unit is USD; links without a unit inherit it. Rates value the flows without exchanging the currency at either endpoint.
+The [Currencies fixture](../demo/currencies.json) has 9 nodes and 12 links. All amounts and rates are illustrative. The graph's default unit is USD, with reference rates of **1 EUR = 1.10 USD**, **1 GBP = 1.25 USD** and **1 USD = 4,000 COP**. Each link explicitly names its input and output currency. Reference rates determine all widths; each transfer's own rate determines the amount delivered.
 
-Treasury declares `totals: { EUR: 'auto', USD: 600, GBP: 'auto' }`. It shows 1,000 EUR, 600 USD and 200 GBP separately, plus a combined total of 1,950 USD. Incoming and outgoing flows each total 1,850 USD, leaving 100 USD of declared capacity unallocated. Euro receipts also declares more than it transfers: 1,200 EUR versus 1,000 EUR. Suppliers, Operations and Retained funds derive all their balances from links.
+Treasury declares `totals: { EUR: 'auto', USD: 600, GBP: 'auto' }`. It shows 1,000 EUR, 600 USD and 200 GBP separately, plus a combined total of 1,950 USD. Incoming value is 1,850 USD and outgoing value is 1,950 USD: its declared USD balance includes 100 USD of opening funds for the COP payout. Euro receipts declares more than it transfers: 1,200 EUR versus 1,000 EUR. Destination nodes derive their balances from the amounts actually received.
 
-Inspect a EUR or GBP link to see its native amount, USD equivalent, conversion rate and both endpoint descriptions. Inspect Treasury to see which balances are declared or derived. Turning custom presentation off still displays per-unit labels, combined totals and conversion equations using the library defaults. The top reserve releases USD; the bottom node retains three separate currency balances. [Unit semantics and the public interface](units.md).
+Two links demonstrate currency conversion:
 
-![Currency balances with USD-equivalent widths and separate parallel ribbons](../screenshots/37-separated-operations.jpg)
+- Treasury sends **150 GBP → 750,000 COP** to Operations at 5,000 COP/GBP. Both ends are worth 187.50 USD at the reference rates, so the ribbon stays the same width. Operations receives 200 EUR on another link, giving it two separate balances and a combined total of 407.50 USD.
+- Treasury sends **100 USD → 390,000 COP** to COP payout at 3,900 COP/USD. The destination receives a value of 97.50 USD at the reference rate of 4,000, so this ribbon narrows by 2.5%. The large numerical FX ratio does not produce a wider ribbon.
 
-![Native amount, equivalent value and rate in the link tooltip](../screenshots/35-currency-tooltip.jpg)
+Inspect either conversion link to see its actual input/output amounts and transfer rate, followed by USD valuations and the graph's reference rates. Source and destination details stay in two columns below. Inspect Treasury to see declared and derived balances. Turning custom presentation off retains these distinctions in the library defaults. The top reserve releases USD; Retained funds at the bottom holds separate EUR/USD/GBP balances. [Unit semantics and the public interface](units.md).
+
+![Explicit currency conversions with all widths valued in USD](../screenshots/38-directional-currencies.jpg)
+
+![Actual transfer amounts and rate separated from reference valuation](../screenshots/39-directional-fx-tooltip.jpg)
 
 ## Fan-in
 

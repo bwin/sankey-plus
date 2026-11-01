@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { resolveGraph } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { intersects, pointAt, insidePolygon } from '../src/paths.js';
@@ -40,6 +41,23 @@ test('a large FX ratio credits the output currency without multiplying ribbon wi
     const scene = layoutGraph(model, { width: 960, labels: noLabels(g) });
     assert.equal(scene.links[0].startWidth, scene.links[0].endWidth);
     assert.equal(scene.links[0].ribbon, undefined, 'equivalent values retain constant-width rendering');
+});
+
+test('the currency demo includes both equal-value FX and a lower-value payout', () => {
+    const g = JSON.parse(readFileSync(new URL('../../demo/currencies.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(g), payout = model.links.get('usd-cop-payout')!, operation = model.links.get('gbp-operations')!;
+    assert.deepEqual(operation.output, { amount: 750000, unit: 'COP' });
+    approx(operation.layoutInputAmount, operation.layoutOutputAmount);
+    assert.deepEqual(payout.output, { amount: 390000, unit: 'COP' });
+    approx(payout.layoutOutputAmount / payout.layoutInputAmount, .975);
+    assert.deepEqual(model.nodes.get('cop-payout')!.totals.map(t => [t.unit, t.total]), [['COP', 390000]]);
+    for (const width of [360, 600, 960, 1440]) {
+        const scene = layoutGraph(model, { width });
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        const link = scene.links.find(l => l.key === 'usd-cop-payout')!;
+        assert.ok(link.ribbon);
+        approx(link.endWidth / link.startWidth, .975);
+    }
 });
 
 test('transfer rates are local and do not conflict with the reference valuation', () => {
