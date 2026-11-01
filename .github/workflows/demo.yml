@@ -29,6 +29,7 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - run: npm run verify:package
       - uses: actions/upload-pages-artifact@v4
         if: github.ref == 'refs/heads/master'
         with:

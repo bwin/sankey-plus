@@ -34,8 +34,10 @@ function sourcePlugin() {
   };
 }
 async function verifyPackageTypes() {
-  // Resolve the built package like a strict NodeNext consumer, including its
-  // explicitly imported stylesheet. This catches broken declaration imports.
+  // Resolve the built package in this working tree like a strict NodeNext
+  // consumer, including its explicitly imported stylesheet. This checks the
+  // emitted declaration graph, not npm's packaged `files`; run
+  // `npm run verify:package` before publishing to test the tarball.
   const dir=path.join(project,'.tests');await fs.mkdir(dir,{recursive:true});
   const example=path.join(dir,'built-package-consumer.ts');
   await fs.writeFile(example,"import { SankeyDiagram, type SankeyGraph } from '@bwin/sankey-plus';\nimport '@bwin/sankey-plus/style.css';\nconst graph: SankeyGraph = {stages: [], nodes: [], links: []};\nvoid [SankeyDiagram, graph];\n");

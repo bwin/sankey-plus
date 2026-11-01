@@ -24,7 +24,10 @@ The development command builds once and starts the server at **http://127.0.0.1:
 npm run typecheck
 npm test
 npm run build
+npm run verify:package
 ```
+
+`verify:package` requires a completed build. It packs the archive, installs it into `.tests/package-verify/consumer`, and checks the declarations, runtime exports and stylesheet from that fresh consumer.
 
 To measure layout performance:
 
