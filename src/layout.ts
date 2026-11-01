@@ -395,7 +395,13 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                     if (n.edge === 'bottom' && !out)
                         order = -order;
                 }
-                return order || positions.get(a.key)! - positions.get(b.key)!;
+                const inputOrder = positions.get(a.key)! - positions.get(b.key)!;
+                // Parallel links share the opposite node, so position sorting
+                // cannot order their separate ports. Reverse the edge-side tie
+                // when a bottom arrival or top departure turns the port axes;
+                // otherwise the two ends force the ribbons to cross each other.
+                const reverseParallel = n.edge && !aa.edge && aa.key === bb.key && ((n.edge === 'top') === out);
+                return order || (reverseParallel ? -inputOrder : inputOrder);
             });
             portGroups.push({ node: n, out, links: connectedLinks });
         }
@@ -436,7 +442,10 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         const direction = side === 'bottom' ? 1 : -1;
         const inner = flows.reduce((a, b) => a.end.x < b.end.x ? a : b);
         if (flows.some(f => Math.abs(f.start.x - inner.start.x) > .01 || Math.abs(f.end.y - inner.end.y) > .01 || direction * (inner.start.y - f.start.y) < -.01)) return;
-        for (const tension of [.8, .9, 1]) {
+        // If a neighboring label blocks the broadest bend, adjust the shared
+        // curve as a group before falling back to separate obstacle detours.
+        // Rerouting one ribbon alone can cross the rest of a parallel bundle.
+        for (const tension of [.8, .9, 1, .6, .5]) {
             const trial = flows.map(f => parallelCurve(inner.start, inner.end, { x: 1, y: 0 }, { x: 0, y: direction }, direction * (inner.start.y - f.start.y), f.end.x - inner.end.x, direction, tension));
             if (trial.every((route, i) => !routeCollisions(route, obstacles(flows[i]), flows[i].width / 2 + 2))) {
                 flows.forEach((f, i) => fanRoutes.set(f.key, trial[i]));

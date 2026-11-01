@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
+import { defaultLabel, presentation } from '../src/presentation.js';
 import { crossings, distanceToRoute, distanceToSegment, inflate, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode } from '../src/types.js';
 import { stressGraph } from '../fixtures/stress.js';
@@ -229,6 +230,50 @@ test('three unequal fan-in links keep broad bends clear of sibling labels', () =
         }
         for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++)
             assert.ok(separation(scene.links[i], scene.links[j]) > -.6, 'direct curve repair must retain fan separation');
+    }
+});
+
+for (const edge of ['top', 'bottom'] as const) for (const incoming of [false, true])
+    test(`parallel ${edge} ${incoming ? 'inflows' : 'outflows'} stay separate through the bend`, () => {
+        const graph: SankeyGraph = {
+            defaultUnit: 'USD', conversionRates: [{ from: 'EUR', to: 'USD', rate: 1.1 }, { from: 'GBP', to: 'USD', rate: 1.25 }],
+            stages: ['main'], nodes: [{ key: 'main', title: 'Main', placement: { stage: 'main' } }, { key: 'edge', title: 'Edge', placement: { edge } }],
+            links: [{ key: 'eur', amount: 100, unit: 'EUR' }, { key: 'usd', amount: 200, unit: 'USD' }, { key: 'gbp', amount: 50, unit: 'GBP' }].map(link => ({ ...link, from: incoming ? 'edge' : 'main', to: incoming ? 'main' : 'edge' })),
+        };
+        for (const width of [360, 960, 1107, 1440]) for (const reverseOrder of [false, true]) {
+            const input = { ...graph, links: reverseOrder ? [...graph.links].reverse() : graph.links };
+            const model = resolveGraph(input), scene = layoutGraph(model, { width });
+            assert.equal(scene.diagnostics.obstacleCollisions, 0);
+            for (let i = 0; i < scene.links.length; i++) for (let j = i + 1; j < scene.links.length; j++) {
+                const a = scene.links[i], b = scene.links[j];
+                assert.equal(crossings(a.route, b.route), 0, `${width}px/${reverseOrder}: ${a.key}/${b.key}`);
+                assert.ok(separation(a, b) > -.6, `${width}px/${reverseOrder}: ${a.key}/${b.key} overlap ${separation(a, b)}`);
+            }
+            const edgeNode = scene.nodes.find(n => n.edge)!;
+            for (const link of scene.links) {
+                const atEdge = incoming ? link.start : link.end;
+                assert.equal(atEdge.y, edge === 'top' ? edgeNode.y + edgeNode.h : edgeNode.y);
+                assert.ok(Math.abs(link.width / scene.scale - model.links.get(link.key)!.layoutAmount) < 1e-8);
+            }
+        }
+    });
+
+test('currency retained-funds ribbons stay separate with full balance labels', () => {
+    const graph = JSON.parse(readFileSync(new URL('../../demo/currencies.json', import.meta.url), 'utf8')) as SankeyGraph;
+    const model = resolveGraph(graph);
+    const labels = new Map(model.subjects.map(subject => {
+        const value = defaultLabel(presentation(model, subject, undefined, 'label'));
+        return [`${subject.kind}:${subject.key}`, typeof value === 'string' ? [value] : value] as const;
+    }));
+    for (const width of [360, 960, 1107, 1440]) {
+        const scene = layoutGraph(model, { width, plotHeight: 440, labels });
+        const retained = scene.links.filter(f => f.to === 'retained');
+        assert.equal(retained.length, 3);
+        assert.equal(scene.diagnostics.obstacleCollisions, 0);
+        for (let i = 0; i < retained.length; i++) for (let j = i + 1; j < retained.length; j++) {
+            assert.equal(crossings(retained[i].route, retained[j].route), 0, `${width}px retained crossover`);
+            assert.ok(separation(retained[i], retained[j]) > -.6, `${width}px retained ribbon overlap`);
+        }
     }
 });
 
