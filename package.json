@@ -55,6 +55,7 @@
     "stress": "node scripts/benchmark-layout.mjs --case stress-100-300",
     "benchmark": "node scripts/benchmark-layout.mjs",
     "build": "node scripts/build.mjs",
+    "verify:package": "node scripts/verify-package.mjs",
     "preview": "node scripts/serve.mjs"
   },
   "peerDependencies": {

@@ -39,6 +39,7 @@ From the repository root, install with `npm ci`. `npm run dev` builds and serves
 npm run typecheck
 npm test
 npm run build
+npm run verify:package
 npm run stress
 npm run benchmark
 ```
@@ -47,7 +48,7 @@ npm run benchmark
 - Add focused regressions for behavioral bugs. For routing changes, check actual rendered output at desktop and narrow widths in addition to geometry tests. Record what was verified without implying untested browser/platform coverage.
 - Profile before optimizing. Compare unprofiled first-call and warm timings; keep fixture creation, compilation and rendering outside layout timing. See `docs/performance.md` for methodology and benchmark arguments. In PowerShell, use `npm.cmd` if the `npm.ps1` shim strips forwarded `--` arguments.
 - Keep generated `dist/`, `demo-dist/`, `.tests/` and `node_modules/` out of Git. Store CPU profiles and temporary reports under `.tests/`.
-- Keep the npm archive limited to runtime JS/CSS, public declarations, README, changelog and license notices. If public declarations gain relative imports, update the `files` allowlist and verify a consumer against the packed archive. Detailed guides stay on GitHub; use absolute repository links from the README.
+- Keep the npm archive limited to runtime JS/CSS, public declarations, README, changelog and license notices. If public declarations gain relative imports, update the `files` allowlist and run `npm run verify:package`; it installs the packed archive into a fresh consumer. Detailed guides stay on GitHub; use absolute repository links from the README.
 - Make focused, independently reviewable commits: separate performance work, routing fixes, examples and repository guidance. Preserve unrelated user changes.
 - Keep README/API examples aligned with implementation. Distinguish changes committed to Git from versions actually published to npm.
 

@@ -64,11 +64,14 @@ Resolve conflicts before proceeding; fixes must also reach `dev`. Do not push `m
 npm ci
 npm test
 npm run build
+npm run verify:package
 npm pack --dry-run
 node -e "require('node:fs').mkdirSync('.tests/release', { recursive: true })"
 npm pack --pack-destination .tests/release --json
 git status --short
 ```
+
+The build's declaration check resolves the working-tree package. `verify:package` packs the archive, installs it into a fresh consumer under `.tests/package-verify`, runs strict NodeNext typechecking, and checks the runtime exports and stylesheet. The publishing archive is still packed separately below and must pass the full manual checks.
 
 The worktree must stay clean. The build includes strict typechecking. Inspect the archive: only JS/CSS, three public declaration files, package metadata, README, changelog and license notices belong in it. No credentials, source tree, guides, screenshots, internal declarations or demo files.
 
