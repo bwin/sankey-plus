@@ -57,6 +57,7 @@ export interface Scene {
 export interface LayoutOptions {
     width: number;
     plotHeight?: number;
+    minLinkWidth?: number;
     labels?: Map<string, readonly string[]>;
     measureText?: (text: string) => number;
     lineHeight?: number;
@@ -114,9 +115,11 @@ export function layoutGraph<I, T>(model: ResolvedGraph<I, T>, options: LayoutOpt
 }
 /** Checkpoints are at phase/item boundaries; an individual geometry helper remains synchronous. */
 export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: LayoutOptions, attempt = 0): Generator<void, Scene, void> {
-    const requested = options.width, plotHeight = options.plotHeight ?? 336;
+    const requested = options.width, plotHeight = options.plotHeight ?? 336, minLinkWidth = options.minLinkWidth ?? 0;
     if (!Number.isFinite(requested) || requested <= 0 || !Number.isFinite(plotHeight) || plotHeight <= 0)
         throw new SankeyInputError([{ code: 'invalid-number', message: 'Layout width and plotHeight must be finite and positive.' }]);
+    if (!Number.isFinite(minLinkWidth) || minLinkWidth < 0)
+        throw new SankeyInputError([{ code: 'invalid-number', message: 'minLinkWidth must be finite and non-negative.' }]);
     yield;
     // Scoring revisits the same route pairs during port swaps and diagnostics.
     // Routes are replaced, never mutated, during one layout attempt. Keep this
@@ -135,6 +138,11 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     const measure = options.measureText ?? ((s: string) => Array.from(s).length * 6.6), lineHeight = options.lineHeight ?? 16;
     const label = (kind: string, key: string, defaultText: string) => options.labels?.get(`${kind}:${key}`) ?? [defaultText];
     const amount = (link: { key: string }) => { const f = model.links.get(link.key)!; return Math.max(f.layoutInputAmount, f.layoutOutputAmount); };
+    const endpointWidth = (link: { key: string }, out: boolean, valueScale: number) => {
+        const f = model.links.get(link.key)!;
+        return Math.max(minLinkWidth, (out ? f.layoutInputAmount : f.layoutOutputAmount) * valueScale);
+    };
+    const linkWidth = (link: { key: string }, valueScale: number) => Math.max(minLinkWidth, amount(link) * valueScale);
     const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
     const stages = model.stages.map(s => [...model.nodes.values()].filter(n => n.node.placement.stage === s));
     const edges = [...model.nodes.values()].filter(n => n.node.placement.edge);
@@ -147,9 +155,17 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     const axis = (index: number) => stages.length === 1 && !leftExtra && !rightExtra ? width / 2 - BAR / 2 : PAD + (index + leftExtra) * step;
     const maxCount = Math.max(0, ...stages.map(s => s.length));
     const labelHeight = (n: typeof edges[number]) => label('node', n.node.key, n.node.title).length * lineHeight;
-    const expandedStages = stages.map(stage => stage.some(n => labelHeight(n) > lineHeight * 2));
-    const centralHeight = Math.max(plotHeight, maxCount * (lineHeight * 2 + GAP), ...stages.map((stage, i) => expandedStages[i] ? sum(stage.map(n => Math.max(lineHeight * 2, labelHeight(n)) + GAP)) + GAP : 0));
+    const expandedStages = stages.map(stage => minLinkWidth > 0 || stage.some(n => labelHeight(n) > lineHeight * 2));
     const geomTotal = (n: typeof edges[number]) => Math.max(n.total, n.incoming, n.outgoing);
+    const traffic = (n: typeof edges[number], out: boolean, valueScale: number) => minLinkWidth > 0
+        ? sum((out ? n.outgoingLinks : n.incomingLinks).map(f => endpointWidth(f, out, valueScale)))
+        : (out ? n.outgoing : n.incoming) * valueScale;
+    const nodeSize = (n: typeof edges[number], valueScale: number) => minLinkWidth > 0
+        ? Math.max(geomTotal(n) * valueScale, traffic(n, false, valueScale), traffic(n, true, valueScale))
+        : geomTotal(n) * valueScale;
+    // Fixed pixel floors cannot shrink with the value scale. Grow the central
+    // region when their port stacks alone exceed the preferred plot height.
+    const centralHeight = Math.max(plotHeight, maxCount * (lineHeight * 2 + GAP), ...stages.map((stage, i) => expandedStages[i] ? sum(stage.map(n => Math.max(lineHeight * 2, labelHeight(n), nodeSize(n, 0)) + GAP)) + GAP : 0));
     let scale = Infinity;
     for (const stage of stages) {
         const total = sum(stage.map(geomTotal));
@@ -158,6 +174,12 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     }
     if (!Number.isFinite(scale))
         scale = centralHeight / Math.max(1, ...edges.map(geomTotal));
+    const fitScale = (used: (valueScale: number) => number, available: number) => {
+        if (used(scale) <= available) return;
+        let lo = 0, hi = scale;
+        for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (used(mid) <= available) lo = mid; else hi = mid; }
+        scale = lo;
+    };
     const limits = new Map<string, {
         lo: number;
         hi: number;
@@ -172,7 +194,12 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         if (targetColumns.length)
             hi = Math.min(hi, axis(Math.min(...targetColumns)) - CLEAR);
         limits.set(n.node.key, { lo, hi });
-        if (geomTotal(n) > 0)
+        if (minLinkWidth > 0) {
+            const available = Math.max(8, hi - lo - 28), minimum = nodeSize(n, 0);
+            if (minimum > available) // Even a zero value scale cannot fit this edge's port stack.
+                return yield* layoutGraphSteps(model, { ...options, width: width + (minimum - available + 1) * slots * 2 }, attempt);
+            fitScale(valueScale => nodeSize(n, valueScale), available);
+        } else if (geomTotal(n) > 0)
             scale = Math.min(scale, Math.max(8, hi - lo - 28) / geomTotal(n));
     }
     // Wrapped simple fans reserve their corridor before packing. The value scale is
@@ -193,13 +220,17 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
                     continue;
                 const targets = links.map(f => model.nodes.get(f.to)!), lo = Math.max(...targets.map(n => limits.get(n.node.key)!.lo)), hi = Math.min(...targets.map(n => limits.get(n.node.key)!.hi)), available = hi - lo;
                 const textWidths = targets.map(n => Math.min(148, Math.max(0, ...label('node', n.node.key, n.node.title).map(measure))));
-                const needed = sum(targets.map((n, i) => Math.max(geomTotal(n) * scale, textWidths[i]))) + (targets.length - 1) * GAP;
+                const needed = sum(targets.map((n, i) => Math.max(nodeSize(n, scale), textWidths[i]))) + (targets.length - 1) * GAP;
                 if (needed <= available)
                     continue;
                 const strip = available * .55, labelWidth = Math.min(Math.max(...textWidths), available - strip);
-                const traffic = sum(links.map(amount));
                 const channelWidth = Math.max(8, strip - labelWidth / 2 - 10 - Math.max(0, links.length - 2) * LANE_GAP);
-                scale = Math.min(scale, channelWidth / traffic);
+                if (minLinkWidth > 0) {
+                    const minimum = links.length * minLinkWidth;
+                    if (minimum > channelWidth)
+                        return yield* layoutGraphSteps(model, { ...options, width: width + (minimum - channelWidth + 1) * slots * 4 }, attempt);
+                    fitScale(valueScale => sum(links.map(f => linkWidth(f, valueScale))), channelWidth);
+                } else scale = Math.min(scale, channelWidth / sum(links.map(amount)));
                 for (const n of targets)
                     limits.set(n.node.key, { lo: lo + strip, hi });
                 wrappedFans.push({ keys: targets.map(n => n.node.key), origin: lo });
@@ -209,19 +240,15 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     // intact and reduce only the common scale when their text footprints need it.
     for (let col = 0; col < stages.length; col++) if (expandedStages[col]) {
         const stage = stages[col], available = centralHeight - (stage.length + 1) * GAP;
-        const used = (valueScale: number) => sum(stage.map(n => Math.max(geomTotal(n) * valueScale, 3, labelHeight(n))));
-        if (used(scale) > available) {
-            let lo = 0, hi = scale;
-            for (let i = 0; i < 40; i++) { const mid = (lo + hi) / 2; if (used(mid) <= available) lo = mid; else hi = mid; }
-            scale = lo;
-        }
+        const used = (valueScale: number) => sum(stage.map(n => Math.max(nodeSize(n, valueScale), 3, labelHeight(n))));
+        fitScale(used, available);
     }
     scale = Math.max(Number.MIN_VALUE, scale);
-    const widestEdge = Math.max(0, ...edges.map(n => geomTotal(n) * scale));
+    const widestEdge = Math.max(0, ...edges.map(n => nodeSize(n, scale)));
     const mainLabelLimit = Math.max(48, Math.min(160, (step - BAR - widestEdge - 40) / 2));
     const nodes: NodeGeometry[] = [];
     for (let col = 0; col < stages.length; col++) {
-        const stage = stages[col], sizes = stage.map(n => n.total ? geomTotal(n) * scale : 3);
+        const stage = stages[col], sizes = stage.map(n => n.total ? nodeSize(n, scale) : 3);
         const footprints = stage.map((n, i) => expandedStages[col] ? Math.max(sizes[i], labelHeight(n)) : sizes[i]);
         const spacing = Math.max(GAP, (centralHeight - sum(footprints)) / (stage.length + 1));
         let y = spacing;
@@ -237,7 +264,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     const byKey = new Map(nodes.map(n => [n.key, n]));
     for (let i = 0; i < edges.length; i++) {
         yield;
-        const facts = edges[i], n = facts.node, w = facts.total ? geomTotal(facts) * scale : 3;
+        const facts = edges[i], n = facts.node, w = facts.total ? nodeSize(facts, scale) : 3;
         let { lo, hi } = limits.get(n.key)!;
         let routeLo = lo, routeHi = hi;
         let sx = 0, sw = 0, tx = 0, tw = 0;
@@ -299,7 +326,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         }
     }
     yield;
-    const maxRibbon = Math.max(0, ...model.graph.links.map(f => amount(f) * scale));
+    const maxRibbon = Math.max(0, ...model.graph.links.map(f => linkWidth(f, scale)));
     const edgeLabelHeight = Math.max(lineHeight * 2, ...nodes.filter(n => n.edge).map(n => n.label.h));
     const clearance = 72 + maxRibbon / 2, baseRowPitch = Math.max(86, edgeLabelHeight + BAR + maxRibbon + 32);
     const rowPitches = {
@@ -320,7 +347,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             let cursor = BAR + 10 + edgeLabelHeight + 8;
             let widest = 0;
             for (const node of targets) {
-                const thickness = model.nodes.get(node.key)!.incoming * scale;
+                const thickness = traffic(model.nodes.get(node.key)!, false, scale);
                 fanLaneDistances.set(node.key, cursor + thickness / 2);
                 cursor += thickness + LANE_GAP;
                 widest = Math.max(widest, thickness);
@@ -348,21 +375,21 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
         n.label = labelBox(n.label.lines, n.x + n.w / 2, n.edge === 'top' ? n.y - 10 - n.label.h / 2 : n.y + BAR + 10 + n.label.h / 2, 'middle', measure, lineHeight);
         if (n.row) {
             const nearer = rows[n.edge].slice(0, n.row).flat().filter(o => o.x + o.w > n.lo && o.x < n.hi);
-            const traffic = Math.max(...[...model.nodes.get(n.key)!.incomingLinks, ...model.nodes.get(n.key)!.outgoingLinks].map(f => amount(f) * scale), 0);
+            const widest = Math.max(...[...model.nodes.get(n.key)!.incomingLinks, ...model.nodes.get(n.key)!.outgoingLinks].map(f => linkWidth(f, scale)), 0);
             const first = nearer.length ? Math.min(...nearer.map(o => o.x + o.w / 2 - o.footprint / 2)) : n.x;
-            n.corridor = Math.max(PAD + traffic / 2, first - traffic / 2 - 10);
+            n.corridor = Math.max(PAD + widest / 2, first - widest / 2 - 10);
         }
     }
     for (const fan of wrappedFans) {
         let cursor = fan.origin;
         for (const n of fan.keys.map(k => byKey.get(k)!).filter(n => n.row > 0).sort((a, b) => b.row - a.row || a.x - b.x || a.index - b.index)) {
-            const traffic = model.nodes.get(n.key)!.incoming * scale;
-            n.corridor = cursor + traffic / 2;
-            cursor += traffic + LANE_GAP;
+            const thickness = traffic(model.nodes.get(n.key)!, false, scale);
+            n.corridor = cursor + thickness / 2;
+            cursor += thickness + LANE_GAP;
         }
     }
-    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: amount(f) * scale,
-        startWidth: model.links.get(f.key)!.layoutInputAmount * scale, endWidth: model.links.get(f.key)!.layoutOutputAmount * scale,
+    const links: LinkGeometry[] = model.graph.links.map(f => ({ key: f.key, from: f.from, to: f.to, amount: f.amount, width: linkWidth(f, scale),
+        startWidth: endpointWidth(f, true, scale), endWidth: endpointWidth(f, false, scale),
         color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color), start: { x: 0, y: 0 }, end: { x: 0, y: 0 }, route: null as unknown as Route, label: labelBox([], 0, 0, 'middle', measure, lineHeight), labelHidden: false }));
     const positions = new Map(links.map((f, i) => [f.key, i]));
     const portGroups: {
@@ -720,8 +747,8 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     }
     const scene = { width, height, scale, topBand, bottomBand, centralTop, centralHeight, nodes: nodes.sort((a, b) => a.index - b.index), links, diagnostics: { crossings: crossingCount, obstacleCollisions: obstacleCount } };
     // A single wide route may not fit between measured labels and stage bars.
-    // Only unresolved obstacle clearance can grow the local canvas; row count and
-    // the sum of edge footprints never trigger widening. Every resize starts fresh.
+    // Fixed pixel floors were fitted above; this later retry only grows the canvas
+    // for unresolved obstacles, not row count or labels. Every resize starts fresh.
     if (obstacleCount && attempt < 5) {
         const retry = yield* layoutGraphSteps(model, { ...options, width: width + Math.max(80, maxRibbon + 32) }, attempt + 1);
         if (retry.diagnostics.obstacleCollisions < obstacleCount) {

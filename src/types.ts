@@ -143,6 +143,8 @@ export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
     readonly className?: string;
     /** Preferred height of the central stage region, not the entire component. Default: 336 CSS px. */
     readonly plotHeight?: number;
+    /** Minimum displayed ribbon thickness in CSS px. Default: 0 (proportional). Enlarges ports/bars as needed; values stay unchanged. */
+    readonly minLinkWidth?: number;
     readonly formatAmount?: (value: number, context: SankeyAmountContext<NodeMeta, LinkMeta>) => string;
     /** Plain text, one string per line, or null to suppress this visible label. */
     readonly getLabel?: (context: SankeyPresentation<NodeMeta, LinkMeta>) => string | readonly string[] | null;

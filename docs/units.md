@@ -36,6 +36,8 @@ The wallet sends **100 USD** and the supplier receives **390,000 COP**. At the g
 
 `graph.defaultUnit` determines the unit for **all quantitative widths and combined node totals**. Both link endpoints are independently valued in that unit. Equivalent values retain a constant-width ribbon; unequal values produce a smooth taper. All bars and both ends of every ribbon share one scale. A transfer's rate never substitutes for missing reference conversions.
 
+The optional component prop `minLinkWidth` applies a visual floor after reference conversion. It never changes amounts or rates. Both endpoints are clamped independently; small transfers may therefore have equal displayed thickness despite different values. Node bars reserve room for the displayed port stacks. Leave it at its default of 0 for proportional widths.
+
 Without a default, widths use the first encountered named unit and combined totals are hidden. Multiple named units still need consistent reference conversions. Unitless and named amounts cannot be mixed. Entirely unitless graphs need no rate table.
 
 Rates and endpoint amounts must be finite and positive. Missing reference paths, invalid rates, overflow and underflow turning a positive amount into zero raise `SankeyInputError`.

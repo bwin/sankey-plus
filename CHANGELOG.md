@@ -6,6 +6,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Optional `minLinkWidth` in CSS pixels, with matching port, bar and routing space. Defaults to proportional widths; exact amounts remain unchanged.
 - Wide range example with 200–500,000-unit transfers, a top reserve release and bottom retained flow, all on one proportional scale.
 - Optional graph default units, separate declared/automatic node balances, explicit link input/output units and per-transfer rates. Graph reference rates value both ribbon endpoints and node totals in one common unit; unequal endpoint values taper. Labels and tooltips distinguish actual amounts and transfer rates from reference valuations.
 - Currencies example with EUR/USD/GBP/COP balances, partial declarations, a reserve release and retained funds. Actual conversions demonstrate equal-value ribbons and a 2.5% taper; default and custom presentation distinguish transfer rates from reference valuation.

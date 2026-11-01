@@ -23,6 +23,7 @@
 
 - Inputs are immutable. A declared balance may exceed transferred amounts, but cannot be less than either incoming or outgoing sums in that unit. Links debit inputUnit and credit outputUnit at their own conversionRate. Multiple units are separate balances; value them using graph reference rates for node size. Both ribbon endpoints and all bars use the default-unit scale; taper only when reference values differ. Retain actual endpoint amounts in presentation.
 - Main-stage nodes retain their shared vertical axis and input order. Top/bottom nodes use their inward face in both directions; reserve edge space only when nodes occupy that edge.
+- `minLinkWidth` is an opt-in visual floor after reference conversion. Reserve displayed endpoint widths in ports, bars and route clearance; grow space if fixed floors cannot fit. Never change facts, totals or formatting to account for the floor. Omitted/zero must preserve proportional geometry.
 - Wrapping must preserve intended port order, separate simple fan ribbons and keep unrelated bars/labels clear. Test mirrored top and bottom cases and both incoming and outgoing directions when changing routing.
 - Inspecting a node emphasizes itself, its incident links and their endpoints only. Inspecting a link emphasizes it and its two endpoints. Selection is controlled by the host, independent of inspection, and visually distinct even when faded.
 - Preserve keyboard activation, visible-label hit testing, native wheel scrolling and container-local horizontal overflow.

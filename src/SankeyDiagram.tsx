@@ -72,7 +72,7 @@ function Details({ id, anchor, children, theme }: {
     return createPortal(<div ref={ref} id={id} role="tooltip" className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }}>{children}</div>, document.body);
 }
 export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProps<I, T>) {
-    const { graph, accessibleName, className, plotHeight = 336, selection, onNodeClick, onLinkClick, formatAmount, getLabel, renderTooltip } = props;
+    const { graph, accessibleName, className, plotHeight = 336, minLinkWidth = 0, selection, onNodeClick, onLinkClick, formatAmount, getLabel, renderTooltip } = props;
     const root = useRef<HTMLDivElement>(null), svg = useRef<SVGSVGElement>(null), controls = useRef(new Map<string, SVGGElement>());
     const uid = useId(), tooltipId = `${uid}-details`, helpId = `${uid}-help`;
     const [measurement, setMeasurement] = useState({ width: 0, font: '12px sans-serif', lineHeight: 16 });
@@ -134,7 +134,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         return result;
     }, [model, formatAmount, getLabel]);
     const names = useMemo(() => new Map(model.subjects.map(s => [identity(s), subjectName(presentation(model, s, formatAmount, 'accessible'))])), [model, formatAmount]);
-    const layoutRequest = useMemo(() => ({ model, options: { width: measurement.width, plotHeight, labels, measureText, lineHeight: measurement.lineHeight } }), [model, measurement, plotHeight, labels, measureText]);
+    const layoutRequest = useMemo(() => ({ model, options: { width: measurement.width, plotHeight, minLinkWidth, labels, measureText, lineHeight: measurement.lineHeight } }), [model, measurement, plotHeight, minLinkWidth, labels, measureText]);
     const [layoutResult, setLayoutResult] = useState<({ request: typeof layoutRequest } & ({ scene: Scene } | { error: unknown })) | null>(null);
     useEffect(() => {
         if (layoutRequest.options.width <= 0 || !layoutRequest.model.nodes.size) return;

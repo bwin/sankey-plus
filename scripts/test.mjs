@@ -6,3 +6,4 @@ await import(pathToFileURL(path.join(project,'.tests/tests/core.test.js')).href)
 await import(pathToFileURL(path.join(project,'.tests/tests/paths.test.js')).href);
 await import(pathToFileURL(path.join(project,'.tests/tests/layout-task.test.js')).href);
 await import(pathToFileURL(path.join(project,'.tests/tests/units.test.js')).href);
+await import(pathToFileURL(path.join(project,'.tests/tests/min-width.test.js')).href);
