@@ -172,14 +172,18 @@ test('clicking a node label selects that node instead of a ribbon underneath', (
 });
 
 test('visible link labels are clickable beyond thin strokes; hidden labels are not', () => {
-    const graph = { ...base, links: [{ ...base.links[0], amount: 1 }] };
+    const graph = { ...base, links: [{ ...base.links[0], amount: 1 }, { key: 'ab2', from: 'a', to: 'b', amount: 1 }] };
     const scene = layoutGraph(resolveGraph(graph), { width: 900 });
-    const link = scene.links[0], label = link.label;
+    const link = scene.links[0], other = scene.links[1], label = link.label;
     const point = { x: label.x + label.w / 2, y: label.y + .5 };
     assert.ok(distanceToRoute(point, link.route) > 5, 'point is outside the thin ribbon hit corridor');
     assert.deepEqual(hitTest(scene, point), { kind: 'link', key: link.key });
     link.labelHidden = true;
     assert.equal(hitTest(scene, point), null);
+    other.label = { ...label };
+    other.labelHidden = false;
+    assert.deepEqual(hitTest(scene, point), { kind: 'link', key: other.key });
+    assert.deepEqual(hitTest(scene, point, link.key), { kind: 'link', key: link.key }, 'the inspected link label is painted and wins over faded link labels');
 });
 test('text is measured, keeps all lines and truncates horizontally', () => {
     const labels = new Map([['node:a', ['This is a particularly long title', 'Second line', 'Third line']], ['link:ab', []]]);

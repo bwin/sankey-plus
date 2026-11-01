@@ -191,7 +191,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         if (!matrix)
             return null;
         const point = new DOMPoint(event.clientX, event.clientY).matrixTransform(matrix.inverse());
-        return hitTest(scene, point);
+        return hitTest(scene, point, active?.subject.kind === 'link' ? active.subject.key : null);
     };
     function inspect(subject: SankeySubject | null, x: number, y: number, modality: Inspection['modality'] = 'pointer', pinned = false) {
         if (!subject) {

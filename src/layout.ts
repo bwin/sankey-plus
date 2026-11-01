@@ -770,8 +770,10 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
     }
     return scene;
 }
-/** Bars and visible labels win, then a real ribbon hit or thin hit corridor. */
-export function hitTest(scene: Scene, point: Point) {
+/** Bars and visible labels win, then a real ribbon hit or thin hit corridor.
+ * `activeLink` names a link whose otherwise-hidden label is temporarily painted
+ * during inspection, so that painted label remains clickable and wins over faded link labels. */
+export function hitTest(scene: Scene, point: Point, activeLink?: string | null) {
     for (let i = scene.nodes.length - 1; i >= 0; i--) {
         const n = scene.nodes[i];
         if (point.x >= n.x - 2 && point.x <= n.x + n.w + 2 && point.y >= n.y - 2 && point.y <= n.y + n.h + 2)
@@ -782,6 +784,10 @@ export function hitTest(scene: Scene, point: Point) {
     // a link that happens to pass underneath it.
     for (let i = scene.nodes.length - 1; i >= 0; i--)
         if (onLabel(scene.nodes[i].label)) return { kind: 'node' as const, key: scene.nodes[i].key };
+    if (activeLink) {
+        const active = scene.links.find(f => f.key === activeLink);
+        if (active && onLabel(active.label)) return { kind: 'link' as const, key: active.key };
+    }
     for (let i = scene.links.length - 1; i >= 0; i--)
         if (!scene.links[i].labelHidden && onLabel(scene.links[i].label)) return { kind: 'link' as const, key: scene.links[i].key };
     let best: {
