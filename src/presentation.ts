@@ -35,3 +35,10 @@ export function defaultLabel(view: SankeyPresentation): string | readonly string
 }
 export const identity = (s: SankeySubject) => JSON.stringify([s.kind, s.key]);
 export const same = (a: SankeySubject | null, b: SankeySubject | null) => a?.kind === b?.kind && a?.key === b?.key;
+export const anchorMoved = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y) >= 1;
+/** Keep a tooltip beside its anchor, flipping it near an edge and then clamping it inside the viewport. */
+export function tooltipPosition(anchor: { x: number; y: number }, size: { width: number; height: number }, viewport: { width: number; height: number }) {
+    const x = Math.max(8, Math.min(viewport.width - size.width - 8, anchor.x + 16 + size.width > viewport.width - 8 ? anchor.x - size.width - 16 : anchor.x + 16));
+    const y = Math.max(8, Math.min(viewport.height - size.height - 8, anchor.y + 16 + size.height > viewport.height - 8 ? anchor.y - size.height - 16 : anchor.y + 16));
+    return { x, y };
+}

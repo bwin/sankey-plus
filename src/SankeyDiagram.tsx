@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
 import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
 import { runInChunks } from './layout-task.js';
-import { defaultLabel, identity, presentation, same, showConverted, subjectName } from './presentation.js';
+import { anchorMoved, defaultLabel, identity, presentation, same, showConverted, subjectName, tooltipPosition } from './presentation.js';
 import type { SankeyActivationEvent, SankeyDiagramProps, SankeySubject, SankeyPresentation } from './types.js';
 const useBrowserLayoutEffect = typeof window === 'undefined' ? useEffect : useLayoutEffect;
 type Inspection = {
@@ -62,7 +62,7 @@ const Details = forwardRef<DetailsHandle, {
     const ref = useRef<HTMLDivElement>(null), [position, setPosition] = useState(anchor), [size, setSize] = useState({ width: 260, height: 140 }), [viewport, setViewport] = useState(readViewport);
     useBrowserLayoutEffect(() => { setPosition(old => old.x === anchor.x && old.y === anchor.y ? old : anchor); }, [anchor.x, anchor.y]);
     useImperativeHandle(handle, () => ({
-        move: next => setPosition(old => Math.abs(old.x - next.x) + Math.abs(old.y - next.y) < 1 ? old : next),
+        move: next => setPosition(old => anchorMoved(old, next) ? next : old),
         contains: node => !!node && !!ref.current?.contains(node),
     }), []);
     const measureSize = () => {
@@ -88,8 +88,7 @@ const Details = forwardRef<DetailsHandle, {
         window.addEventListener('resize', update);
         return () => { observer.disconnect(); window.removeEventListener('resize', update); };
     }, []);
-    const x = Math.max(8, Math.min(viewport.width - size.width - 8, position.x + 16 + size.width > viewport.width - 8 ? position.x - size.width - 16 : position.x + 16));
-    const y = Math.max(8, Math.min(viewport.height - size.height - 8, position.y + 16 + size.height > viewport.height - 8 ? position.y - size.height - 16 : position.y + 16));
+    const { x, y } = tooltipPosition(position, size, viewport);
     return createPortal(<div ref={ref} id={id} role="tooltip" tabIndex={-1} className="flow-tooltip" style={{ ...theme, left: x, top: y, maxHeight: viewport.height - 16 }} onPointerEnter={onPointerEnter} onPointerLeave={onPointerLeave} onPointerDown={onPointerDown}>{children}</div>, document.body);
 });
 export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProps<I, T>) {
@@ -266,7 +265,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         suppressed.current = null;
         cancelClose();
         if (inspection && same(inspection.subject, subject) && inspection.modality === modality && inspection.pinned === pinned) {
-            if (Math.abs(lastAnchor.current.x - x) + Math.abs(lastAnchor.current.y - y) >= 1) {
+            if (anchorMoved(lastAnchor.current, { x, y })) {
                 lastAnchor.current = { x, y };
                 tooltipHandle.current?.move(lastAnchor.current);
             }
