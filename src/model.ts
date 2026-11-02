@@ -370,33 +370,42 @@ export function subjectExists<I, T>(
       : model.links.has(subject.key))
   );
 }
+/** Strong sets for one or more subjects. Empty input preserves the all-strong default. */
 export function emphasis<I, T>(
   model: ResolvedGraph<I, T>,
-  subject: SankeySubject | null,
+  subject: SankeySubject | readonly SankeySubject[] | null,
 ) {
   const nodes = new Set<string>(),
     links = new Set<string>();
-  if (
-    !subject ||
-    (subject.kind === 'node'
-      ? !model.nodes.has(subject.key)
-      : !model.links.has(subject.key))
-  ) {
+  const subjects = !subject
+    ? []
+    : Array.isArray(subject)
+      ? (subject as readonly SankeySubject[])
+      : [subject as SankeySubject];
+  const valid = subjects.filter((item) =>
+    item.kind === 'node'
+      ? model.nodes.has(item.key)
+      : model.links.has(item.key),
+  );
+  if (!valid.length) {
     for (const k of model.nodes.keys()) nodes.add(k);
     for (const k of model.links.keys()) links.add(k);
-  } else if (subject.kind === 'node') {
-    nodes.add(subject.key);
-    const facts = model.nodes.get(subject.key)!;
-    for (const f of [...facts.incomingLinks, ...facts.outgoingLinks]) {
+  }
+  for (const item of valid) {
+    if (item.kind === 'node') {
+      nodes.add(item.key);
+      const facts = model.nodes.get(item.key)!;
+      for (const f of [...facts.incomingLinks, ...facts.outgoingLinks]) {
+        links.add(f.key);
+        nodes.add(f.from);
+        nodes.add(f.to);
+      }
+    } else {
+      const f = model.links.get(item.key)!.link;
       links.add(f.key);
       nodes.add(f.from);
       nodes.add(f.to);
     }
-  } else {
-    const f = model.links.get(subject.key)!.link;
-    links.add(f.key);
-    nodes.add(f.from);
-    nodes.add(f.to);
   }
   return { nodes, links };
 }

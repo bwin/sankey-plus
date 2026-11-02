@@ -6,6 +6,9 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Optional `highlight` and `onInspectChange` props: external one-hop emphasis unions with internal inspection, and a deduplicated callback reports the inspected subject and pointer/keyboard/touch modality without changing selection. Attaching the callback while a subject is inspected replays that subject once.
+- Inspection bridge example tab with a node highlight picker and a live inspection callback readout.
+- Playwright coverage for external highlight, inspection readout, dismissal, selection independence and tab stops on the Inspection bridge example.
 - Optional `showHeadroom` hatching for declared partial source/sink capacity, with `minLinkWidth`-aware placement and theme-derived colors. Mixed-direction relays and derived totals are omitted.
 - Optional `transition` crossfade between completed scenes, with configurable duration and easing, reduced-motion support and a `duration: 0` opt-out. Path geometry is not interpolated.
 - Transitions example that swaps 500- and 750-unit allocation states with a 320 ms crossfade.

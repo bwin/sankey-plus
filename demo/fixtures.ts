@@ -81,6 +81,13 @@ export const examples: {
     graph: distribution,
   },
   {
+    key: 'inspection',
+    name: 'Inspection bridge',
+    description:
+      'Pass an external highlight to the Distribution graph and watch pointer, keyboard and touch inspection report through the callback. Selection stays independently controlled.',
+    graph: distribution,
+  },
+  {
     key: 'stages',
     name: 'Stages',
     description:

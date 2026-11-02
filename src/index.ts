@@ -5,6 +5,7 @@ export type {
   SankeyDiagramHandle,
   SankeyDiagramProps,
   SankeyGraph,
+  SankeyInspection,
   SankeyIssue,
   SankeyIssueCode,
   SankeyLayout,

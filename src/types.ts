@@ -9,6 +9,11 @@ export type SankeySubject =
       readonly kind: 'link';
       readonly key: string;
     };
+/** Current internally inspected subject and how inspection began. */
+export interface SankeyInspection {
+  readonly subject: SankeySubject;
+  readonly modality: 'pointer' | 'keyboard' | 'touch';
+}
 /** Pointer/touch click or equivalent keyboard activation. */
 export type SankeyActivationEvent =
   MouseEvent<Element> | KeyboardEvent<Element>;
@@ -224,6 +229,10 @@ export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
   readonly accessibleName: string;
   /** Controlled selection only. Omitted/null means no selection. */
   readonly selection?: SankeySubject | null;
+  /** External one-hop emphasis, unioned with internal inspection. Omitted/null adds none. */
+  readonly highlight?: SankeySubject | readonly SankeySubject[] | null;
+  /** Fires on internal inspection changes and replays the current inspection when attached. Never changes selection. */
+  readonly onInspectChange?: (inspection: SankeyInspection | null) => void;
   /** Fires once per activation; never changes selection internally. */
   readonly onNodeClick?: (
     facts: SankeyNodeFacts<NodeMeta, LinkMeta>,

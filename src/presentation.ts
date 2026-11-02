@@ -2,6 +2,7 @@ import {
   SankeyInputError,
   type SankeyAmountContext,
   type SankeyDiagramProps,
+  type SankeyInspection,
   type SankeySubject,
   type SankeyPresentation,
   type SankeyUnitTotals,
@@ -302,6 +303,21 @@ export function defaultLabel(
 export const identity = (s: SankeySubject) => JSON.stringify([s.kind, s.key]);
 export const same = (a: SankeySubject | null, b: SankeySubject | null) =>
   a?.kind === b?.kind && a?.key === b?.key;
+/** Resolve replay-on-attach and identity-change dedupe for one inspection report. */
+export function inspectionReport(
+  reported: string | null,
+  callbackPresent: boolean,
+  inspection: SankeyInspection | null,
+) {
+  if (!callbackPresent)
+    return { reported: null, inspection: null, changed: false };
+  const key = inspection
+    ? `${identity(inspection.subject)}:${inspection.modality}`
+    : null;
+  return key === reported
+    ? { reported, inspection, changed: false }
+    : { reported: key, inspection, changed: true };
+}
 export const anchorMoved = (
   a: { x: number; y: number },
   b: { x: number; y: number },

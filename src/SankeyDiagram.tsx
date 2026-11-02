@@ -31,6 +31,7 @@ import {
   anchorMoved,
   defaultLabel,
   identity,
+  inspectionReport,
   presentation,
   same,
   scopeGhostMarkup,
@@ -43,24 +44,33 @@ import type {
   SankeyActivationEvent,
   SankeyDiagramHandle,
   SankeyDiagramProps,
+  SankeyInspection,
   SankeyLayout,
   SankeySubject,
   SankeyPresentation,
 } from './types.js';
 const useBrowserLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect;
-type Inspection = {
-  subject: SankeySubject;
+type Inspection = SankeyInspection & {
   anchor: {
     x: number;
     y: number;
   };
   pinned: boolean;
-  modality: 'pointer' | 'touch' | 'keyboard';
 };
+function subjectList(
+  subject: SankeySubject | readonly SankeySubject[] | null | undefined,
+): readonly SankeySubject[] {
+  return subject == null
+    ? []
+    : Array.isArray(subject)
+      ? (subject as readonly SankeySubject[])
+      : [subject as SankeySubject];
+}
 type SceneSnapshot = {
   scene: Scene;
   selection: string;
+  highlight: string;
   markup: string;
   width: number;
   height: number;
@@ -301,6 +311,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     minLinkWidth = 0,
     showHeadroom = false,
     selection,
+    highlight,
+    onInspectChange,
     onNodeClick,
     onLinkClick,
     onLayout,
@@ -312,7 +324,10 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
   const transition = transitionTiming(transitionProp),
     transitionDuration = transition?.duration ?? 0,
     transitionEasing = transition?.easing ?? 'ease-out',
-    selectionSignature = selection ? `${selection.kind}:${selection.key}` : '';
+    selectionSignature = selection ? `${selection.kind}:${selection.key}` : '',
+    highlightSignature = subjectList(highlight)
+      .map((subject) => `${subject.kind}:${subject.key}`)
+      .join('|');
   const root = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null),
     ghostSvg = useRef<SVGSVGElement>(null),
@@ -344,7 +359,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     [ghost, setGhost] = useState<SceneGhost | null>(null);
   const input = useRef<'pointer' | 'keyboard'>('keyboard'),
     suppressed = useRef<SankeySubject | null>(null),
-    lastKeyboard = useRef(0);
+    lastKeyboard = useRef(0),
+    reportedInspection = useRef<string | null>(null);
   const gesture = useRef<{
     x: number;
     y: number;
@@ -534,11 +550,13 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     if (!scene || !el) return;
     const previous = sceneSnapshot.current,
       sceneChanged = previous?.scene !== scene,
-      selectionChanged = previous?.selection !== selectionSignature;
-    if (!sceneChanged && !selectionChanged) return;
+      selectionChanged = previous?.selection !== selectionSignature,
+      highlightChanged = previous?.highlight !== highlightSignature;
+    if (!sceneChanged && !selectionChanged && !highlightChanged) return;
     const next: SceneSnapshot = {
       scene,
       selection: selectionSignature,
+      highlight: highlightSignature,
       markup: el.innerHTML,
       width: scene.width,
       height: scene.height,
@@ -564,6 +582,7 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     transitionDuration,
     transitionEasing,
     selectionSignature,
+    highlightSignature,
     showHeadroom,
     uid,
   ]);
@@ -619,11 +638,19 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     [],
   );
   const selected = exists(selection) ? selection : null;
-  const active =
-    scene && inspection && exists(inspection.subject) ? inspection : null;
+  const inspectedSubject =
+    inspection && exists(inspection.subject) ? inspection.subject : null;
+  const inspectedModality =
+    inspection && inspectedSubject ? inspection.modality : undefined;
+  const active = scene && inspectedSubject ? inspection : null;
+  const externalHighlight = useMemo(() => subjectList(highlight), [highlight]);
   const strong = useMemo(
-    () => emphasis(model, active?.subject ?? null),
-    [model, active?.subject],
+    () =>
+      emphasis(model, [
+        ...(inspectedSubject ? [inspectedSubject] : []),
+        ...externalHighlight,
+      ]),
+    [model, inspectedSubject, externalHighlight],
   );
   const activeView = active
     ? presentation(model, active.subject, formatAmount, 'tooltip')
@@ -640,6 +667,17 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     setKeyboardFocus((old) => (old && exists(old) ? old : null));
     setRoving((i) => Math.min(i, Math.max(0, model.subjects.length - 1)));
   }, [exists, model]);
+  useEffect(() => {
+    const next = inspectionReport(
+      reportedInspection.current,
+      !!onInspectChange,
+      inspectedSubject && inspectedModality
+        ? { subject: inspectedSubject, modality: inspectedModality }
+        : null,
+    );
+    reportedInspection.current = next.reported;
+    if (next.changed) onInspectChange?.(next.inspection);
+  }, [inspectedSubject, inspectedModality, onInspectChange]);
   function repositionInspection() {
     setInspection((old) => {
       if (!old || old.modality === 'pointer') return null;

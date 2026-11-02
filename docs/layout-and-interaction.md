@@ -14,11 +14,17 @@
 - Activation calls the relevant handler. It never changes selection internally. The host may select, navigate, open a panel, or ignore the click.
 - Selection uses a persistent solid outline in the selected node/link's own color, separated from its fill and surroundings by the surface color. The outline remains fully opaque when its fill fades during unrelated inspection. Keyboard focus uses a dashed indicator. Escape does not change selection. A selected key removed from the graph is ignored without a callback.
 
+## External emphasis
+
+`highlight` lets the host emphasize one subject or a list of subjects using the same one-hop rule as inspection. Valid node and link keys are unioned; unknown keys are ignored. Internal inspection and external highlight contribute to one strong set, so inspecting a node while another is externally highlighted keeps both one-hop neighborhoods visible. When neither is present, all nodes and links remain strong. Selection is independent and keeps its distinct outline. Stable subject and array identities avoid recomputing emphasis on unrelated host renders.
+
+`onInspectChange` reports the internal inspection subject and its `pointer`, `keyboard` or `touch` modality, or `null` after dismissal. Pointer-leave dismissal waits about 300 ms, then reports `null`. It fires once per subject or modality change, including removal of the inspected subject during a graph update, and is deduplicated across renders. Attaching the callback while a subject is inspected replays that subject once; changing the callback identity does not duplicate the report, while removing and re-adding it reports the current subject again. Selection changes never trigger it.
+
 ## Scene transitions
 
 `transition` optionally crossfades one completed scene into the next completed scene after graph or layout changes. The old drawing fades out while the new drawing fades in. Nodes, links and labels are not moved or tweened, and no intermediate layout is calculated. The old copy is clipped to the current scene and ignores pointer input, is hidden from assistive technology and has no tab stops; focus, hit testing and tooltips belong to the new scene only.
 
-`duration` defaults to 280 ms and `easing` to `ease-out`. `duration: 0` disables the effect, and `prefers-reduced-motion: reduce` skips it entirely. Rapid updates replace the previous fading copy instead of stacking overlays. The snapshot is refreshed when selection changes, so the fading copy reflects the selected subject; transient hover/emphasis is not captured. Options that alter scene markup follow the same refresh rule. Container resize and font measurement can also trigger a new completed scene and therefore a transition. The inspection fade is separate and still runs in 120 ms. See [the Transitions example](examples.md#transitions).
+`duration` defaults to 280 ms and `easing` to `ease-out`. `duration: 0` disables the effect, and `prefers-reduced-motion: reduce` skips it entirely. Rapid updates replace the previous fading copy instead of stacking overlays. Selection and external-highlight changes refresh the snapshot; transient hover/emphasis is not captured. Options that alter scene markup follow the same refresh rule. Container resize and font measurement can also trigger a new completed scene and therefore a transition. The inspection fade is separate and still runs in 120 ms. See [the Transitions example](examples.md#transitions).
 
 ## Layout and routing
 

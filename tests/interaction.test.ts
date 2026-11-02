@@ -4,14 +4,50 @@ import { readFileSync } from 'node:fs';
 import { createElement, createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SankeyDiagram } from '../src/SankeyDiagram.js';
+import { emphasis, resolveGraph } from '../src/model.js';
 import {
   anchorMoved,
+  identity,
+  inspectionReport,
   scopeGhostMarkup,
   scopeGhostMarkupFallback,
   tooltipPosition,
   transitionTiming,
 } from '../src/presentation.js';
-import { SankeyInputError, type SankeyDiagramHandle } from '../src/types.js';
+import {
+  SankeyInputError,
+  type SankeyDiagramHandle,
+  type SankeyGraph,
+} from '../src/types.js';
+
+const highlightFixture: SankeyGraph = {
+  stages: ['a', 'b', 'c', 'd'],
+  nodes: [
+    { key: 'a', title: 'A', placement: { stage: 'a' } },
+    { key: 'b', title: 'B', placement: { stage: 'b' } },
+    { key: 'c', title: 'C', placement: { stage: 'c' } },
+    { key: 'd', title: 'D', placement: { stage: 'd' } },
+  ],
+  links: [
+    { key: 'ab', from: 'a', to: 'b', amount: 10 },
+    { key: 'bc', from: 'b', to: 'c', amount: 10 },
+    { key: 'cd', from: 'c', to: 'd', amount: 10 },
+  ],
+};
+
+const sharedKeyFixture: SankeyGraph = {
+  stages: ['a', 'b'],
+  nodes: [
+    { key: 'shared', title: 'Shared node', placement: { stage: 'a' } },
+    { key: 'source', title: 'Source', placement: { stage: 'a' } },
+    { key: 'target', title: 'Target', placement: { stage: 'b' } },
+    { key: 'other', title: 'Other', placement: { stage: 'b' } },
+  ],
+  links: [
+    { key: 'shared', from: 'source', to: 'target', amount: 10 },
+    { key: 'from-shared', from: 'shared', to: 'other', amount: 10 },
+  ],
+};
 
 const css = readFileSync(
   new URL('../../src/style.css', import.meta.url),
@@ -289,4 +325,155 @@ test('the published stylesheet declares its type entry', () => {
     default: './dist/style.css',
   });
   assert.ok(pkg.files.includes('dist/style.css.d.ts'));
+});
+
+test('external highlight unions multiple one-hop subjects', () => {
+  const model = resolveGraph(highlightFixture),
+    strong = emphasis(model, [
+      { kind: 'node', key: 'a' },
+      { kind: 'link', key: 'bc' },
+    ]);
+  assert.deepEqual([...strong.nodes].sort(), ['a', 'b', 'c']);
+  assert.deepEqual([...strong.links].sort(), ['ab', 'bc']);
+});
+
+test('external highlight stays one hop and does not traverse further', () => {
+  const model = resolveGraph(highlightFixture),
+    node = emphasis(model, { kind: 'node', key: 'b' }),
+    link = emphasis(model, { kind: 'link', key: 'bc' });
+  assert.deepEqual([...node.nodes].sort(), ['a', 'b', 'c']);
+  assert.deepEqual([...node.links].sort(), ['ab', 'bc']);
+  assert.equal(node.nodes.has('d'), false);
+  assert.equal(node.links.has('cd'), false);
+  assert.deepEqual([...link.nodes].sort(), ['b', 'c']);
+  assert.deepEqual([...link.links], ['bc']);
+});
+
+test('external highlight ignores unknown keys and keeps valid subjects', () => {
+  const model = resolveGraph(highlightFixture),
+    mixed = emphasis(model, [
+      { kind: 'node', key: 'missing' },
+      { kind: 'link', key: 'bc' },
+      { kind: 'link', key: 'missing' },
+    ]),
+    mixedNode = emphasis(model, [
+      { kind: 'node', key: 'b' },
+      { kind: 'node', key: 'missing' },
+      { kind: 'link', key: 'missing' },
+    ]),
+    unknownOnly = emphasis(model, [
+      { kind: 'node', key: 'missing' },
+      { kind: 'link', key: 'missing' },
+    ]);
+  assert.deepEqual([...mixed.nodes].sort(), ['b', 'c']);
+  assert.deepEqual([...mixed.links], ['bc']);
+  assert.deepEqual([...mixedNode.nodes].sort(), ['a', 'b', 'c']);
+  assert.deepEqual([...mixedNode.links].sort(), ['ab', 'bc']);
+  assert.deepEqual([...unknownOnly.nodes].sort(), ['a', 'b', 'c', 'd']);
+  assert.deepEqual([...unknownOnly.links].sort(), ['ab', 'bc', 'cd']);
+});
+
+test('duplicate highlight subjects do not change emphasis', () => {
+  const model = resolveGraph(highlightFixture),
+    single = emphasis(model, { kind: 'node', key: 'b' }),
+    duplicate = emphasis(model, [
+      { kind: 'node', key: 'b' },
+      { kind: 'node', key: 'b' },
+      { kind: 'link', key: 'bc' },
+      { kind: 'link', key: 'bc' },
+    ]);
+  assert.deepEqual([...duplicate.nodes].sort(), [...single.nodes].sort());
+  assert.equal(duplicate.nodes.size, single.nodes.size);
+  assert.equal(duplicate.links.size, single.links.size);
+});
+
+test('node and link highlight keys are scoped by kind', () => {
+  const model = resolveGraph(sharedKeyFixture),
+    node = emphasis(model, { kind: 'node', key: 'shared' }),
+    link = emphasis(model, { kind: 'link', key: 'shared' });
+  assert.deepEqual([...node.nodes].sort(), ['other', 'shared']);
+  assert.deepEqual([...node.links], ['from-shared']);
+  assert.deepEqual([...link.nodes].sort(), ['source', 'target']);
+  assert.deepEqual([...link.links], ['shared']);
+});
+
+test('an empty highlight list does not erase active inspection', () => {
+  const model = resolveGraph(highlightFixture),
+    inspected = { kind: 'node', key: 'b' } as const,
+    strong = emphasis(model, [inspected]);
+  assert.deepEqual([...strong.nodes].sort(), ['a', 'b', 'c']);
+  assert.deepEqual([...strong.links].sort(), ['ab', 'bc']);
+  assert.equal(emphasis(model, []).nodes.size, model.nodes.size);
+});
+
+test('inspection reporting replays on attach and dedupes unchanged subjects', () => {
+  const subject = { kind: 'node', key: 'a' } as const,
+    keyboard = { subject, modality: 'keyboard' } as const;
+  assert.deepEqual(inspectionReport(null, false, keyboard), {
+    reported: null,
+    inspection: null,
+    changed: false,
+  });
+  const attached = inspectionReport(null, true, keyboard);
+  assert.equal(attached.reported, `${identity(subject)}:keyboard`);
+  assert.deepEqual(attached.inspection, keyboard);
+  assert.equal(attached.changed, true);
+  const unchanged = inspectionReport(attached.reported, true, keyboard);
+  assert.deepEqual(unchanged, {
+    reported: attached.reported,
+    inspection: keyboard,
+    changed: false,
+  });
+  const pointed = inspectionReport(attached.reported, true, {
+    subject,
+    modality: 'pointer',
+  });
+  assert.equal(pointed.changed, true);
+  assert.equal(pointed.reported, `${identity(subject)}:pointer`);
+  const removed = inspectionReport(pointed.reported, false, {
+    subject,
+    modality: 'pointer',
+  });
+  assert.deepEqual(removed, {
+    reported: null,
+    inspection: null,
+    changed: false,
+  });
+  const readded = inspectionReport(removed.reported, true, {
+    subject,
+    modality: 'pointer',
+  });
+  assert.equal(readded.changed, true);
+  assert.deepEqual(readded.inspection, { subject, modality: 'pointer' });
+  const dismissed = inspectionReport(readded.reported, true, null);
+  assert.equal(dismissed.changed, true);
+  assert.equal(dismissed.reported, null);
+  assert.equal(dismissed.inspection, null);
+});
+
+test('omitting external highlight preserves the all-strong default', () => {
+  const model = resolveGraph(highlightFixture);
+  for (const strong of [emphasis(model, null), emphasis(model, [])]) {
+    assert.deepEqual([...strong.nodes].sort(), ['a', 'b', 'c', 'd']);
+    assert.deepEqual([...strong.links].sort(), ['ab', 'bc', 'cd']);
+  }
+});
+
+test('SSR accepts external inspection props without invoking the callback', () => {
+  let calls = 0;
+  const html = renderToStaticMarkup(
+    createElement(SankeyDiagram, {
+      graph: highlightFixture,
+      accessibleName: 'External inspection flow',
+      highlight: [
+        { kind: 'node', key: 'b' },
+        { kind: 'node', key: 'missing' },
+      ],
+      onInspectChange: () => {
+        calls += 1;
+      },
+    }),
+  );
+  assert.match(html, /Preparing diagram/);
+  assert.equal(calls, 0);
 });

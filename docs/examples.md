@@ -7,6 +7,7 @@
 | Example               | What to inspect                                                                                                                                                  |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Distribution          | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata.                                                     |
+| Inspection bridge     | External `highlight` on the Distribution graph, with a live `onInspectChange` subject/modality readout and independent selection.                                |
 | Stages                | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare.                                        |
 | World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
 | Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
@@ -24,6 +25,10 @@
 | Empty                 | No data and no chart SVG.                                                                                                                                        |
 
 All examples share custom labels/tooltips, node/link activation, host-controlled selection and keyboard inspection. The stress demo's measured browser text and two-line labels can produce different geometry from the CPU benchmark. Its timing readout includes scheduling and frame waits; see [development](development.md).
+
+## Inspection bridge
+
+The Inspection bridge tab reuses the Distribution graph. Its host panel passes a chosen node as `highlight`, so that node, its incident links and their endpoints are emphasized without a pointer. Hover, focus or tap the diagram to see `onInspectChange` report the subject key and `pointer`, `keyboard` or `touch`; dismissal reports `none`. Pointer hover updates the readout visually without queuing a live announcement; keyboard, touch and dismissal are announced politely. When an internal inspection and the external highlight are both active, their one-hop sets are unioned. The selection control remains independent and can select a link while a different node stays externally emphasized.
 
 ## Explicit stages
 

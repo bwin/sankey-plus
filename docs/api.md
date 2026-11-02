@@ -4,23 +4,25 @@
 
 [src/types.ts](../src/types.ts) contains the full generic contract. Node and link metadata types are independent and retained in all callback contexts.
 
-| Property         | Purpose                                                                                                            |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `graph`          | Ordered `stages`, `nodes` and `links` with stable keys. Required.                                                  |
-| `accessibleName` | Descriptive accessible name for the diagram. Required.                                                             |
-| `selection`      | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                                   |
-| `onNodeClick`    | Receives node facts and the activation event.                                                                      |
-| `onLinkClick`    | Receives link facts and the activation event.                                                                      |
-| `formatAmount`   | Formats quantities with facts, field name and surface.                                                             |
-| `getLabel`       | Returns plain text, an array of lines, or `null` to omit a label.                                                  |
-| `renderTooltip`  | Returns non-interactive React content or `null`.                                                                   |
-| `plotHeight`     | Preferred central region height; default 336 CSS pixels. Edge bands add height.                                    |
-| `transition`     | Optional crossfade between completed scenes. `false` (default) or `{duration?, easing?}`.                          |
-| `minLinkWidth`   | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative.       |
-| `showHeadroom`   | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                        |
-| `onLayout`       | Receives a read-only layout snapshot once per completed scene; attaching while a scene is current reports it once. |
-| `renderOverlay`  | Returns non-interactive SVG content for a completed scene, painted above labels in a `pointer-events: none` group. |
-| `className`      | Host styling, including theme token overrides.                                                                     |
+| Property          | Purpose                                                                                                                       |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `graph`           | Ordered `stages`, `nodes` and `links` with stable keys. Required.                                                             |
+| `accessibleName`  | Descriptive accessible name for the diagram. Required.                                                                        |
+| `selection`       | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                                              |
+| `highlight`       | One subject, an array of subjects, or `null` for external one-hop emphasis. Unioned with inspection.                          |
+| `onInspectChange` | Reports internal `{subject, modality}` changes, or `null`; replays the current inspection on attach. Never changes selection. |
+| `onNodeClick`     | Receives node facts and the activation event.                                                                                 |
+| `onLinkClick`     | Receives link facts and the activation event.                                                                                 |
+| `formatAmount`    | Formats quantities with facts, field name and surface.                                                                        |
+| `getLabel`        | Returns plain text, an array of lines, or `null` to omit a label.                                                             |
+| `renderTooltip`   | Returns non-interactive React content or `null`.                                                                              |
+| `plotHeight`      | Preferred central region height; default 336 CSS pixels. Edge bands add height.                                               |
+| `transition`      | Optional crossfade between completed scenes. `false` (default) or `{duration?, easing?}`.                                     |
+| `minLinkWidth`    | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative.                  |
+| `showHeadroom`    | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                                   |
+| `onLayout`        | Receives a read-only layout snapshot once per completed scene; attaching while a scene is current reports it once.            |
+| `renderOverlay`   | Returns non-interactive SVG content for a completed scene, painted above labels in a `pointer-events: none` group.            |
+| `className`       | Host styling, including theme token overrides.                                                                                |
 
 Measured width, `plotHeight`, `minLinkWidth` and the resulting scene extents must not exceed 10,000,000 CSS pixels. Values outside that range are rejected with a `SankeyInputError` (`invalid-number`) instead of producing non-finite SVG geometry.
 
@@ -32,7 +34,7 @@ Set `transition={{ duration: 280 }}` to crossfade the previous completed scene i
 
 `duration` is in milliseconds and defaults to 280. `easing` accepts any CSS animation timing function and defaults to `ease-out`. `duration: 0` disables the animation, and the effect is skipped entirely when the system requests reduced motion. Values that are not finite, below 0 or above 10,000 throw a `SankeyInputError` (`invalid-number`). Omit the prop or use `transition={false}` for direct updates. The 120 ms inspection fade remains independent of scene transitions.
 
-The fading copy is refreshed when selection changes, so it reflects the selected subject at the last snapshot. Transient hover/emphasis is not captured. Options that alter rendered scene markup follow the same refresh rule. Container resize and font measurement can also produce a new completed scene, so those updates can crossfade too.
+Selection and external-highlight changes refresh the fading copy at the last snapshot. Transient hover/emphasis is not captured. Options that alter rendered scene markup follow the same refresh rule. Container resize and font measurement can also produce a new completed scene, so those updates can crossfade too.
 
 ## Stages and order
 
@@ -61,6 +63,16 @@ Node contexts expose the original `node`, scalar `total`/`incoming`/`outgoing` i
 Presentation contexts contain formatted `text`: total/incoming/outgoing, per-unit `totals` and optional `converted` for nodes; `amount`/`outputAmount`, optional `convertedAmount`/`convertedOutputAmount`, `conversionRate` and `referenceRates` equations for links. The amount formatter receives `field`, `unit`, `isConverted` and `surface` (label, tooltip or accessible). Metadata stays typed independently through `SankeyGraph<NodeMeta, LinkMeta>` and the callback types.
 
 Click handlers receive facts plus a React mouse or keyboard activation event. Selection is a separate controlled prop; callbacks do not change it internally. See [getting started](getting-started.md) for a working selection example.
+
+## External highlight and inspection
+
+`highlight` accepts one `{kind: 'node' | 'link', key}`, an array of subjects, or `null`. Valid subjects use the same one-hop rule as internal inspection: a node emphasizes itself, its incident links and their endpoints; a link emphasizes itself and its two endpoints. A list is unioned, and unknown keys are ignored. External highlighting never changes `selection`. Prefer stable array and subject identities: an inline array or object created on every host render recomputes the emphasized sets even though the visible result is unchanged.
+
+Internal inspection and external `highlight` contribute to one strong set. When neither supplies a valid subject, every node and link stays strong, preserving the default rendering. When either does, only the unioned one-hop sets stay strong. Omitting both props leaves the existing behavior unchanged.
+
+`onInspectChange` receives a `SankeyInspection` (`{subject, modality}`) or `null`. `modality` is `pointer`, `keyboard` or `touch`. It fires once when the inspected subject or modality changes: pointer hover, keyboard focus, touch pin, dismissal, and removal of the inspected subject after a graph update. Pointer-leave dismissal is delayed by about 300 ms, so its `null` report follows that delay. The callback is deduplicated across renders and does not fire for selection changes.
+
+It is also a replay-on-attach subscription, not only a change subscription: if the callback is added while a subject is already inspected, it receives that current subject once. Changing the callback identity while the subject stays the same does not duplicate the report. Removing the callback resets the deduplication, so adding it again reports the current subject once.
 
 ## Imperative handle
 
