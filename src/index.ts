@@ -2,10 +2,15 @@ export { SankeyDiagram } from './SankeyDiagram.js';
 export { SankeyInputError } from './types.js';
 export type {
   SankeyActivationEvent,
+  SankeyDiagramHandle,
   SankeyDiagramProps,
   SankeyGraph,
   SankeyIssue,
   SankeyIssueCode,
+  SankeyLayout,
+  SankeyLayoutLabel,
+  SankeyLayoutLink,
+  SankeyLayoutNode,
   SankeyNode,
   SankeyPlacement,
   SankeySubject,

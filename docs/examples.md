@@ -10,6 +10,7 @@
 | Stages                | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare.                                        |
 | World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
 | Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
+| Layout overlay        | Distribution with stage headings and a rounded Process A callout from the public layout snapshot, plus diagnostics and SVG download.                             |
 | Wide range            | 200–500,000-unit transfers with a 4px minimum visible thickness; exact amounts stay in labels and tooltips.                                                      |
 | Transitions           | Two allocation states for the same graph; use Swap data to crossfade 500 ↔ 750 units without interpolating geometry.                                             |
 | Four-sided flow       | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps.                                         |
@@ -70,6 +71,12 @@ Inspect either conversion link to see its actual input/output amounts and transf
 ![Explicit currency conversions with all widths valued in USD](../screenshots/docs-currencies.jpg)
 
 ![Actual transfer amounts and rate separated from reference valuation](../screenshots/docs-currency-tooltip.jpg)
+
+## Layout overlay
+
+The Layout overlay tab reuses the Distribution graph and passes a `renderOverlay` function from [demo/layout-overlay.tsx](https://github.com/bwin/sankey-plus/blob/master/demo/layout-overlay.tsx). The overlay reads the public snapshot and draws stage headings above the three columns plus a rounded callout around `process-a`. It uses theme variables only, so it remains legible without participating in hit testing or accessibility.
+
+The footer reports the snapshot's `crossings` and `obstacleCollisions`, refreshed by `onLayout` only for this tab; switching examples clears the readout so it never shows another graph's diagnostics. Both values come from the completed scene and should be shown as diagnostics, not treated as errors for dense graphs. The footer also clones the live `<svg>` obtained through the imperative handle, injects theme variables and label/canvas styles, and downloads a self-contained file. The overlay is decorative: labels, tooltips, selection and keyboard navigation still come from the diagram itself. See [snapshot fields](api.md#snapshot-fields) and [snapshots and overlays](layout-and-interaction.md#snapshots-and-overlays).
 
 ## Wide range
 

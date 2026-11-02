@@ -52,6 +52,16 @@ The chart creates a scroll container only when its canvas is wider than the host
 
 The routing search is bounded. Pathological custom graphs may still need a larger host container. There is no promise of a globally optimal layout or perfect clearance for every possible graph.
 
+## Snapshots and overlays
+
+The completed scene is available as a typed read-only layout snapshot through `onLayout` and `getLayout()`; treat its maps and objects as immutable even though the maps are runtime `Map` instances. It contains the same measured geometry that was rendered: canvas extents, the top/bottom edge bands, the common value scale, central plot band, stage columns, node bars and layout-unit facts, painted link paths and widths, measured label boxes, and the final crossing/obstacle diagnostics. Labels retain the lines that were fitted to their available width; `labelHidden` marks a link label that was omitted to avoid a collision. `onLayout` reports each completed scene once; attaching a callback while a completed scene is current reports that snapshot once, and changing callback identity alone does not replay it.
+
+For example, a host can read `plot.top` or `topBand` to place stage headings, use `nodes` rects to outline a subject, or read `diagnostics.crossings` to show whether a dense graph retains crossings. Snapshot coordinates are in the SVG view box, not screen coordinates. A resize keeps the previous complete snapshot and rendered scene current until the replacement completes. Changing the graph or layout options clears the snapshot to `null` until the new scene commits, so cached handles do not mix another graph's geometry with the current facts. See [snapshot fields](api.md#snapshot-fields).
+
+`renderOverlay` adds decorative SVG after links, nodes and labels. The component wraps it in a `pointer-events: none`, `aria-hidden` group so annotations cannot capture pointer or keyboard input or duplicate accessible content. Use theme variables such as `--flow-muted-text` and `--flow-focus` to keep annotations legible on light and dark hosts. Overlays are for headings, callouts and other non-interactive context only. They must not be the sole source of important information, and they do not change layout, routing, hit testing or selection.
+
+The [Layout overlay example](examples.md#layout-overlay) annotates the Distribution graph with stage headings and a callout around Process A, shows the snapshot's collision diagnostics, and downloads a self-contained SVG copy.
+
 ## Visual examples
 
 The same curve style connects stages, top sources and bottom destinations:
