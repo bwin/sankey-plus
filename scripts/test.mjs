@@ -12,6 +12,9 @@ await import(
   pathToFileURL(path.join(project, '.tests/tests/layout-task.test.js')).href
 );
 await import(
+  pathToFileURL(path.join(project, '.tests/tests/snapshot.test.js')).href
+);
+await import(
   pathToFileURL(path.join(project, '.tests/tests/interaction.test.js')).href
 );
 await import(

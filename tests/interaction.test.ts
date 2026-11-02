@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createElement } from 'react';
+import { createElement, createRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { SankeyDiagram } from '../src/SankeyDiagram.js';
 import { anchorMoved, tooltipPosition } from '../src/presentation.js';
-import { SankeyInputError } from '../src/types.js';
+import { SankeyInputError, type SankeyDiagramHandle } from '../src/types.js';
 
 const css = readFileSync(
   new URL('../../src/style.css', import.meta.url),
@@ -108,6 +108,34 @@ test('SankeyDiagram renders empty and measuring states and validates input graph
         }),
       ),
     SankeyInputError,
+  );
+});
+
+// The suite has no DOM harness, so this covers prop/type acceptance only.
+// Handle identity, cached getLayout() and onLayout dedupe need a browser/DOM test.
+test('SankeyDiagram accepts ref, onLayout and renderOverlay during server rendering', () => {
+  const ref = createRef<SankeyDiagramHandle>(),
+    html = renderToStaticMarkup(
+      createElement(SankeyDiagram, {
+        ref,
+        graph: {
+          stages: ['a', 'b'],
+          nodes: [
+            { key: 'a', title: 'A', placement: { stage: 'a' } },
+            { key: 'b', title: 'B', placement: { stage: 'b' } },
+          ],
+          links: [{ key: 'ab', from: 'a', to: 'b', amount: 10 }],
+        },
+        accessibleName: 'Server flow',
+        onLayout: () => undefined,
+        renderOverlay: () => null,
+      }),
+    );
+  assert.match(html, /aria-busy="true"/);
+  assert.match(html, /Preparing diagram/);
+  assert.equal(
+    (SankeyDiagram as unknown as { displayName?: string }).displayName,
+    'SankeyDiagram',
   );
 });
 

@@ -9,10 +9,13 @@ import {
   useRef,
   useState,
   type CSSProperties,
+  type ForwardRefRenderFunction,
   type KeyboardEvent,
   type MouseEvent,
   type PointerEvent,
+  type ReactElement,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph, subjectExists } from './model.js';
@@ -23,6 +26,7 @@ import {
   type TextBox,
 } from './layout.js';
 import { runInChunks } from './layout-task.js';
+import { layoutSnapshot } from './snapshot.js';
 import {
   anchorMoved,
   defaultLabel,
@@ -35,7 +39,9 @@ import {
 } from './presentation.js';
 import type {
   SankeyActivationEvent,
+  SankeyDiagramHandle,
   SankeyDiagramProps,
+  SankeyLayout,
   SankeySubject,
   SankeyPresentation,
 } from './types.js';
@@ -263,8 +269,9 @@ const Details = forwardRef<
     document.body,
   );
 });
-export function SankeyDiagram<I = unknown, T = unknown>(
+function SankeyDiagramRender<I = unknown, T = unknown>(
   props: SankeyDiagramProps<I, T>,
+  ref: Ref<SankeyDiagramHandle>,
 ) {
   const {
     graph,
@@ -275,6 +282,8 @@ export function SankeyDiagram<I = unknown, T = unknown>(
     selection,
     onNodeClick,
     onLinkClick,
+    onLayout,
+    renderOverlay,
     formatAmount,
     getLabel,
     renderTooltip,
@@ -286,6 +295,11 @@ export function SankeyDiagram<I = unknown, T = unknown>(
     interactingWithTooltip = useRef(false),
     tooltipHandle = useRef<DetailsHandle>(null),
     lastAnchor = useRef({ x: 0, y: 0 });
+  const onLayoutRef = useRef(onLayout),
+    reportedSnapshot = useRef<SankeyLayout | null>(null),
+    snapshotRef = useRef<SankeyLayout | null>(null),
+    focusSubjectRef = useRef<SankeyDiagramHandle['focusSubject']>(() => false);
+  onLayoutRef.current = onLayout;
   const uid = useId(),
     tooltipId = `${uid}-details`,
     helpId = `${uid}-help`;
@@ -457,11 +471,54 @@ export function SankeyDiagram<I = unknown, T = unknown>(
     layoutResult?.request.model === model && 'scene' in layoutResult
       ? layoutResult.scene
       : null;
+  const snapshot = useMemo(
+    () => (scene ? layoutSnapshot(scene, model) : null),
+    [scene, model],
+  );
+  snapshotRef.current = snapshot;
+  useEffect(() => {
+    if (!onLayout) {
+      reportedSnapshot.current = null;
+      return;
+    }
+    if (!snapshot) return;
+    if (reportedSnapshot.current === snapshot) return;
+    reportedSnapshot.current = snapshot;
+    onLayoutRef.current?.(snapshot);
+  }, [snapshot, onLayout]);
   const pending =
     model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
   const exists = useCallback(
     (s: SankeySubject | null | undefined) => subjectExists(model, s),
     [model],
+  );
+  const focusSubject = useCallback(
+    (subject: SankeySubject) => {
+      if (!exists(subject)) return false;
+      const control = controls.current.get(identity(subject));
+      if (!control) return false;
+      const index =
+        subject.kind === 'node'
+          ? subjectIndex.nodes.get(subject.key)
+          : subjectIndex.links.get(subject.key);
+      if (index === undefined) return false;
+      input.current = 'keyboard';
+      suppressed.current = null;
+      setRoving(index);
+      control.focus({ preventScroll: true });
+      return true;
+    },
+    [exists, subjectIndex],
+  );
+  focusSubjectRef.current = focusSubject;
+  useImperativeHandle(
+    ref,
+    () => ({
+      getLayout: () => snapshotRef.current,
+      getSvgElement: () => svg.current,
+      focusSubject: (subject) => focusSubjectRef.current(subject),
+    }),
+    [],
   );
   const selected = exists(selection) ? selection : null;
   const active =
@@ -1037,6 +1094,15 @@ export function SankeyDiagram<I = unknown, T = unknown>(
                 opacity={strong.nodes.has(n.key) ? 1 : 0.25}
               />
             ))}
+            {renderOverlay && snapshot ? (
+              <g
+                className="flow-overlay"
+                pointerEvents="none"
+                aria-hidden="true"
+              >
+                {renderOverlay(snapshot)}
+              </g>
+            ) : null}
           </svg>
         </div>
       )}
@@ -1061,3 +1127,17 @@ export function SankeyDiagram<I = unknown, T = unknown>(
     </div>
   );
 }
+const SankeyDiagramForward = forwardRef(
+  SankeyDiagramRender as ForwardRefRenderFunction<
+    SankeyDiagramHandle,
+    SankeyDiagramProps
+  >,
+);
+SankeyDiagramForward.displayName = 'SankeyDiagram';
+/**
+ * Generic forwardRef component. The cast keeps `graph`, `onNodeClick` and the
+ * presentation callbacks tied to the caller's metadata types in declarations.
+ */
+export const SankeyDiagram = SankeyDiagramForward as <I = unknown, T = unknown>(
+  props: SankeyDiagramProps<I, T> & { ref?: Ref<SankeyDiagramHandle> },
+) => ReactElement;
