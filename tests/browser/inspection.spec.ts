@@ -61,7 +61,12 @@ test('pointer inspection opens the details', async ({ page }) => {
 
   const node = page.locator('[data-flow-subject][data-kind="node"]').first();
   await expect(node).toBeVisible({ timeout: 15_000 });
-  await node.scrollIntoViewIfNeeded();
+  // Center the node instead of using scrollIntoViewIfNeeded, which can leave
+  // part of it below the viewport and make the mouse move miss.
+  await node.evaluate((el) =>
+    el.scrollIntoView({ block: 'center', inline: 'center' }),
+  );
+  await expect(node).toBeInViewport({ ratio: 1 });
   const box = await node.boundingBox();
   if (!box) throw new Error('Node has no layout box.');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
