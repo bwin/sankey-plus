@@ -310,7 +310,8 @@ export type SankeyIssueCode =
   | 'invalid-rate'
   | 'conflicting-rate'
   | 'missing-conversion'
-  | 'incompatible-totals';
+  | 'incompatible-totals'
+  | 'invalid-graph';
 export interface SankeyIssue {
   readonly code: SankeyIssueCode;
   readonly message: string;

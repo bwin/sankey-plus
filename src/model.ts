@@ -318,16 +318,22 @@ export function resolveGraph<I, T>(
         .map((f) => nodes.get(f.to)?.node.placement?.stage)
         .filter((s): s is string => s !== undefined)
         .map((s) => graph.stages.indexOf(s));
-      if (
-        sources.length &&
-        targets.length &&
-        Math.max(...sources) >= Math.min(...targets)
-      )
-        issues.push({
-          code: 'incompatible-placement',
-          nodeKey: id,
-          message: `Edge node ${id} cannot fit between its main sources and targets.`,
-        });
+      if (sources.length && targets.length) {
+        const latestSource = sources.reduce(
+            (latest, stage) => Math.max(latest, stage),
+            -Infinity,
+          ),
+          earliestTarget = targets.reduce(
+            (earliest, stage) => Math.min(earliest, stage),
+            Infinity,
+          );
+        if (latestSource >= earliestTarget)
+          issues.push({
+            code: 'incompatible-placement',
+            nodeKey: id,
+            message: `Edge node ${id} cannot fit between its main sources and targets.`,
+          });
+      }
     }
     nodes.set(id, {
       ...facts,

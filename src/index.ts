@@ -1,5 +1,6 @@
 export { SankeyDiagram } from './SankeyDiagram.js';
 export { SankeyInputError } from './types.js';
+export { validateGraph } from './validate.js';
 export type {
   SankeyActivationEvent,
   SankeyDiagramHandle,

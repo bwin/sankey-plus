@@ -226,6 +226,13 @@ export const examples: {
     graph: simple,
   },
   {
+    key: 'validation',
+    name: 'Validation',
+    description:
+      'Preflight untrusted data with validateGraph. Inspect a valid graph plus cycle, unknown-endpoint and total-too-small variants without rendering invalid input.',
+    graph: simple,
+  },
+  {
     key: 'headroom',
     name: 'Headroom',
     description:

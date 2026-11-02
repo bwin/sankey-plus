@@ -20,6 +20,7 @@
 | Fan-in                | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total.                                                             |
 | Many edge nodes       | Twelve destinations wrapping into rows with separate lanes.                                                                                                      |
 | Partial allocation    | A 1,000-unit node with a 500-unit transfer; no unused edge bands.                                                                                                |
+| Validation            | Non-throwing `validateGraph` issues for valid, cycle, unknown-endpoint and total-too-small variants. Invalid variants never reach the chart.                     |
 | Headroom              | The same 1,000/500 allocation with a hatched unallocated half and a headroom label.                                                                              |
 | Parallel links        | Three distinct ribbons between the same pair of nodes, each independently inspectable and selectable.                                                            |
 | Stress test           | The same 100-node/300-link graph as the command-line stress benchmark. Dense crossings are expected.                                                             |
@@ -100,6 +101,12 @@ This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; 
 The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/docs-wide-range-proportional.jpg). [Minimum-width semantics](api.md#quantities).
 
 ![Wide range with a 4px minimum thickness](../screenshots/docs-wide-range-minimum.jpg)
+
+## Validation
+
+The [Validation example](https://github.com/bwin/sankey-plus/blob/master/demo/validation-panel.tsx) runs `validateGraph` on four variants of the [simple fixture](../demo/fixtures.ts): a valid graph, a directed cycle, an unknown link endpoint and a total that is too small for its outgoing transfer. Choosing a variant lists every returned issue with its `code`, `message` and affected node or link key.
+
+Only the valid graph is passed to the demo's chart. The invalid variants are preflight examples and never reach `SankeyDiagram`, so this demo does not need an error boundary. The component still throws `SankeyInputError` for invalid render input in normal use; see [non-throwing validation](api.md#non-throwing-validation).
 
 ## Headroom
 

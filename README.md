@@ -55,6 +55,7 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 - Resolved source and target shares on link facts for percentage labels and tooltips, using each endpoint's own unit total.
 - Optional crossfade between completed scenes when data changes, with reduced-motion support; geometry is not morphed or interpolated.
 - Common value scaling and explicit totals larger than their connected transfers.
+- Non-throwing `validateGraph` preflight for untrusted JSON and form data: it returns all semantic issues for structurally well-shaped graphs and `invalid-graph` for malformed structure before rendering.
 - Optional headroom hatching for declared partial source/sink capacity; mixed-direction relays stay unhatched.
 
 ## Guides

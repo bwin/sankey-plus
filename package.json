@@ -43,6 +43,7 @@
     "dist/index.d.ts",
     "dist/SankeyDiagram.d.ts",
     "dist/types.d.ts",
+    "dist/validate.d.ts",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
