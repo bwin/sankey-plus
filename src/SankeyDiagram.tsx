@@ -299,6 +299,7 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     plotHeight = 336,
     transition: transitionProp,
     minLinkWidth = 0,
+    showHeadroom = false,
     selection,
     onNodeClick,
     onLinkClick,
@@ -329,7 +330,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
   onLayoutRef.current = onLayout;
   const uid = useId(),
     tooltipId = `${uid}-details`,
-    helpId = `${uid}-help`;
+    helpId = `${uid}-help`,
+    headroomPatternId = `${uid}-headroom`;
   const [measurement, setMeasurement] = useState({
     width: 0,
     font: '12px sans-serif',
@@ -517,8 +519,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
   const pending =
     model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
   // Snapshot completed scenes only while transitions are enabled. Selection
-  // changes refresh the snapshot without starting a new crossfade. Future
-  // scene-affecting options (for example showHeadroom) belong in this list.
+  // and headroom changes refresh the snapshot without starting a new crossfade.
+  // Future scene-affecting options belong in this list.
   useBrowserLayoutEffect(() => {
     const enabled =
       transitionDuration > 0 &&
@@ -562,6 +564,7 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     transitionDuration,
     transitionEasing,
     selectionSignature,
+    showHeadroom,
     uid,
   ]);
   useBrowserLayoutEffect(() => {
@@ -1051,6 +1054,31 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
             }}
             onClick={click}
           >
+            {showHeadroom && (
+              <defs>
+                <pattern
+                  id={headroomPatternId}
+                  width={6}
+                  height={6}
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <rect
+                    width={6}
+                    height={6}
+                    fill="var(--flow-headroom-track, transparent)"
+                  />
+                  <line
+                    x1={0}
+                    y1={0}
+                    x2={0}
+                    y2={6}
+                    stroke="var(--flow-headroom, #68758b)"
+                    strokeWidth={2}
+                  />
+                </pattern>
+              </defs>
+            )}
             <g
               className="flow-scene-content"
               style={
@@ -1159,6 +1187,20 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
                       pointerEvents="none"
                       aria-hidden="true"
                     />
+                    {showHeadroom && n.headroom && (
+                      <rect
+                        className="flow-headroom"
+                        data-headroom-node={n.key}
+                        x={n.headroom.x}
+                        y={n.headroom.y}
+                        width={n.headroom.w}
+                        height={n.headroom.h}
+                        fill={`url(#${headroomPatternId})`}
+                        opacity={strongItem ? 1 : 0.25}
+                        pointerEvents="none"
+                        aria-hidden="true"
+                      />
+                    )}
                     {isSelected && (
                       <g
                         className="flow-decoration"

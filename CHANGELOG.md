@@ -6,6 +6,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Optional `showHeadroom` hatching for declared partial source/sink capacity, with `minLinkWidth`-aware placement and theme-derived colors. Mixed-direction relays and derived totals are omitted.
 - Optional `transition` crossfade between completed scenes, with configurable duration and easing, reduced-motion support and a `duration: 0` opt-out. Path geometry is not interpolated.
 - Transitions example that swaps 500- and 750-unit allocation states with a 320 ms crossfade.
 - Public read-only layout snapshots with node/link geometry, label boxes, stage positions, central plot and edge bands, layout-unit node scalars and collision diagnostics.

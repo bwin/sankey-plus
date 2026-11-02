@@ -245,6 +245,8 @@ export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
   readonly transition?: false | SankeyTransition;
   /** Minimum displayed ribbon thickness in CSS px. Default: 0 (proportional). Enlarges ports/bars as needed; values stay unchanged. */
   readonly minLinkWidth?: number;
+  /** Hatch declared capacity on pure source/sink nodes. Mixed-direction and fully derived nodes are not hatched. Default: false. */
+  readonly showHeadroom?: boolean;
   readonly formatAmount?: (
     value: number,
     context: SankeyAmountContext<NodeMeta, LinkMeta>,

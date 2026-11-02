@@ -54,6 +54,7 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 - Custom labels, tooltips with both connected nodes, typed metadata and light/dark theme tokens.
 - Optional crossfade between completed scenes when data changes, with reduced-motion support; geometry is not morphed or interpolated.
 - Common value scaling and explicit totals larger than their connected transfers.
+- Optional headroom hatching for declared partial source/sink capacity; mixed-direction relays stay unhatched.
 
 ## Guides
 

@@ -52,6 +52,10 @@ The chart creates a scroll container only when its canvas is wider than the host
 
 The routing search is bounded. Pathological custom graphs may still need a larger host container. There is no promise of a globally optimal layout or perfect clearance for every possible graph.
 
+## Headroom
+
+With `showHeadroom`, declared capacity on a pure source or pure sink is drawn as a subtle hatch. Fully derived totals and mixed-direction relays are omitted, because their combined gap can mix units and roles. Vertical main-stage bars place the hatch at the bottom; horizontal top/bottom bars place it at the right end, matching their horizontal port axis. Hatches below 0.5 CSS pixels are omitted. The hatch is decorative and pointer-transparent, so the node bar remains the hit target. It does not change totals, widths, scale, labels, routing or hit testing. `minLinkWidth` floors count toward the covered stack: if the displayed ports fill the quantitative total, no headroom is shown.
+
 ## Snapshots and overlays
 
 The completed scene is available as a typed read-only layout snapshot through `onLayout` and `getLayout()`; treat its maps and objects as immutable even though the maps are runtime `Map` instances. It contains the same measured geometry that was rendered: canvas extents, the top/bottom edge bands, the common value scale, central plot band, stage columns, node bars and layout-unit facts, painted link paths and widths, measured label boxes, and the final crossing/obstacle diagnostics. Labels retain the lines that were fitted to their available width; `labelHidden` marks a link label that was omitted to avoid a collision. `onLayout` reports each completed scene once; attaching a callback while a completed scene is current reports that snapshot once, and changing callback identity alone does not replay it.
