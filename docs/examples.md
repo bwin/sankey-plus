@@ -11,6 +11,7 @@
 | World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
 | Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
 | Wide range            | 200–500,000-unit transfers with a 4px minimum visible thickness; exact amounts stay in labels and tooltips.                                                      |
+| Transitions           | Two allocation states for the same graph; use Swap data to crossfade 500 ↔ 750 units without interpolating geometry.                                             |
 | Four-sided flow       | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps.                                         |
 | Fan-out / Top fan-out | Separate ordered turns below and above the main sequence.                                                                                                        |
 | Fan-in                | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total.                                                             |
@@ -79,6 +80,12 @@ This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; 
 The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/docs-wide-range-proportional.jpg). [Minimum-width semantics](api.md#quantities).
 
 ![Wide range with a 4px minimum thickness](../screenshots/docs-wide-range-minimum.jpg)
+
+## Transitions
+
+The [Transitions example](../demo/fixtures.ts) reuses the simple two-stage graph with a second variant where the allocation is **750 instead of 500 units**. Nodes and stages are unchanged. Use **Swap data** in the chart footer to replace the graph; the completed 500-unit scene crossfades into the completed 750-unit scene over **320 ms**.
+
+The widths are not tweened. The old drawing fades out while the new drawing fades in, so there is no intermediate geometry or node movement. `transition={false}` (the default) updates directly. `duration: 0` disables the effect for one diagram, and `prefers-reduced-motion: reduce` skips it. Changing the Canvas width or the selected node can also affect the next crossfade because a new completed scene or refreshed snapshot is used. See [scene transitions](api.md#scene-transitions).
 
 ## Fan-in
 

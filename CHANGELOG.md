@@ -4,6 +4,11 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+### Added
+
+- Optional `transition` crossfade between completed scenes, with configurable duration and easing, reduced-motion support and a `duration: 0` opt-out. Path geometry is not interpolated.
+- Transitions example that swaps 500- and 750-unit allocation states with a 320 ms crossfade.
+
 ## [2.0.0] - 2026-11-01
 
 ### Breaking changes

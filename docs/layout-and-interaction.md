@@ -14,6 +14,12 @@
 - Activation calls the relevant handler. It never changes selection internally. The host may select, navigate, open a panel, or ignore the click.
 - Selection uses a persistent solid outline in the selected node/link's own color, separated from its fill and surroundings by the surface color. The outline remains fully opaque when its fill fades during unrelated inspection. Keyboard focus uses a dashed indicator. Escape does not change selection. A selected key removed from the graph is ignored without a callback.
 
+## Scene transitions
+
+`transition` optionally crossfades one completed scene into the next completed scene after graph or layout changes. The old drawing fades out while the new drawing fades in. Nodes, links and labels are not moved or tweened, and no intermediate layout is calculated. The old copy is clipped to the current scene and ignores pointer input, is hidden from assistive technology and has no tab stops; focus, hit testing and tooltips belong to the new scene only.
+
+`duration` defaults to 280 ms and `easing` to `ease-out`. `duration: 0` disables the effect, and `prefers-reduced-motion: reduce` skips it entirely. Rapid updates replace the previous fading copy instead of stacking overlays. The snapshot is refreshed when selection changes, so the fading copy reflects the selected subject; transient hover/emphasis is not captured. Options that alter scene markup follow the same refresh rule. Container resize and font measurement can also trigger a new completed scene and therefore a transition. The inspection fade is separate and still runs in 120 ms. See [the Transitions example](examples.md#transitions).
+
 ## Layout and routing
 
 Top/bottom nodes are horizontal quantitative bars with full labels, facts and interactions. Both link directions use the inward face: below a top bar and above a bottom bar. Multiple edge nodes pack within their valid source/target intervals and wrap into rows. A side without nodes reserves no extra band.

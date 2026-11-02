@@ -43,6 +43,13 @@ export interface SankeyFormattedTotals {
   readonly incoming: string;
   readonly outgoing: string;
 }
+/** Visual crossfade between completed scenes. Geometry is not interpolated. */
+export interface SankeyTransition {
+  /** Crossfade duration in milliseconds. Default: 280. */
+  readonly duration?: number;
+  /** CSS animation timing function. Default: 'ease-out'. */
+  readonly easing?: string;
+}
 export interface SankeyQuantity {
   readonly amount: number;
   readonly unit?: string;
@@ -163,6 +170,8 @@ export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
   readonly className?: string;
   /** Preferred height of the central stage region, not the entire component. Default: 336 CSS px. */
   readonly plotHeight?: number;
+  /** Crossfade between completed scenes. Default: false (off). Does not interpolate geometry. */
+  readonly transition?: false | SankeyTransition;
   /** Minimum displayed ribbon thickness in CSS px. Default: 0 (proportional). Enlarges ports/bars as needed; values stay unchanged. */
   readonly minLinkWidth?: number;
   readonly formatAmount?: (

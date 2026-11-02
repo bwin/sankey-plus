@@ -191,13 +191,15 @@ const details = (
 function App() {
   const [example, setExample] = useState('distribution'),
     [selection, setSelection] = useState<SankeySubject | null>(null),
-    [viewport, setViewport] = useState('auto');
+    [viewport, setViewport] = useState('auto'),
+    [transitionVariant, setTransitionVariant] = useState(false);
   const [clicksSelect, setClicksSelect] = useState(true),
     [custom, setCustom] = useState(true),
     [events, setEvents] = useState(0),
     [last, setLast] = useState('No clicks yet');
   const current = examples.find((e) => e.key === example)!,
-    graph = current.graph;
+    graph =
+      transitionVariant && current.altGraph ? current.altGraph : current.graph;
   const formatAmount = current.formatAmount ?? format;
   const customDetails = useCallback(
     (view: SankeyPresentation) =>
@@ -205,7 +207,7 @@ function App() {
     [formatAmount, graph.defaultUnit],
   );
   const { hostRef, readyMs } = useExampleTiming(
-    `${example}:${viewport}:${custom}`,
+    `${example}:${viewport}:${custom}:${transitionVariant}`,
   );
   const selectedName =
     selection?.kind === 'node'
@@ -227,6 +229,7 @@ function App() {
   const chooseExample = (key: string) => {
     setExample(key);
     setSelection(null);
+    setTransitionVariant(false);
   };
   const navigateExamples = (
     event: KeyboardEvent<HTMLButtonElement>,
@@ -358,6 +361,7 @@ function App() {
                 accessibleName={`${current.name} diagram`}
                 plotHeight={current.plotHeight ?? 336}
                 minLinkWidth={current.minLinkWidth}
+                transition={current.transition}
                 selection={selection}
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}
@@ -383,13 +387,24 @@ function App() {
               <span>Selected</span>
               <b data-selected-name="">{selectedName ?? 'Nothing selected'}</b>
             </div>
-            <button
-              className="clear-button"
-              onClick={() => setSelection(null)}
-              disabled={!selection}
-            >
-              Clear selection
-            </button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              {current.altGraph && (
+                <button
+                  className="clear-button"
+                  aria-pressed={transitionVariant}
+                  onClick={() => setTransitionVariant((value) => !value)}
+                >
+                  Swap data
+                </button>
+              )}
+              <button
+                className="clear-button"
+                onClick={() => setSelection(null)}
+                disabled={!selection}
+              >
+                Clear selection
+              </button>
+            </div>
           </footer>
         </div>
       </section>

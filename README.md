@@ -51,6 +51,7 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 - Ordered stage columns plus multiple top/bottom nodes, with wrapping on narrow canvases.
 - One-hop hover highlighting, keyboard navigation, node/link clicks and externally controlled selection.
 - Custom labels, tooltips with both connected nodes, typed metadata and light/dark theme tokens.
+- Optional crossfade between completed scenes when data changes, with reduced-motion support; geometry is not morphed or interpolated.
 - Common value scaling and explicit totals larger than their connected transfers.
 
 ## Guides

@@ -19,4 +19,5 @@ export type {
   SankeyTotals,
   SankeyUnitTotals,
   SankeyFormattedTotals,
+  SankeyTransition,
 } from './types.js';

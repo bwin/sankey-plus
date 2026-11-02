@@ -67,6 +67,8 @@ export const examples: {
   getLabel?: SankeyDiagramProps['getLabel'];
   plotHeight?: number;
   minLinkWidth?: number;
+  altGraph?: SankeyGraph;
+  transition?: SankeyDiagramProps['transition'];
 }[] = [
   {
     key: 'distribution',
@@ -122,6 +124,20 @@ export const examples: {
     graph: wideRangeData as SankeyGraph,
     plotHeight: 440,
     minLinkWidth: 4,
+  },
+  {
+    key: 'transitions',
+    name: 'Transitions',
+    description:
+      'Two allocation states for the same nodes. Swap data to crossfade the completed 500- and 750-unit scenes; geometry is not interpolated.',
+    graph: simple,
+    altGraph: {
+      ...simple,
+      links: [
+        { key: 'allocation', from: 'available', to: 'allocated', amount: 750 },
+      ],
+    },
+    transition: { duration: 320 },
   },
   {
     key: 'complete',
