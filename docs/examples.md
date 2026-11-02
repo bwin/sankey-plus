@@ -8,6 +8,7 @@
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Distribution          | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata.                                                     |
 | Inspection bridge     | External `highlight` on the Distribution graph, with a live `onInspectChange` subject/modality readout and independent selection.                                |
+| Linked table          | A focusable node/link table that drives chart emphasis and mirrors chart inspection back into the active row, without changing selection.                        |
 | Stages                | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare.                                        |
 | World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
 | Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
@@ -26,6 +27,47 @@ All examples share custom labels/tooltips, node/link activation, host-controlled
 ## Inspection bridge
 
 The Inspection bridge tab reuses the Distribution graph. Its host panel passes a chosen node as `highlight`, so that node, its incident links and their endpoints are emphasized without a pointer. Hover, focus or tap the diagram to see `onInspectChange` report the subject key and `pointer`, `keyboard` or `touch`; dismissal reports `none`. Pointer hover updates the readout visually without queuing a live announcement; keyboard, touch and dismissal are announced politely. When an internal inspection and the external highlight are both active, their one-hop sets are unioned. The selection control remains independent and can select a link while a different node stays externally emphasized.
+
+## Linked table
+
+The Linked table tab also reuses the Distribution graph, but renders every node and link as a keyboard-focusable row below the chart. The two views are linked in both directions, and neither direction changes the controlled selection.
+
+- **Table to chart.** Entering or focusing a node row sets `highlight` to that node. Entering or focusing a link row sets the link. The chart emphasizes the subject and its one-hop neighborhood exactly as it does for internal inspection. Leaving the row or moving focus away clears the external highlight.
+- **Chart to table.** Hovering, focusing or tapping a chart node or link fires `onInspectChange`. The matching table row becomes current, so a reader can move between the picture and the itemized flow without losing context.
+- External `highlight` is emphasis only and does not fire `onInspectChange`. The table therefore keeps its own `hovered` state, while the chart's reported inspection remains separate. If both are active, the chart unions their one-hop sets.
+- **Selection stays independent.** Table hover does not select anything. Use chart clicks or the external selection control; the selected subject keeps its own outline even while rows and chart emphasis move.
+
+The demo keeps one active-row style and exposes `data-table-active` plus `data-chart-active` when an integration needs to distinguish which surface started the emphasis. The table has a scrollable body and sticky header; every row is focusable, while the chart retains its single roving tab stop.
+
+```tsx
+const [highlight, setHighlight] = useState<SankeySubject | null>(null);
+const [inspection, setInspection] = useState<SankeyInspection | null>(null);
+
+<SankeyDiagram
+  graph={graph}
+  highlight={highlight}
+  onInspectChange={setInspection}
+  selection={selection}
+  onNodeClick={(facts) => setSelection({ kind: 'node', key: facts.node.key })}
+/>;
+
+<tr
+  tabIndex={0}
+  data-chart-active={
+    inspection?.subject.kind === 'node' && inspection.subject.key === node.key
+      ? 'true'
+      : 'false'
+  }
+  onMouseEnter={() => setHighlight({ kind: 'node', key: node.key })}
+  onMouseLeave={() => setHighlight(null)}
+  onFocus={() => setHighlight({ kind: 'node', key: node.key })}
+  onBlur={() => setHighlight(null)}
+>
+  {/* subject, placement and value cells */}
+</tr>;
+```
+
+Link rows use the same wiring with `{ kind: 'link', key: link.key }`. Attach `onInspectChange` when the host needs the chart-to-table direction; attaching it while a subject is already inspected replays that subject once.
 
 ## Explicit stages
 

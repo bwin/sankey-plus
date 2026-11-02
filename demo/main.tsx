@@ -11,6 +11,7 @@ import {
 } from '../src/index.js';
 import { examples } from './fixtures.js';
 import { InspectionPanel } from './inspection-panel.js';
+import { LinkedTable } from './linked-table.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 import '../src/style.css';
@@ -202,6 +203,7 @@ function App() {
     [last, setLast] = useState('No clicks yet');
   const current = examples.find((e) => e.key === example)!,
     graph = current.graph;
+  const linkedExample = example === 'inspection' || example === 'linked-table';
   const formatAmount = current.formatAmount ?? format;
   const customDetails = useCallback(
     (view: SankeyPresentation) =>
@@ -365,10 +367,8 @@ function App() {
                 plotHeight={current.plotHeight ?? 336}
                 minLinkWidth={current.minLinkWidth}
                 selection={selection}
-                highlight={example === 'inspection' ? highlight : undefined}
-                onInspectChange={
-                  example === 'inspection' ? setInspection : undefined
-                }
+                highlight={linkedExample ? highlight : undefined}
+                onInspectChange={linkedExample ? setInspection : undefined}
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}
                 renderTooltip={custom ? customDetails : undefined}
@@ -403,6 +403,14 @@ function App() {
           </footer>
         </div>
       </section>
+      {example === 'linked-table' && (
+        <LinkedTable
+          graph={graph}
+          highlight={highlight}
+          onHighlightChange={setHighlight}
+          inspection={inspection}
+        />
+      )}
       <section className="integration-panel">
         <div>
           <h3>Controlled by the host</h3>

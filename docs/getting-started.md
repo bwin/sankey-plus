@@ -85,6 +85,21 @@ Keep inputs immutable and supply a new graph reference when data changes. Stable
 
 The component computes layout on the main thread in cooperative chunks, targeting 8 ms of work before yielding through a timer task. Checkpoints are between layout phases, nodes, routes and comparisons; individual geometry helpers can exceed that target. Initial layout shows “Preparing diagram…” and sets `aria-busy`. A resize retains the last complete scene while the replacement is calculated. Changed inputs and unmounting cancel unfinished work, and only complete results are committed. No worker or bundler configuration is required. Validation, presentation callbacks and the final React/SVG render are still synchronous.
 
+## Link a table or another view
+
+Use `highlight` for emphasis coming from your own UI, and `onInspectChange` for inspection coming from the chart:
+
+```tsx
+<SankeyDiagram
+  graph={graph}
+  highlight={hoveredSubject}
+  onInspectChange={setInspection}
+  selection={selection}
+/>
+```
+
+Set `hoveredSubject` from row hover or focus and clear it on leave or blur. `onInspectChange` reports `{subject, modality}`; match `inspection.subject` to the row's key. External highlighting does not fire the callback, so the two directions stay independent. Selection is still controlled only through `selection` and the click callbacks. See the [Linked table example](examples.md#linked-table) for the complete table, keyboard handling and selection separation.
+
 ## Next steps
 
 - [API and data rules](api.md)

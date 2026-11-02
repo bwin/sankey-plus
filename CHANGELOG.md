@@ -8,6 +8,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 - Optional `highlight` and `onInspectChange` props: external one-hop emphasis unions with internal inspection, and a deduplicated callback reports the inspected subject and pointer/keyboard/touch modality without changing selection. Attaching the callback while a subject is inspected replays that subject once.
 - Inspection bridge example tab with a node highlight picker and a live inspection callback readout.
+- Linked table example with focusable node/link rows that drive external one-hop emphasis and mirror chart inspection back into the active row, while selection stays independently controlled.
 - Playwright coverage for external highlight, inspection readout, dismissal, selection independence and tab stops on the Inspection bridge example.
 
 ## [2.0.0] - 2026-11-01
