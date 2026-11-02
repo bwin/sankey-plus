@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { emphasis, resolveGraph } from './model.js';
+import { emphasis, resolveGraph, subjectExists } from './model.js';
 import {
   hitTest,
   layoutGraphSteps,
@@ -460,12 +460,10 @@ export function SankeyDiagram<I = unknown, T = unknown>(
   const pending =
     model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
   const exists = useCallback(
-    (s: SankeySubject | null | undefined) =>
-      !!s &&
-      (s.kind === 'node' ? model.nodes.has(s.key) : model.links.has(s.key)),
+    (s: SankeySubject | null | undefined) => subjectExists(model, s),
     [model],
   );
-  const selected = exists(selection) ? selection! : null;
+  const selected = exists(selection) ? selection : null;
   const active =
     scene && inspection && exists(inspection.subject) ? inspection : null;
   const strong = useMemo(

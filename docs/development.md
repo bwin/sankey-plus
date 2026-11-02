@@ -30,7 +30,7 @@ npm run test:browser
 npm run verify:package
 ```
 
-`npm run test:browser` runs the Chromium Playwright smoke test against the built demo. Install the browser once with `npx playwright install chromium`; the test starts `npm run preview` itself.
+`npm run test:browser` runs the Chromium Playwright smoke tests against the demo. Install the browser once with `npx playwright install chromium`; the test builds and serves the demo with `npm run dev` itself.
 
 `npm run format` rewrites the repository with Prettier; CI uses the non-writing `npm run format:check`. Prettier uses its default 80-column width and 2-space indentation; single quotes and `endOfLine: auto` are the only overrides. The compact stylesheets are excluded.
 

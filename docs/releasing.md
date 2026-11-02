@@ -75,6 +75,8 @@ npm pack --pack-destination .tests/release --json
 git status --short
 ```
 
+On Linux, install Chromium with `npx playwright install --with-deps chromium` so its system libraries are present.
+
 The build's declaration check resolves the working-tree package. `verify:package` packs the archive, installs it into a fresh consumer under `.tests/package-verify`, runs strict NodeNext typechecking, and checks the runtime exports and stylesheet. The publishing archive is still packed separately below and must pass the full manual checks.
 
 The worktree must stay clean. The build includes strict typechecking. Inspect the archive: only JS/CSS, three public declaration files, package metadata, README, changelog and license notices belong in it. No credentials, source tree, guides, screenshots, internal declarations or demo files.

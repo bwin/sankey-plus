@@ -359,6 +359,17 @@ export function resolveGraph<I, T>(
     ],
   };
 }
+export function subjectExists<I, T>(
+  model: ResolvedGraph<I, T>,
+  subject: SankeySubject | null | undefined,
+): subject is SankeySubject {
+  return (
+    !!subject &&
+    (subject.kind === 'node'
+      ? model.nodes.has(subject.key)
+      : model.links.has(subject.key))
+  );
+}
 export function emphasis<I, T>(
   model: ResolvedGraph<I, T>,
   subject: SankeySubject | null,
