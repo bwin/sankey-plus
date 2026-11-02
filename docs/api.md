@@ -4,24 +4,35 @@
 
 [src/types.ts](../src/types.ts) contains the full generic contract. Node and link metadata types are independent and retained in all callback contexts.
 
-| Property         | Purpose                                                                                                      |
-| ---------------- | ------------------------------------------------------------------------------------------------------------ |
-| `graph`          | Ordered `stages`, `nodes` and `links` with stable keys. Required.                                            |
-| `accessibleName` | Descriptive accessible name for the diagram. Required.                                                       |
-| `selection`      | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                             |
-| `onNodeClick`    | Receives node facts and the activation event.                                                                |
-| `onLinkClick`    | Receives link facts and the activation event.                                                                |
-| `formatAmount`   | Formats quantities with facts, field name and surface.                                                       |
-| `getLabel`       | Returns plain text, an array of lines, or `null` to omit a label.                                            |
-| `renderTooltip`  | Returns non-interactive React content or `null`.                                                             |
-| `plotHeight`     | Preferred central region height; default 336 CSS pixels. Edge bands add height.                              |
-| `minLinkWidth`   | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative. |
-| `showHeadroom`   | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                  |
-| `className`      | Host styling, including theme token overrides.                                                               |
+| Property         | Purpose                                                                                                            |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `graph`          | Ordered `stages`, `nodes` and `links` with stable keys. Required.                                                  |
+| `accessibleName` | Descriptive accessible name for the diagram. Required.                                                             |
+| `selection`      | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                                   |
+| `onNodeClick`    | Receives node facts and the activation event.                                                                      |
+| `onLinkClick`    | Receives link facts and the activation event.                                                                      |
+| `formatAmount`   | Formats quantities with facts, field name and surface.                                                             |
+| `getLabel`       | Returns plain text, an array of lines, or `null` to omit a label.                                                  |
+| `renderTooltip`  | Returns non-interactive React content or `null`.                                                                   |
+| `plotHeight`     | Preferred central region height; default 336 CSS pixels. Edge bands add height.                                    |
+| `transition`     | Optional crossfade between completed scenes. `false` (default) or `{duration?, easing?}`.                          |
+| `minLinkWidth`   | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative.       |
+| `showHeadroom`   | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                        |
+| `onLayout`       | Receives a read-only layout snapshot once per completed scene; attaching while a scene is current reports it once. |
+| `renderOverlay`  | Returns non-interactive SVG content for a completed scene, painted above labels in a `pointer-events: none` group. |
+| `className`      | Host styling, including theme token overrides.                                                                     |
 
 Measured width, `plotHeight`, `minLinkWidth` and the resulting scene extents must not exceed 10,000,000 CSS pixels. Values outside that range are rejected with a `SankeyInputError` (`invalid-number`) instead of producing non-finite SVG geometry.
 
 A node has `key`, `title`, and exactly one placement: `{stage: 'stage-key'}` or `{edge: 'top' | 'bottom'}`. It can have `total` or per-unit `totals`, `color`, and `meta`. A link has `key`, `from`, `to`, and input `amount`, plus explicit `inputUnit`/`outputUnit` for named-unit data, `conversionRate`, `color` and `meta`. The graph can provide `defaultUnit` and reference `conversionRates` for widths and combined totals. See [units and conversion](units.md).
+
+## Scene transitions
+
+Set `transition={{ duration: 280 }}` to crossfade the previous completed scene into the next completed scene when the graph or layout options change. The prop type is exported as `SankeyTransition`. This is a visual crossfade of the old and new drawings: path geometry, node positions, link widths and labels are not interpolated, and no intermediate layout is calculated. The fading copy is clipped to the current scene, non-interactive, hidden from assistive technology and cannot take focus; the new scene remains the only interactive layer.
+
+`duration` is in milliseconds and defaults to 280. `easing` accepts any CSS animation timing function and defaults to `ease-out`. `duration: 0` disables the animation, and the effect is skipped entirely when the system requests reduced motion. Values that are not finite, below 0 or above 10,000 throw a `SankeyInputError` (`invalid-number`). Omit the prop or use `transition={false}` for direct updates. The 120 ms inspection fade remains independent of scene transitions.
+
+The fading copy is refreshed when selection changes, so it reflects the selected subject at the last snapshot. Transient hover/emphasis is not captured. Options that alter rendered scene markup follow the same refresh rule. Container resize and font measurement can also produce a new completed scene, so those updates can crossfade too.
 
 ## Stages and order
 
@@ -50,6 +61,117 @@ Node contexts expose the original `node`, scalar `total`/`incoming`/`outgoing` i
 Presentation contexts contain formatted `text`: total/incoming/outgoing, per-unit `totals` and optional `converted` for nodes; `amount`/`outputAmount`, optional `convertedAmount`/`convertedOutputAmount`, `conversionRate` and `referenceRates` equations for links. The amount formatter receives `field`, `unit`, `isConverted` and `surface` (label, tooltip or accessible). Metadata stays typed independently through `SankeyGraph<NodeMeta, LinkMeta>` and the callback types.
 
 Click handlers receive facts plus a React mouse or keyboard activation event. Selection is a separate controlled prop; callbacks do not change it internally. See [getting started](getting-started.md) for a working selection example.
+
+## Imperative handle
+
+`SankeyDiagram` forwards a typed `SankeyDiagramHandle`. It exposes the current completed layout, the live SVG element, and a way to move the diagram's roving tab stop:
+
+```tsx
+import { useRef } from 'react';
+import {
+  SankeyDiagram,
+  type SankeyDiagramHandle,
+  type SankeyLayout,
+} from '@bwin/sankey-plus';
+
+export function DiagramWithActions() {
+  const diagram = useRef<SankeyDiagramHandle>(null);
+  const download = () => {
+    const svg = diagram.current?.getSvgElement();
+    if (!svg) return;
+    const markup = new XMLSerializer().serializeToString(svg);
+    const url = URL.createObjectURL(
+      new Blob([markup], { type: 'image/svg+xml' }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'flow.svg';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+  return (
+    <>
+      <SankeyDiagram
+        ref={diagram}
+        graph={graph}
+        accessibleName="Allocation flow"
+        onLayout={(layout: SankeyLayout) => console.log(layout.diagnostics)}
+      />
+      <button onClick={download}>Download SVG</button>
+      <button
+        onClick={() =>
+          diagram.current?.focusSubject({ kind: 'node', key: 'source' })
+        }
+      >
+        Focus source
+      </button>
+    </>
+  );
+}
+```
+
+The serialized SVG keeps the component's class names. Inject the theme variables and label/canvas rules if the exported file must render without the host stylesheet.
+
+- `getLayout()` returns the latest typed read-only snapshot, or `null` while no scene is rendered. Treat the snapshot and its maps as immutable even though the maps are runtime `Map` instances typed as `ReadonlyMap`. The object stays stable across unrelated re-renders. A resize keeps the previous complete scene current until its replacement completes; changing the graph or layout options clears the snapshot to `null` until the new scene commits.
+- `onLayout` receives that same snapshot once per completed scene, including when a changed graph, size or layout option produces new geometry. Attaching or re-attaching a callback while the snapshot remains current reports that snapshot once; changing callback identity while it stays attached does not repeat an already reported snapshot. Rendering, hover and selection do not re-run it.
+- `getSvgElement()` returns the live `<svg>` node, or `null` before a scene is rendered.
+- `focusSubject(subject)` moves the roving tab stop and focuses that rendered node or link. It returns `true` only when the rendered control is present. It returns `false` for unknown subjects, before the first completed scene, and while a graph or layout-option change has no completed replacement scene yet. A retained scene during resize still has rendered controls. It never changes the controlled `selection` prop.
+
+### Snapshot fields
+
+All coordinates use the SVG view-box coordinate system. The snapshot is a typed read-only copy; treat its maps and objects as immutable.
+
+| Field             | Meaning                                                                                                                                                                                                            |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `width`, `height` | Canvas size in CSS pixels.                                                                                                                                                                                         |
+| `topBand`         | Height reserved above the central plot for top/edge content.                                                                                                                                                       |
+| `bottomBand`      | Height reserved below the central plot for bottom/edge content.                                                                                                                                                    |
+| `scale`           | Common value scale in pixels per layout unit; node heights and proportional link widths use it.                                                                                                                    |
+| `plot`            | Central band: `top`, `bottom` and `height` in canvas coordinates.                                                                                                                                                  |
+| `stages`          | Explicit stage keys from left to right, with `x` at the left edge of that stage's node bars.                                                                                                                       |
+| `nodes`           | Read-only map keyed by node key. Each entry has the bar rect (`x`, `y`, `width`, `height`), `stage` or `edge`, `color`, layout-unit scalar `total`/`incoming`/`outgoing`, optional `unit`, and a measured `label`. |
+| `links`           | Read-only map keyed by link key. Each entry has `from`, `to`, the painted SVG `path`, maximum ribbon `width`, `color`, measured `label` and `labelHidden` (true when the label was omitted to avoid a collision).  |
+| `diagnostics`     | Completed-scene `crossings` and `obstacleCollisions`, matching the canvas data attributes.                                                                                                                         |
+
+Labels include `x`, `y`, `width`, `height`, `anchor` and `lines`. They describe the measured text box; the component still owns rendering, truncation and collision placement. Node totals are the scalar values used for layout, not a re-summation of the original per-unit balances.
+
+## Overlays
+
+`renderOverlay(layout)` draws SVG content inside the diagram after links, nodes and labels. It receives the same typed read-only snapshot as `getLayout()` and `onLayout`. The content is placed in a `pointer-events: none` group and hidden from assistive technology, so it must be decorative and non-interactive: do not add buttons, links, focusable elements or the only copy of essential information. Use the four theme tokens (`--flow-surface`, `--flow-text`, `--flow-muted-text`, `--flow-focus`) so annotations follow light and dark hosts. Use `topBand`/`bottomBand` or `plot` to keep annotations clear of edge content. Overlays do not affect layout, routing or hit testing.
+
+```tsx
+<SankeyDiagram
+  graph={graph}
+  accessibleName="Allocation flow"
+  renderOverlay={({ stages, plot, nodes }) => (
+    <g>
+      {stages.map((stage) => (
+        <text
+          key={stage.key}
+          x={stage.x}
+          y={plot.top - 12}
+          fill="var(--flow-muted-text)"
+        >
+          {stage.key}
+        </text>
+      ))}
+      {nodes.has('source') && (
+        <rect
+          x={nodes.get('source')!.x - 6}
+          y={nodes.get('source')!.y - 6}
+          width={nodes.get('source')!.width + 12}
+          height={nodes.get('source')!.height + 12}
+          rx={6}
+          fill="none"
+          stroke="var(--flow-focus)"
+        />
+      )}
+    </g>
+  )}
+/>
+```
 
 ## Validation errors
 
