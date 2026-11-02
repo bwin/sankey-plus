@@ -2,7 +2,7 @@
 
 [Back to README](../README.md)
 
-Verified on 28 October 2026, with subsequent updates through 1 November, on Windows using Node 22.17.0 and the desktop app's Chromium-based in-app browser. The demo runs React 19.2.0. Captures in `screenshots/` are from the working implementation. Dated observations below describe the implementation at the time of each check; older captures may show earlier routing styles.
+Verified on 28 October 2026, with subsequent updates through 2 November, on Windows using Node 22.17.0 and the desktop app's Chromium-based in-app browser. The demo runs React 19.2.0. Captures in `screenshots/` are from the working implementation. Dated observations below describe the implementation at the time of each check; older captures may show earlier routing styles.
 
 ## Automated checks
 
@@ -13,6 +13,7 @@ Verified on 28 October 2026, with subsequent updates through 1 November, on Wind
 - Strict TypeScript checking passes for source, demo and tests.
 - Library and demo builds pass. The library keeps React/React DOM external and emits declarations and a stylesheet.
 - **116 tests pass, 0 fail** using `node scripts/test.mjs` (updated 1 November 2026, review fixes).
+- A Chromium Playwright smoke test (2 November 2026) loads the built demo, focuses a diagram subject to open its tooltip, switches examples, and checks that the tooltip is dismissed without console or page errors.
 - Minimum-width checks cover exact omitted/zero equivalence, invalid minima, unchanged values and inputs, displayed port containment, dense stacks growing height or edge corridors, wrapped lane separation on both edges, parallel top/bottom links in both directions, and a currency taper whose output reaches the floor. The Wide range fixture clears unrelated obstacles and crossings at 360, 600, 960 and 1440 px. Chunked and synchronous geometry match with the option enabled.
 - Directional transfer checks cover explicit endpoint units, independent transfer/reference rates, delivered-currency balances, large FX ratios, reference-unit changes and endpoint-aware formatting. A 100 USD → 400,000 COP transfer retains equal widths; delivering 390,000 COP produces a 0.975 destination/source ratio. Tapered hit testing follows the painted envelope. Mirrored top/bottom inflows and outflows retain inward faces and quantitative endpoint widths at 360/960 px. The updated currency demo passes obstacle and taper checks at 360, 600, 960 and 1440 px.
 - Parallel stage regressions cover the Operations currency pair at 360, 600, 960, 1107 and 1440 pixels, plus three unequal ribbons bending upward/downward with reversed input order. Sampled ribbon separation is within 0.15 px numerical tolerance; widths and endpoints are preserved. A before/after comparison of 28 fixture layouts changed only Operations' EUR route and, at 360 px, Suppliers' EUR route; all other routes, nodes and scene sizes matched exactly, including the retained-funds curves.
