@@ -48,6 +48,13 @@ export interface SankeyFormattedTotals {
   readonly incoming: string;
   readonly outgoing: string;
 }
+/** Visual crossfade between completed scenes. Geometry is not interpolated. */
+export interface SankeyTransition {
+  /** Crossfade duration in milliseconds. Default: 280. */
+  readonly duration?: number;
+  /** CSS animation timing function. Default: 'ease-out'. */
+  readonly easing?: string;
+}
 export interface SankeyQuantity {
   readonly amount: number;
   readonly unit?: string;
@@ -150,6 +157,73 @@ export type SankeyPresentation<I = unknown, T = unknown> =
         referenceRates: readonly string[];
       }>;
     });
+/** Measured text box shared by node and link labels. */
+export interface SankeyLayoutLabel {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly anchor: 'start' | 'middle' | 'end';
+  readonly lines: readonly string[];
+}
+/** Read-only geometry and facts for one rendered node bar. */
+export interface SankeyLayoutNode {
+  readonly key: string;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly stage?: string;
+  readonly edge?: 'top' | 'bottom';
+  readonly color: string;
+  /** Layout-unit scalar totals: the same values used for node size. */
+  readonly total: number;
+  readonly incoming: number;
+  readonly outgoing: number;
+  /** Layout unit for the scalar totals; absent for legacy unitless graphs. */
+  readonly unit?: string;
+  readonly label: SankeyLayoutLabel;
+}
+/** Read-only geometry and facts for one rendered link. */
+export interface SankeyLayoutLink {
+  readonly key: string;
+  readonly from: string;
+  readonly to: string;
+  readonly path: string;
+  readonly width: number;
+  readonly color: string;
+  readonly label: SankeyLayoutLabel;
+  readonly labelHidden: boolean;
+}
+/** Stable snapshot of one completed scene, in SVG view-box coordinates. */
+export interface SankeyLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly topBand: number;
+  readonly bottomBand: number;
+  readonly scale: number;
+  readonly plot: {
+    readonly top: number;
+    readonly bottom: number;
+    readonly height: number;
+  };
+  readonly stages: readonly { readonly key: string; readonly x: number }[];
+  readonly nodes: ReadonlyMap<string, SankeyLayoutNode>;
+  readonly links: ReadonlyMap<string, SankeyLayoutLink>;
+  readonly diagnostics: {
+    readonly crossings: number;
+    readonly obstacleCollisions: number;
+  };
+}
+/** Imperative access to the completed scene and its live SVG element. */
+export interface SankeyDiagramHandle {
+  /** Latest typed read-only snapshot, or null while no scene is rendered. */
+  getLayout(): SankeyLayout | null;
+  /** Live SVG element for the current scene, or null while none is rendered. */
+  getSvgElement(): SVGSVGElement | null;
+  /** Focuses a rendered subject; false without a rendered control. */
+  focusSubject(subject: SankeySubject): boolean;
+}
 export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
   readonly graph: SankeyGraph<NodeMeta, LinkMeta>;
   readonly accessibleName: string;
@@ -170,10 +244,18 @@ export interface SankeyDiagramProps<NodeMeta = unknown, LinkMeta = unknown> {
     event: SankeyActivationEvent,
   ) => void;
   readonly className?: string;
+  /** Reports each completed scene once, or the current scene when attached. */
+  readonly onLayout?: (layout: SankeyLayout) => void;
+  /** Non-interactive SVG content painted above labels, inside a pointer-events: none group. */
+  readonly renderOverlay?: (layout: SankeyLayout) => ReactNode;
   /** Preferred height of the central stage region, not the entire component. Default: 336 CSS px. */
   readonly plotHeight?: number;
+  /** Crossfade between completed scenes. Default: false (off). Does not interpolate geometry. */
+  readonly transition?: false | SankeyTransition;
   /** Minimum displayed ribbon thickness in CSS px. Default: 0 (proportional). Enlarges ports/bars as needed; values stay unchanged. */
   readonly minLinkWidth?: number;
+  /** Hatch declared capacity on pure source/sink nodes. Mixed-direction and fully derived nodes are not hatched. Default: false. */
+  readonly showHeadroom?: boolean;
   readonly formatAmount?: (
     value: number,
     context: SankeyAmountContext<NodeMeta, LinkMeta>,

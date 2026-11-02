@@ -6,5 +6,7 @@
 
 .intro-stat .render-timing{display:inline-block;min-width:125px;margin-left:20px;padding-left:20px;border-left:1px solid #dce3ef}
 
+.chart-actions{display:flex;align-items:center;justify-content:flex-end;gap:16px;flex-wrap:wrap}.layout-diagnostics{font-size:10px;color:#7b879b;font-variant-numeric:tabular-nums;white-space:nowrap}
+
 .canvas-stage--dark{background:#101b2d;margin-top:20px}.flow-diagram.distribution-dark{--flow-surface:#101b2d;--flow-text:#e4ebf6;--flow-muted-text:#a4b1c7;--flow-focus:#bac8ff;background:var(--flow-surface)}.flow-tooltip .detail-eyebrow,.flow-tooltip .detail-note,.flow-tooltip .detail-endpoint>span:not(.detail-eyebrow){color:var(--flow-muted-text,#68758b)}.flow-tooltip .detail-endpoints{border-top-color:color-mix(in srgb,var(--flow-muted-text,#68758b) 25%,transparent)}
 .integration-panel:has(.inspection-panel){flex-wrap:wrap}.inspection-panel{display:flex;align-items:center;gap:18px;flex:1 1 100%;flex-wrap:wrap;padding-top:16px;margin-top:2px;border-top:1px solid #edf0f5}.inspection-panel-copy{flex:1;min-width:230px}.inspection-panel .select-control select{min-width:190px}.inspection-result{display:flex;flex-direction:column;gap:3px;min-width:190px;font-size:11px;color:#8993a5}.inspection-result b{color:#4057bc;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}

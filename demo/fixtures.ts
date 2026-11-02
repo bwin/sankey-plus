@@ -7,6 +7,7 @@ import parallelData from './parallel-links.json';
 import tradeData from './trade.json';
 import currenciesData from './currencies.json';
 import wideRangeData from './wide-range.json';
+import { renderOverlay } from './layout-overlay.js';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
@@ -67,6 +68,10 @@ export const examples: {
   getLabel?: SankeyDiagramProps['getLabel'];
   plotHeight?: number;
   minLinkWidth?: number;
+  showHeadroom?: boolean;
+  altGraph?: SankeyGraph;
+  transition?: SankeyDiagramProps['transition'];
+  overlay?: SankeyDiagramProps['renderOverlay'];
 }[] = [
   {
     key: 'distribution',
@@ -122,6 +127,14 @@ export const examples: {
     plotHeight: 440,
   },
   {
+    key: 'layout',
+    name: 'Layout overlay',
+    description:
+      'The Distribution graph with annotations from the public layout snapshot: stage headings, a rounded callout around Process A, a diagnostics readout and SVG download.',
+    graph: distribution,
+    overlay: renderOverlay,
+  },
+  {
     key: 'wide-range',
     name: 'Wide range',
     description:
@@ -129,6 +142,20 @@ export const examples: {
     graph: wideRangeData as SankeyGraph,
     plotHeight: 440,
     minLinkWidth: 4,
+  },
+  {
+    key: 'transitions',
+    name: 'Transitions',
+    description:
+      'Two allocation states for the same nodes. Swap data to crossfade the completed 500- and 750-unit scenes; geometry is not interpolated.',
+    graph: simple,
+    altGraph: {
+      ...simple,
+      links: [
+        { key: 'allocation', from: 'available', to: 'allocated', amount: 750 },
+      ],
+    },
+    transition: { duration: 320 },
   },
   {
     key: 'complete',
@@ -170,6 +197,28 @@ export const examples: {
     description:
       'An available total of 1,000 with only 500 transferred. No extra edge margins.',
     graph: simple,
+  },
+  {
+    key: 'headroom',
+    name: 'Headroom',
+    description:
+      'The same 1,000-unit available balance with only 500 transferred. The hatch marks 500 units of unallocated source capacity.',
+    graph: simple,
+    showHeadroom: true,
+    getLabel: (view) => {
+      if (view.kind === 'link') return view.text.amount;
+      const headroom = Math.max(
+        0,
+        view.total - Math.max(view.incoming, view.outgoing),
+      );
+      const share =
+        view.total > 0 ? Math.round((headroom / view.total) * 100) : 0;
+      return [
+        view.node.title,
+        view.text.total,
+        headroom > 0 ? `${share}% headroom` : 'Fully allocated',
+      ];
+    },
   },
   {
     key: 'parallel',
