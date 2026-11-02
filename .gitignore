@@ -2,3 +2,5 @@ node_modules/
 .tests/
 dist/
 demo-dist/
+playwright-report/
+test-results/

@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
+import {
+  resolveGraph,
+  emphasis,
+  nodeColor,
+  subjectExists,
+} from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { defaultLabel, presentation } from '../src/presentation.js';
 import {
@@ -214,6 +219,14 @@ test('isolated zero nodes render finite markers and occupy only their assigned e
   assert.ok(scene.bottomBand > 0);
   assert.equal(scene.nodes[0].zero, true);
   assert.ok(scene.nodes[0].w > 0);
+});
+test('subject retention rejects subjects missing from the current model', () => {
+  const model = resolveGraph(base);
+  assert.equal(subjectExists(model, { kind: 'node', key: 'a' }), true);
+  assert.equal(subjectExists(model, { kind: 'node', key: 'missing' }), false);
+  assert.equal(subjectExists(model, { kind: 'link', key: 'ab' }), true);
+  assert.equal(subjectExists(model, { kind: 'link', key: 'missing' }), false);
+  assert.equal(subjectExists(model, null), false);
 });
 test('hover is exactly one hop, not the induced subgraph of strong nodes', () => {
   const model = resolveGraph(full),
