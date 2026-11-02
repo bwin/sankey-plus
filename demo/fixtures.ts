@@ -106,6 +106,13 @@ export const examples: {
     graph: distribution,
   },
   {
+    key: 'linked-table',
+    name: 'Linked table',
+    description:
+      'Hover or focus a table row to emphasize that node or link and its one-hop neighborhood. Inspect the chart to mark the matching row, while selection stays independently controlled.',
+    graph: distribution,
+  },
+  {
     key: 'stages',
     name: 'Stages',
     description:

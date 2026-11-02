@@ -14,6 +14,7 @@ import {
 import { examples } from './fixtures.js';
 import { ValidationPanel } from './validation-panel.js';
 import { InspectionPanel } from './inspection-panel.js';
+import { LinkedTable } from './linked-table.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 import '../src/style.css';
@@ -260,6 +261,7 @@ function App() {
   const current = examples.find((e) => e.key === example)!,
     graph =
       transitionVariant && current.altGraph ? current.altGraph : current.graph;
+  const linkedExample = example === 'inspection' || example === 'linked-table';
   const formatAmount = current.formatAmount ?? format;
   const formatQuantity = current.formatQuantity ?? format;
   const customDetails = useCallback(
@@ -429,10 +431,8 @@ function App() {
                 showHeadroom={current.showHeadroom}
                 transition={current.transition}
                 selection={selection}
-                highlight={example === 'inspection' ? highlight : undefined}
-                onInspectChange={
-                  example === 'inspection' ? setInspection : undefined
-                }
+                highlight={linkedExample ? highlight : undefined}
+                onInspectChange={linkedExample ? setInspection : undefined}
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}
                 renderTooltip={custom ? customDetails : undefined}
@@ -487,6 +487,14 @@ function App() {
               </button>
             </div>
           </footer>
+          {example === 'linked-table' && (
+            <LinkedTable
+              graph={graph}
+              highlight={highlight}
+              onHighlightChange={setHighlight}
+              inspection={inspection}
+            />
+          )}
         </div>
       </section>
       <section className="integration-panel">
