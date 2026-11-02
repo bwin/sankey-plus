@@ -51,7 +51,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint .",
+    "lint": "eslint . --max-warnings=0",
     "test": "node scripts/test.mjs",
     "stress": "node scripts/benchmark-layout.mjs --case stress-100-300",
     "benchmark": "node scripts/benchmark-layout.mjs",
