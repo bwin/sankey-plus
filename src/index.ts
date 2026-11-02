@@ -4,6 +4,7 @@ export type {
   SankeyActivationEvent,
   SankeyDiagramProps,
   SankeyGraph,
+  SankeyInspection,
   SankeyIssue,
   SankeyIssueCode,
   SankeyNode,

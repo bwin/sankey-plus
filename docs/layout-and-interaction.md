@@ -14,6 +14,12 @@
 - Activation calls the relevant handler. It never changes selection internally. The host may select, navigate, open a panel, or ignore the click.
 - Selection uses a persistent solid outline in the selected node/link's own color, separated from its fill and surroundings by the surface color. The outline remains fully opaque when its fill fades during unrelated inspection. Keyboard focus uses a dashed indicator. Escape does not change selection. A selected key removed from the graph is ignored without a callback.
 
+## External emphasis
+
+`highlight` lets the host emphasize one subject or a list of subjects using the same one-hop rule as inspection. Valid node and link keys are unioned; unknown keys are ignored. Internal inspection and external highlight contribute to one strong set, so inspecting a node while another is externally highlighted keeps both one-hop neighborhoods visible. When neither is present, all nodes and links remain strong. Selection is independent and keeps its distinct outline. Stable subject and array identities avoid recomputing emphasis on unrelated host renders.
+
+`onInspectChange` reports the internal inspection subject and its `pointer`, `keyboard` or `touch` modality, or `null` after dismissal. Pointer-leave dismissal waits about 300 ms, then reports `null`. It fires once per subject or modality change, including removal of the inspected subject during a graph update, and is deduplicated across renders. Attaching the callback while a subject is inspected replays that subject once; changing the callback identity does not duplicate the report, while removing and re-adding it reports the current subject again. Selection changes never trigger it.
+
 ## Layout and routing
 
 Top/bottom nodes are horizontal quantitative bars with full labels, facts and interactions. Both link directions use the inward face: below a top bar and above a bottom bar. Multiple edge nodes pack within their valid source/target intervals and wrap into rows. A side without nodes reserves no extra band.

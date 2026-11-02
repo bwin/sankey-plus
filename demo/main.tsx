@@ -3,12 +3,14 @@ import { createRoot } from 'react-dom/client';
 import {
   SankeyDiagram,
   type SankeySubject,
+  type SankeyInspection,
   type SankeyPresentation,
   type SankeyNode,
   type SankeyLink,
   type SankeyGraph,
 } from '../src/index.js';
 import { examples } from './fixtures.js';
+import { InspectionPanel } from './inspection-panel.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 import '../src/style.css';
@@ -191,6 +193,8 @@ const details = (
 function App() {
   const [example, setExample] = useState('distribution'),
     [selection, setSelection] = useState<SankeySubject | null>(null),
+    [highlight, setHighlight] = useState<SankeySubject | null>(null),
+    [inspection, setInspection] = useState<SankeyInspection | null>(null),
     [viewport, setViewport] = useState('auto');
   const [clicksSelect, setClicksSelect] = useState(true),
     [custom, setCustom] = useState(true),
@@ -227,6 +231,8 @@ function App() {
   const chooseExample = (key: string) => {
     setExample(key);
     setSelection(null);
+    setHighlight(null);
+    setInspection(null);
   };
   const navigateExamples = (
     event: KeyboardEvent<HTMLButtonElement>,
@@ -359,6 +365,10 @@ function App() {
                 plotHeight={current.plotHeight ?? 336}
                 minLinkWidth={current.minLinkWidth}
                 selection={selection}
+                highlight={example === 'inspection' ? highlight : undefined}
+                onInspectChange={
+                  example === 'inspection' ? setInspection : undefined
+                }
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}
                 renderTooltip={custom ? customDetails : undefined}
@@ -458,6 +468,14 @@ function App() {
             Custom labels and tooltip
           </label>
         </div>
+        {example === 'inspection' && (
+          <InspectionPanel
+            nodes={graph.nodes}
+            highlight={highlight}
+            onHighlightChange={setHighlight}
+            inspection={inspection}
+          />
+        )}
       </section>
       <div className="event-line" role="status" aria-live="polite">
         <span className="event-count" data-click-count="">
