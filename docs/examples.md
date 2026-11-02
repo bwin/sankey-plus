@@ -37,16 +37,20 @@ The Inspection bridge tab reuses the Distribution graph. Its host panel passes a
 
 The Linked table tab also reuses the Distribution graph, but renders every node and link as a keyboard-focusable row below the chart. The two views are linked in both directions, and neither direction changes the controlled selection.
 
-- **Table to chart.** Entering or focusing a node row sets `highlight` to that node. Entering or focusing a link row sets the link. The chart emphasizes the subject and its one-hop neighborhood exactly as it does for internal inspection. Leaving the row or moving focus away clears the external highlight.
-- **Chart to table.** Hovering, focusing or tapping a chart node or link fires `onInspectChange`. The matching table row becomes current, so a reader can move between the picture and the itemized flow without losing context.
-- External `highlight` is emphasis only and does not fire `onInspectChange`. The table therefore keeps its own `hovered` state, while the chart's reported inspection remains separate. If both are active, the chart unions their one-hop sets.
+- **Table to chart.** Hovering or focusing a node row contributes that node to `highlight`; hovering or focusing a link row contributes the link. The chart emphasizes the subject and its one-hop neighborhood exactly as it does for internal inspection. Hover and focus are tracked separately: moving the pointer away restores a focused row rather than clearing both contributions. Escape clears both row contributions without changing page focus or selection.
+- **Chart to table.** Hovering, focusing or tapping a chart node or link fires `onInspectChange`. The matching table row becomes current. For keyboard and touch inspection, if that row lies below the table's scroll viewport, the table scrolls it into view while leaving the page scroll position alone. Pointer inspection does not move the table, so the hovered chart stays stable.
+- External `highlight` is emphasis only and does not fire `onInspectChange`. The table therefore keeps separate `hovered` and `focused` state, while the chart's reported inspection remains separate. If both are active, the chart unions their one-hop sets.
 - **Selection stays independent.** Table hover does not select anything. Use chart clicks or the external selection control; the selected subject keeps its own outline even while rows and chart emphasis move.
 
-The demo keeps one active-row style and exposes `data-table-active` plus `data-chart-active` when an integration needs to distinguish which surface started the emphasis. The table has a scrollable body and sticky header; every row is focusable, while the chart retains its single roving tab stop.
+The demo keeps one active-row style and exposes `data-table-hover`, `data-table-focus`, `data-table-active` and `data-chart-active` when an integration needs to distinguish which surface started the emphasis. The table has a scrollable body and sticky header; every row is focusable, while the chart retains its single roving tab stop. Each row's accessible name includes its kind, subject, placement and value. A visually hidden polite status announces keyboard and touch inspections and clearing, while pointer updates stay quiet.
 
 ```tsx
-const [highlight, setHighlight] = useState<SankeySubject | null>(null);
+const [hovered, setHovered] = useState<SankeySubject | null>(null);
+const [focused, setFocused] = useState<SankeySubject | null>(null);
 const [inspection, setInspection] = useState<SankeyInspection | null>(null);
+const active = hovered ?? focused;
+
+useEffect(() => onHighlightChange(active), [active, onHighlightChange]);
 
 <SankeyDiagram
   graph={graph}
@@ -58,21 +62,29 @@ const [inspection, setInspection] = useState<SankeyInspection | null>(null);
 
 <tr
   tabIndex={0}
+  data-table-hover={hovered?.key === node.key ? 'true' : 'false'}
+  data-table-focus={focused?.key === node.key ? 'true' : 'false'}
+  data-table-active={active?.key === node.key ? 'true' : 'false'}
   data-chart-active={
     inspection?.subject.kind === 'node' && inspection.subject.key === node.key
       ? 'true'
       : 'false'
   }
-  onMouseEnter={() => setHighlight({ kind: 'node', key: node.key })}
-  onMouseLeave={() => setHighlight(null)}
-  onFocus={() => setHighlight({ kind: 'node', key: node.key })}
-  onBlur={() => setHighlight(null)}
+  onMouseEnter={() => setHovered({ kind: 'node', key: node.key })}
+  onMouseLeave={() => setHovered(null)}
+  onFocus={() => setFocused({ kind: 'node', key: node.key })}
+  onBlur={() => setFocused(null)}
+  onKeyDown={(event) => {
+    if (event.key !== 'Escape') return;
+    setHovered(null);
+    setFocused(null);
+  }}
 >
   {/* subject, placement and value cells */}
 </tr>;
 ```
 
-Link rows use the same wiring with `{ kind: 'link', key: link.key }`. Attach `onInspectChange` when the host needs the chart-to-table direction; attaching it while a subject is already inspected replays that subject once.
+Link rows use the same wiring with `{ kind: 'link', key: link.key }`. Compare both `kind` and `key` for each subject. Attach `onInspectChange` when the host needs the chart-to-table direction; attaching it while a subject is already inspected replays that subject once.
 
 ## Explicit stages
 

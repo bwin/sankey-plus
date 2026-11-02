@@ -167,7 +167,7 @@ Use `highlight` for emphasis coming from your own UI, and `onInspectChange` for 
 />
 ```
 
-Set `hoveredSubject` from row hover or focus and clear it on leave or blur. `onInspectChange` reports `{subject, modality}`; match `inspection.subject` to the row's key. External highlighting does not fire the callback, so the two directions stay independent. Selection is still controlled only through `selection` and the click callbacks. See the [Linked table example](examples.md#linked-table) for the complete table, keyboard handling and selection separation.
+Track hover and focus separately, or as one combined active subject, and pass the effective subject (`hovered ?? focused`) to `highlight`. Clear only the contribution being left; Escape can clear both without changing focus. `onInspectChange` reports `{subject, modality}`; match `inspection.subject` to the row's key. External highlighting does not fire the callback, so the two directions stay independent. Selection is still controlled only through `selection` and the click callbacks. See the [Linked table example](examples.md#linked-table) for the complete table, keyboard handling and selection separation.
 
 ## Next steps
 

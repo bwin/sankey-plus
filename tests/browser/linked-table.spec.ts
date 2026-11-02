@@ -52,8 +52,14 @@ test('table hover and focus emphasize one hop without inspecting or selecting', 
   const processA = linkedRow(page, 'node', 'process-a');
   await processA.hover();
   await expect(processA).toHaveAttribute('data-linked-active', 'true');
+  await expect(processA).toHaveAttribute('data-table-hover', 'true');
+  await expect(processA).toHaveAttribute('data-table-focus', 'false');
   await expect(processA).toHaveAttribute('data-table-active', 'true');
   await expect(processA).toHaveAttribute('data-chart-active', 'false');
+  await expect(processA).toHaveAttribute(
+    'aria-label',
+    'Node: Process A, processing, 900 units declared total',
+  );
 
   for (const key of [
     'input-a',
@@ -95,6 +101,12 @@ test('table hover and focus emphasize one hop without inspecting or selecting', 
   await expect(inputA).toHaveAttribute('tabindex', '0');
   await inputA.focus();
   await expect(inputA).toHaveAttribute('data-linked-active', 'true');
+  await expect(inputA).toHaveAttribute('data-table-hover', 'false');
+  await expect(inputA).toHaveAttribute('data-table-focus', 'true');
+  await expect(inputA).toHaveAttribute(
+    'aria-label',
+    'Node: Input A, inputs, 1,000 units declared total',
+  );
   for (const key of ['input-a', 'process-a', 'process-b', 'unused'])
     await expect(subject(page, 'node', key)).toHaveAttribute(
       'data-emphasis',
@@ -149,15 +161,19 @@ test('link rows emphasize their ribbon and chart inspection marks the row', asyn
   await chartNode.evaluate((element) =>
     element.scrollIntoView({ block: 'center', inline: 'center' }),
   );
-  await expect(chartNode).toBeInViewport({ ratio: 1 });
-  const box = await chartNode.boundingBox();
-  if (!box) throw new Error('Node has no layout box.');
+  const nodeBar = chartNode.locator('rect[data-node-paint]');
+  const box = await nodeBar.boundingBox();
+  if (!box) throw new Error('Node bar has no layout box.');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
 
   const processB = linkedRow(page, 'node', 'process-b');
   await expect(processB).toHaveAttribute('data-chart-active', 'true');
   await expect(processB).toHaveAttribute('data-linked-active', 'true');
   await expect(processB).toHaveAttribute('data-table-active', 'false');
+  await expect(processB).toHaveAttribute(
+    'aria-label',
+    'Node: Process B, processing, 550 units derived total',
+  );
   await expect(page.locator('[data-linked-chart-state]')).toHaveAttribute(
     'data-linked-chart-state',
     'process-b',
@@ -166,10 +182,158 @@ test('link rows emphasize their ribbon and chart inspection marks the row', asyn
     'data-linked-table-state',
     '',
   );
+  await expect(page.locator('[data-linked-status]')).toHaveText(
+    'Node inspected: Process B · pointer.',
+  );
+  await expect(page.locator('[data-linked-status]')).toHaveAttribute(
+    'aria-live',
+    'off',
+  );
   await expect(page.locator('[data-linked-active="true"]')).toHaveCount(1);
   await expect(page.locator('[data-flow-subject][tabindex="0"]')).toHaveCount(
     1,
   );
+
+  expect(errors).toEqual([]);
+});
+
+test('hover and focus restore independently and Escape dismisses both', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openLinkedTableExample(page);
+
+  const processA = linkedRow(page, 'node', 'process-a');
+  const processB = linkedRow(page, 'node', 'process-b');
+
+  await page.mouse.move(4, 4);
+  await processA.focus();
+  await expect(processA).toHaveAttribute('data-table-focus', 'true');
+  await expect(processA).toHaveAttribute('data-table-hover', 'false');
+  await expect(processA).toHaveAttribute('data-table-active', 'true');
+  await expect(subject(page, 'node', 'process-a')).toHaveAttribute(
+    'data-emphasis',
+    'strong',
+  );
+
+  await processB.hover();
+  await expect(processB).toHaveAttribute('data-table-hover', 'true');
+  await expect(processB).toHaveAttribute('data-table-focus', 'false');
+  await expect(processB).toHaveAttribute('data-table-active', 'true');
+  await expect(processA).toHaveAttribute('data-table-focus', 'true');
+  await expect(processA).toHaveAttribute('data-table-active', 'false');
+  await expect(subject(page, 'node', 'process-b')).toHaveAttribute(
+    'data-emphasis',
+    'strong',
+  );
+  await expect(subject(page, 'node', 'process-a')).toHaveAttribute(
+    'data-emphasis',
+    'faded',
+  );
+
+  await page.mouse.move(4, 4);
+  await expect(processB).toHaveAttribute('data-table-hover', 'false');
+  await expect(processB).toHaveAttribute('data-table-active', 'false');
+  await expect(processA).toHaveAttribute('data-table-focus', 'true');
+  await expect(processA).toHaveAttribute('data-table-active', 'true');
+  await expect(subject(page, 'node', 'process-a')).toHaveAttribute(
+    'data-emphasis',
+    'strong',
+  );
+  await expect(subject(page, 'node', 'process-b')).toHaveAttribute(
+    'data-emphasis',
+    'faded',
+  );
+
+  await page.keyboard.press('Escape');
+  await expect(processA).toHaveAttribute('data-table-focus', 'false');
+  await expect(processA).toHaveAttribute('data-table-hover', 'false');
+  await expect(processA).toHaveAttribute('data-table-active', 'false');
+  await expect(page.locator('[data-emphasis="faded"]')).toHaveCount(0);
+
+  await page.mouse.move(6, 6);
+  await expect(processA).toHaveAttribute('data-table-active', 'false');
+
+  expect(errors).toEqual([]);
+});
+
+test('keyboard inspection reveals a low link row and announces it', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await openLinkedTableExample(page);
+  const pageScroll = await page.evaluate(() => window.scrollY);
+
+  const chartLink = subject(page, 'link', 'process-a-deferred');
+  await chartLink.evaluate((element) => element.focus({ preventScroll: true }));
+
+  const deferred = linkedRow(page, 'link', 'process-a-deferred');
+  await expect(deferred).toHaveAttribute('data-chart-active', 'true');
+  await expect(deferred).toHaveAttribute(
+    'aria-label',
+    'Link: Process A → Deferred, processing → Edge · bottom, 100 units input amount',
+  );
+  await expect(page.locator('[data-linked-status]')).toHaveText(
+    'Link inspected: Process A → Deferred · keyboard.',
+  );
+  await expect(page.locator('[data-linked-status]')).toHaveAttribute(
+    'aria-live',
+    'polite',
+  );
+
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.querySelector('.linked-table-scroll')!.scrollTop,
+      ),
+    )
+    .toBeGreaterThan(0);
+  const reveal = await page.evaluate(() => {
+    const scroller = document.querySelector('.linked-table-scroll')!;
+    const row = document.querySelector(
+      '[data-linked-row][data-linked-kind="link"][data-linked-key="process-a-deferred"]',
+    )!;
+    const scrollerBox = scroller.getBoundingClientRect();
+    const rowBox = row.getBoundingClientRect();
+    return {
+      scrollTop: scroller.scrollTop,
+      visible:
+        rowBox.top >= scrollerBox.top + 30 &&
+        rowBox.bottom <= scrollerBox.bottom,
+    };
+  });
+  expect(reveal.scrollTop).toBeGreaterThan(0);
+  expect(reveal.visible).toBe(true);
+  expect(await page.evaluate(() => window.scrollY)).toBe(pageScroll);
+
+  await page.keyboard.press('Escape');
+  await expect(page.locator('[data-linked-status]')).toHaveText(
+    'No chart inspection.',
+  );
+  await expect(page.locator('[data-linked-status]')).toHaveAttribute(
+    'aria-live',
+    'polite',
+  );
+  await expect(deferred).toHaveAttribute('data-chart-active', 'false');
+
+  expect(errors).toEqual([]);
+});
+
+test('narrow layout keeps the table scrollable in both axes', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await page.setViewportSize({ width: 480, height: 900 });
+  await openLinkedTableExample(page);
+
+  const metrics = await page.locator('.linked-table-scroll').evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    scrollHeight: el.scrollHeight,
+    clientHeight: el.clientHeight,
+  }));
+  expect(metrics.scrollWidth).toBeGreaterThan(metrics.clientWidth);
+  expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
 
   expect(errors).toEqual([]);
 });

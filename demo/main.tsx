@@ -487,16 +487,16 @@ function App() {
               </button>
             </div>
           </footer>
+          {example === 'linked-table' && (
+            <LinkedTable
+              graph={graph}
+              highlight={highlight}
+              onHighlightChange={setHighlight}
+              inspection={inspection}
+            />
+          )}
         </div>
       </section>
-      {example === 'linked-table' && (
-        <LinkedTable
-          graph={graph}
-          highlight={highlight}
-          onHighlightChange={setHighlight}
-          inspection={inspection}
-        />
-      )}
       <section className="integration-panel">
         {example === 'validation' && <ValidationPanel graph={graph} />}
         <div>

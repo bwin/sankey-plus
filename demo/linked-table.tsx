@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   SankeyGraph,
   SankeyInspection,
-  SankeyNode,
+  SankeyPlacement,
   SankeySubject,
 } from '../src/index.js';
+import { resolveGraph } from '../src/model.js';
 import './linked-table.css';
 
 const format = (value: number, unit?: string) =>
@@ -13,27 +14,8 @@ const format = (value: number, unit?: string) =>
 const sameSubject = (a: SankeySubject | null | undefined, b: SankeySubject) =>
   !!a && a.kind === b.kind && a.key === b.key;
 
-const placementLabel = (placement: SankeyNode['placement']) =>
+const placementLabel = (placement: SankeyPlacement) =>
   placement.stage !== undefined ? placement.stage : `Edge · ${placement.edge}`;
-
-const nodePlacement = (node: SankeyNode) =>
-  node.placement.stage !== undefined
-    ? node.placement.stage
-    : `Edge · ${node.placement.edge}`;
-
-/**
- * The linked-table example uses the unitless Distribution fixture. Its derived
- * totals mirror the model rule: the total covers the larger side of the node.
- */
-const derivedTotal = (node: SankeyNode, graph: SankeyGraph) => {
-  let incoming = 0;
-  let outgoing = 0;
-  for (const link of graph.links) {
-    if (link.to === node.key) incoming += link.amount;
-    if (link.from === node.key) outgoing += link.amount;
-  }
-  return Math.max(incoming, outgoing);
-};
 
 interface Row {
   subject: SankeySubject;
@@ -43,11 +25,13 @@ interface Row {
   value: string;
   note: string;
   color: string;
+  accessibleName: string;
 }
 
 const rowsFor = (graph: SankeyGraph): Row[] => {
-  const byKey = new Map(graph.nodes.map((node) => [node.key, node]));
+  const resolved = resolveGraph(graph);
   const rows: Row[] = graph.nodes.map((node) => {
+    const facts = resolved.nodes.get(node.key)!;
     let value: string;
     let note: string;
     if (node.total !== undefined) {
@@ -59,42 +43,51 @@ const rowsFor = (graph: SankeyGraph): Row[] => {
           total === 'auto' ? `${unit}: auto` : format(total, unit),
         )
         .join(' · ');
-      note = 'declared / automatic';
+      note =
+        facts.totalSource === 'declared'
+          ? 'declared total'
+          : 'declared / automatic';
     } else {
-      value = format(derivedTotal(node, graph), graph.defaultUnit);
+      value = facts.totals.length
+        ? facts.totals.map((row) => format(row.total, row.unit)).join(' · ')
+        : format(facts.total, facts.unit ?? graph.defaultUnit);
       note = 'derived total';
     }
+    const placement = placementLabel(node.placement);
     return {
       subject: { kind: 'node', key: node.key },
       name: node.title,
       kind: 'Node',
-      placement: nodePlacement(node),
+      placement,
       value,
       note,
       color: node.color ?? '#7b879b',
+      accessibleName: `Node: ${node.title}, ${placement}, ${value} ${note}`,
     };
   });
 
   for (const link of graph.links) {
-    const from = byKey.get(link.from);
-    const to = byKey.get(link.to);
-    const inputUnit = link.inputUnit ?? graph.defaultUnit;
-    const outputUnit = link.outputUnit ?? graph.defaultUnit ?? inputUnit;
-    const output = link.amount * (link.conversionRate ?? 1);
+    const facts = resolved.links.get(link.key)!;
+    const from = facts.fromNode;
+    const to = facts.toNode;
+    const placement = `${placementLabel(from.placement)} → ${placementLabel(to.placement)}`;
+    const inputUnit = facts.input.unit ?? graph.defaultUnit;
+    const outputUnit = facts.output.unit ?? graph.defaultUnit ?? inputUnit;
     const converted =
-      link.inputUnit !== link.outputUnit || (link.conversionRate ?? 1) !== 1;
+      facts.input.unit !== facts.output.unit || facts.conversionRate !== 1;
+    const value = format(facts.input.amount, inputUnit);
+    const note = converted
+      ? `→ ${format(facts.output.amount, outputUnit)} output · rate ${facts.conversionRate}`
+      : 'input amount';
     rows.push({
       subject: { kind: 'link', key: link.key },
-      name: `${from?.title ?? link.from} → ${to?.title ?? link.to}`,
+      name: `${from.title} → ${to.title}`,
       kind: 'Link',
-      placement: `${from ? placementLabel(from.placement) : link.from} → ${
-        to ? placementLabel(to.placement) : link.to
-      }`,
-      value: format(link.amount, inputUnit),
-      note: converted
-        ? `→ ${format(output, outputUnit)} output`
-        : 'input amount',
-      color: link.color ?? to?.color ?? from?.color ?? '#7b879b',
+      placement,
+      value,
+      note,
+      color: link.color ?? to.color ?? from.color ?? '#7b879b',
+      accessibleName: `Link: ${from.title} → ${to.title}, ${placement}, ${value} ${note}`,
     });
   }
 
@@ -103,40 +96,48 @@ const rowsFor = (graph: SankeyGraph): Row[] => {
 
 function LinkedRow({
   row,
+  tableHover,
+  tableFocus,
   tableActive,
   chartActive,
-  onEnter,
-  onLeave,
+  onHover,
+  onFocus,
+  onDismiss,
+  rowRef,
 }: {
   row: Row;
+  tableHover: boolean;
+  tableFocus: boolean;
   tableActive: boolean;
   chartActive: boolean;
-  onEnter: () => void;
-  onLeave: () => void;
+  onHover: (subject: SankeySubject | null) => void;
+  onFocus: (subject: SankeySubject | null) => void;
+  onDismiss: () => void;
+  rowRef: (element: HTMLTableRowElement | null) => void;
 }) {
   const active = tableActive || chartActive;
   return (
     <tr
+      ref={rowRef}
       tabIndex={0}
       data-linked-row=""
       data-linked-kind={row.subject.kind}
       data-linked-key={row.subject.key}
       data-linked-active={active ? 'true' : 'false'}
+      data-table-hover={tableHover ? 'true' : 'false'}
+      data-table-focus={tableFocus ? 'true' : 'false'}
       data-table-active={tableActive ? 'true' : 'false'}
       data-chart-active={chartActive ? 'true' : 'false'}
+      aria-label={row.accessibleName}
       aria-current={active ? 'true' : undefined}
-      onMouseEnter={onEnter}
-      onMouseLeave={(event) => {
-        if (document.activeElement !== event.currentTarget) onLeave();
-      }}
-      onFocus={onEnter}
-      onBlur={(event) => {
-        if (!event.currentTarget.matches(':hover')) onLeave();
-      }}
+      onMouseEnter={() => onHover(row.subject)}
+      onMouseLeave={() => onHover(null)}
+      onFocus={() => onFocus(row.subject)}
+      onBlur={() => onFocus(null)}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.preventDefault();
-        onLeave();
+        onDismiss();
       }}
     >
       <th scope="row">
@@ -175,14 +176,34 @@ export function LinkedTable({
   readonly inspection: SankeyInspection | null;
 }) {
   const [hovered, setHovered] = useState<SankeySubject | null>(null);
-  const rows = rowsFor(graph);
+  const [focused, setFocused] = useState<SankeySubject | null>(null);
+  const rowRefs = useRef(new Map<string, HTMLTableRowElement>());
+  const rows = useMemo(() => rowsFor(graph), [graph]);
+  const tableSubject = hovered ?? focused;
+  const inspectionKey = inspection
+    ? `${inspection.subject.kind}:${inspection.subject.key}`
+    : null;
   const label = (subject: SankeySubject) =>
     rows.find((row) => sameSubject(subject, row.subject))?.name ?? subject.key;
+  const inspectionStatus = inspection
+    ? `${inspection.subject.kind === 'node' ? 'Node' : 'Link'} inspected: ${label(inspection.subject)} · ${inspection.modality}.`
+    : 'No chart inspection.';
 
-  const setTableSubject = (subject: SankeySubject | null) => {
-    setHovered(subject);
-    onHighlightChange(subject);
-  };
+  useEffect(() => {
+    onHighlightChange(tableSubject);
+  }, [tableSubject, onHighlightChange]);
+
+  useEffect(() => {
+    // A scroll would dismiss an active pointer inspection, so only reveal
+    // keyboard and touch inspections inside the table's own scroll area.
+    if (!inspectionKey || inspection?.modality === 'pointer') return;
+    const row = rowRefs.current.get(inspectionKey);
+    if (!row) return;
+    const x = window.scrollX;
+    const y = window.scrollY;
+    row.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    if (window.scrollX !== x || window.scrollY !== y) window.scrollTo(x, y);
+  }, [inspectionKey, inspection?.modality]);
 
   return (
     <section className="linked-table" data-linked-table="">
@@ -198,10 +219,10 @@ export function LinkedTable({
         </div>
         <div className="linked-table-state" aria-hidden="true">
           <span
-            className={hovered ? 'is-on' : undefined}
-            data-linked-table-state={hovered ? hovered.key : ''}
+            className={tableSubject ? 'is-on' : undefined}
+            data-linked-table-state={tableSubject ? tableSubject.key : ''}
           >
-            Table row · <b>{hovered ? label(hovered) : 'none'}</b>
+            Table row · <b>{tableSubject ? label(tableSubject) : 'none'}</b>
           </span>
           <span
             className={inspection ? 'is-on' : undefined}
@@ -216,13 +237,22 @@ export function LinkedTable({
           </span>
         </div>
       </div>
+      <p
+        className="linked-table-sr-only"
+        role="status"
+        aria-live={inspection?.modality === 'pointer' ? 'off' : 'polite'}
+        aria-atomic="true"
+        data-linked-status=""
+      >
+        {inspectionStatus}
+      </p>
       <div className="linked-table-scroll">
         <table aria-describedby="linked-table-instructions">
           <caption>
-            Distribution nodes and links. Every row is keyboard focusable;
-            hovering or focusing a row emphasizes the matching subject and its
-            one-hop neighborhood in the chart. A chart inspection marks the same
-            row without changing the controlled selection.
+            Flow nodes and links. Every row is keyboard focusable; hovering or
+            focusing a row emphasizes the matching subject and its one-hop
+            neighborhood in the chart. A chart inspection marks the same row
+            without changing the controlled selection.
           </caption>
           <thead>
             <tr>
@@ -235,22 +265,35 @@ export function LinkedTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => (
-              <LinkedRow
-                key={`${row.subject.kind}:${row.subject.key}`}
-                row={row}
-                tableActive={!!hovered && sameSubject(hovered, row.subject)}
-                chartActive={sameSubject(inspection?.subject, row.subject)}
-                onEnter={() => setTableSubject(row.subject)}
-                onLeave={() => setTableSubject(null)}
-              />
-            ))}
+            {rows.map((row) => {
+              const rowKey = `${row.subject.kind}:${row.subject.key}`;
+              return (
+                <LinkedRow
+                  key={rowKey}
+                  row={row}
+                  rowRef={(element) => {
+                    if (element) rowRefs.current.set(rowKey, element);
+                    else rowRefs.current.delete(rowKey);
+                  }}
+                  tableHover={sameSubject(hovered, row.subject)}
+                  tableFocus={sameSubject(focused, row.subject)}
+                  tableActive={sameSubject(tableSubject, row.subject)}
+                  chartActive={sameSubject(inspection?.subject, row.subject)}
+                  onHover={setHovered}
+                  onFocus={setFocused}
+                  onDismiss={() => {
+                    setHovered(null);
+                    setFocused(null);
+                  }}
+                />
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <div className="linked-table-footer" aria-hidden="true">
+      <div className="linked-table-footer">
         <span className="linked-table-legend">
-          <i className="linked-table-legend-swatch" />
+          <i className="linked-table-legend-swatch" aria-hidden="true" />
           Active row
         </span>
         <span>
