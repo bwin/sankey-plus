@@ -81,6 +81,56 @@ export function Example() {
 
 Available retains a total of 1,000 while transferring only 700. Unconnected capacity stays visible; no link is invented for the remaining 300.
 
+## Read the layout or export SVG
+
+Use a typed ref when the host needs the completed geometry. `getLayout()` returns the latest typed read-only snapshot. `onLayout` reports each newly completed scene and also reports the current snapshot once when a callback is attached while a scene is already complete. `focusSubject` moves keyboard focus without changing controlled selection.
+
+```tsx
+import { useRef } from 'react';
+import {
+  SankeyDiagram,
+  type SankeyDiagramHandle,
+  type SankeyLayout,
+} from '@bwin/sankey-plus';
+
+export function ExportableDiagram() {
+  const diagram = useRef<SankeyDiagramHandle>(null);
+  const download = () => {
+    const svg = diagram.current?.getSvgElement();
+    if (!svg) return;
+    const url = URL.createObjectURL(
+      new Blob([new XMLSerializer().serializeToString(svg)], {
+        type: 'image/svg+xml',
+      }),
+    );
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'flow.svg';
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
+  return (
+    <>
+      <SankeyDiagram
+        ref={diagram}
+        graph={graph}
+        accessibleName="Allocation flow"
+        onLayout={(layout: SankeyLayout) => {
+          console.log(layout.diagnostics);
+        }}
+      />
+      <button onClick={download}>Download SVG</button>
+    </>
+  );
+}
+```
+
+The exported SVG keeps the component's class names. Inject the theme variables and label/canvas rules if it must render without the host stylesheet; the demo's download does this.
+
+See [layout snapshots and overlays](api.md#imperative-handle) for field semantics and non-interactive SVG annotations.
+
 Keep inputs immutable and supply a new graph reference when data changes. Stable data and presentation callback references avoid unnecessary layout work. The host needs an actual available width; flex/grid parents should allow shrinking with `min-width: 0`.
 
 The component computes layout on the main thread in cooperative chunks, targeting 8 ms of work before yielding through a timer task. Checkpoints are between layout phases, nodes, routes and comparisons; individual geometry helpers can exceed that target. Initial layout shows “Preparing diagram…” and sets `aria-busy`. A resize retains the last complete scene while the replacement is calculated. Changed inputs and unmounting cancel unfinished work, and only complete results are committed. No worker or bundler configuration is required. Validation, presentation callbacks and the final React/SVG render are still synchronous.

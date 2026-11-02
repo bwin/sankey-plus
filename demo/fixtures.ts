@@ -7,6 +7,7 @@ import parallelData from './parallel-links.json';
 import tradeData from './trade.json';
 import currenciesData from './currencies.json';
 import wideRangeData from './wide-range.json';
+import { renderOverlay } from './layout-overlay.js';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
@@ -67,6 +68,7 @@ export const examples: {
   getLabel?: SankeyDiagramProps['getLabel'];
   plotHeight?: number;
   minLinkWidth?: number;
+  overlay?: SankeyDiagramProps['renderOverlay'];
 }[] = [
   {
     key: 'distribution',
@@ -113,6 +115,14 @@ export const examples: {
       'Actual input/output currencies, with every width valued in USD. GBP → COP preserves value; the USD → COP payout narrows by 2.5% against its reference rate. All rates are illustrative.',
     graph: currenciesData as SankeyGraph,
     plotHeight: 440,
+  },
+  {
+    key: 'layout',
+    name: 'Layout overlay',
+    description:
+      'The Distribution graph with annotations from the public layout snapshot: stage headings, a rounded callout around Process A, a diagnostics readout and SVG download.',
+    graph: distribution,
+    overlay: renderOverlay,
   },
   {
     key: 'wide-range',
