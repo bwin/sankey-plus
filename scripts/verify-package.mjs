@@ -152,8 +152,13 @@ async function main() {
   );
   console.log('Strict NodeNext consumer typecheck passed.');
 
-  const runtimeCheck =
-    "const pkg = await import('@bwin/sankey-plus');\nfor (const name of ['SankeyDiagram', 'SankeyInputError']) {\n  if (typeof pkg[name] !== 'function') throw new Error(`Missing runtime export: ${name}`);\n}";
+  const runtimeCheck = `const pkg = await import('@bwin/sankey-plus');
+const diagram = pkg.SankeyDiagram;
+if (typeof diagram !== 'function' && !(diagram && typeof diagram.render === 'function'))
+  throw new Error('Missing runtime export: SankeyDiagram');
+if (typeof pkg.SankeyInputError !== 'function')
+  throw new Error('Missing runtime export: SankeyInputError');
+`;
   run(process.execPath, ['--input-type=module', '--eval', runtimeCheck], {
     cwd: consumer,
   });

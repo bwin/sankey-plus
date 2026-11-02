@@ -1,14 +1,18 @@
-import { useCallback, useState, type KeyboardEvent } from 'react';
+import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
   SankeyDiagram,
   type SankeySubject,
+  type SankeyInspection,
   type SankeyPresentation,
   type SankeyNode,
   type SankeyLink,
   type SankeyGraph,
+  type SankeyDiagramHandle,
+  type SankeyLayout,
 } from '../src/index.js';
 import { examples } from './fixtures.js';
+import { InspectionPanel } from './inspection-panel.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 import '../src/style.css';
@@ -189,15 +193,72 @@ const details = (
     </>
   );
 function App() {
+  const diagram = useRef<SankeyDiagramHandle>(null);
   const [example, setExample] = useState('distribution'),
     [selection, setSelection] = useState<SankeySubject | null>(null),
-    [viewport, setViewport] = useState('auto');
+    [highlight, setHighlight] = useState<SankeySubject | null>(null),
+    [inspection, setInspection] = useState<SankeyInspection | null>(null),
+    [viewport, setViewport] = useState('auto'),
+    [transitionVariant, setTransitionVariant] = useState(false);
   const [clicksSelect, setClicksSelect] = useState(true),
     [custom, setCustom] = useState(true),
     [events, setEvents] = useState(0),
-    [last, setLast] = useState('No clicks yet');
+    [last, setLast] = useState('No clicks yet'),
+    [diagnostics, setDiagnostics] = useState<
+      SankeyLayout['diagnostics'] | null
+    >(null);
+  const trackLayout = useCallback((layout: SankeyLayout) => {
+    setDiagnostics((old) =>
+      old &&
+      old.crossings === layout.diagnostics.crossings &&
+      old.obstacleCollisions === layout.diagnostics.obstacleCollisions
+        ? old
+        : layout.diagnostics,
+    );
+  }, []);
+  const downloadSvg = () => {
+    const element = diagram.current?.getSvgElement();
+    if (!element) return;
+    const clone = element.cloneNode(true) as SVGSVGElement,
+      root = element.closest<HTMLElement>('.flow-diagram');
+    if (root) {
+      const computed = getComputedStyle(root);
+      for (const name of [
+        '--flow-surface',
+        '--flow-text',
+        '--flow-muted-text',
+        '--flow-focus',
+      ]) {
+        const value = computed.getPropertyValue(name).trim();
+        if (value) clone.style.setProperty(name, value);
+      }
+    }
+    const style = document.createElementNS(
+      'http://www.w3.org/2000/svg',
+      'style',
+    );
+    style.textContent = `
+.flow-canvas{background:var(--flow-surface,#fff)}
+.flow-label{fill:var(--flow-text,#24334a);paint-order:stroke;stroke:var(--flow-surface,#fff);stroke-width:3px;stroke-linejoin:round;font-weight:450}
+.flow-link-label{font-variant-numeric:tabular-nums}
+.flow-overlay{pointer-events:none}
+`;
+    clone.insertBefore(style, clone.firstChild);
+    const markup = new XMLSerializer().serializeToString(clone),
+      url = URL.createObjectURL(
+        new Blob([markup], { type: 'image/svg+xml;charset=utf-8' }),
+      ),
+      link = document.createElement('a');
+    link.href = url;
+    link.download = `${example}-sankey.svg`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  };
   const current = examples.find((e) => e.key === example)!,
-    graph = current.graph;
+    graph =
+      transitionVariant && current.altGraph ? current.altGraph : current.graph;
   const formatAmount = current.formatAmount ?? format;
   const formatQuantity = current.formatQuantity ?? format;
   const customDetails = useCallback(
@@ -206,7 +267,7 @@ function App() {
     [formatQuantity, graph.defaultUnit],
   );
   const { hostRef, readyMs } = useExampleTiming(
-    `${example}:${viewport}:${custom}`,
+    `${example}:${viewport}:${custom}:${transitionVariant}`,
   );
   const selectedName =
     selection?.kind === 'node'
@@ -228,6 +289,10 @@ function App() {
   const chooseExample = (key: string) => {
     setExample(key);
     setSelection(null);
+    setHighlight(null);
+    setInspection(null);
+    setTransitionVariant(false);
+    setDiagnostics(null);
   };
   const navigateExamples = (
     event: KeyboardEvent<HTMLButtonElement>,
@@ -352,6 +417,7 @@ function App() {
               data-demo-host=""
             >
               <SankeyDiagram
+                ref={diagram}
                 className={
                   example === 'distribution' ? 'distribution-dark' : undefined
                 }
@@ -359,10 +425,18 @@ function App() {
                 accessibleName={`${current.name} diagram`}
                 plotHeight={current.plotHeight ?? 336}
                 minLinkWidth={current.minLinkWidth}
+                showHeadroom={current.showHeadroom}
+                transition={current.transition}
                 selection={selection}
+                highlight={example === 'inspection' ? highlight : undefined}
+                onInspectChange={
+                  example === 'inspection' ? setInspection : undefined
+                }
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}
                 renderTooltip={custom ? customDetails : undefined}
+                renderOverlay={current.overlay}
+                onLayout={example === 'layout' ? trackLayout : undefined}
                 onNodeClick={(f) =>
                   clicked(
                     { kind: 'node', key: f.node.key },
@@ -384,13 +458,33 @@ function App() {
               <span>Selected</span>
               <b data-selected-name="">{selectedName ?? 'Nothing selected'}</b>
             </div>
-            <button
-              className="clear-button"
-              onClick={() => setSelection(null)}
-              disabled={!selection}
-            >
-              Clear selection
-            </button>
+            <div className="chart-actions">
+              {example === 'layout' && diagnostics ? (
+                <span className="layout-diagnostics" data-layout-diagnostics="">
+                  {diagnostics.crossings} crossings ·{' '}
+                  {diagnostics.obstacleCollisions} obstacle collisions
+                </span>
+              ) : null}
+              {current.altGraph && (
+                <button
+                  className="clear-button"
+                  aria-pressed={transitionVariant}
+                  onClick={() => setTransitionVariant((value) => !value)}
+                >
+                  Swap data
+                </button>
+              )}
+              <button className="clear-button" onClick={downloadSvg}>
+                Download SVG
+              </button>
+              <button
+                className="clear-button"
+                onClick={() => setSelection(null)}
+                disabled={!selection}
+              >
+                Clear selection
+              </button>
+            </div>
           </footer>
         </div>
       </section>
@@ -459,6 +553,14 @@ function App() {
             Custom labels and tooltip
           </label>
         </div>
+        {example === 'inspection' && (
+          <InspectionPanel
+            nodes={graph.nodes}
+            highlight={highlight}
+            onHighlightChange={setHighlight}
+            inspection={inspection}
+          />
+        )}
       </section>
       <div className="event-line" role="status" aria-live="polite">
         <span className="event-count" data-click-count="">
