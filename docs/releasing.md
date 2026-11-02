@@ -40,7 +40,7 @@ git commit -m "Prepare 1.1.0 release"
 git push origin dev
 ```
 
-Freeze the candidate and wait for its build job in [Actions](https://github.com/bwin/sankey-plus/actions). CI lints, tests and builds the code; it does not publish to npm.
+Freeze the candidate and wait for its build job in [Actions](https://github.com/bwin/sankey-plus/actions). CI checks formatting, lints, tests and builds the code; it does not publish to npm.
 
 ## 2. Authenticate and merge locally
 
@@ -58,11 +58,12 @@ git merge --no-ff dev -m "Release 1.1.0"
 
 Resolve conflicts before proceeding; fixes must also reach `dev`. Do not push `master` yet. npm can require fresh browser/passkey approval for both login and publication. Complete prompts directly; never put credentials or recovery codes in Git or release notes.
 
-## 3. Lint, build, test and inspect the exact archive
+## 3. Check formatting, lint, build and inspect the exact archive
 
 ```sh
 npm ci
 npm run lint
+npm run format:check
 npm test
 npm run build
 npm run verify:package

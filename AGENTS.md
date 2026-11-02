@@ -33,11 +33,12 @@
 
 Work on `dev` (or feature branches merged into `dev`). `master` is the default branch and represents the latest npm release; do not push ordinary development or documentation updates directly to it. Follow `docs/releasing.md`: update `CHANGELOG.md`, prepare on `dev`, merge locally into `master`, verify/publish the tested archive, then atomically push `master` and its version tag and create the GitHub release. Merge the release back into `dev` and return there after releasing. CI checks both branches, but only `master` deploys the live demo.
 
-From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits.
+From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits. Run `npm run format` before committing; Prettier uses its default 80-column width and 2-space indentation, with single quotes and `endOfLine: auto` as the only overrides. The compact stylesheets are excluded.
 
 ```sh
 npm run typecheck
 npm run lint
+npm run format:check
 npm test
 npm run build
 npm run verify:package

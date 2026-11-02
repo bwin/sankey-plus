@@ -1,18 +1,75 @@
 {
   "stages": ["collect", "prepare", "deliver"],
   "nodes": [
-    { "key": "collect-a", "title": "Collect A", "total": 600, "placement": { "stage": "collect" }, "color": "#5265cc" },
-    { "key": "prepare-b", "title": "Prepare B", "placement": { "stage": "prepare" }, "color": "#168e9d" },
-    { "key": "deliver-b", "title": "Deliver B", "placement": { "stage": "deliver" }, "color": "#688670" },
-    { "key": "collect-b", "title": "Collect B", "placement": { "stage": "collect" }, "color": "#c58a29" },
-    { "key": "prepare-a", "title": "Prepare A", "placement": { "stage": "prepare" }, "color": "#8170b4" },
-    { "key": "deliver-a", "title": "Deliver A", "placement": { "stage": "deliver" }, "color": "#d76c91" }
+    {
+      "key": "collect-a",
+      "title": "Collect A",
+      "total": 600,
+      "placement": { "stage": "collect" },
+      "color": "#5265cc"
+    },
+    {
+      "key": "prepare-b",
+      "title": "Prepare B",
+      "placement": { "stage": "prepare" },
+      "color": "#168e9d"
+    },
+    {
+      "key": "deliver-b",
+      "title": "Deliver B",
+      "placement": { "stage": "deliver" },
+      "color": "#688670"
+    },
+    {
+      "key": "collect-b",
+      "title": "Collect B",
+      "placement": { "stage": "collect" },
+      "color": "#c58a29"
+    },
+    {
+      "key": "prepare-a",
+      "title": "Prepare A",
+      "placement": { "stage": "prepare" },
+      "color": "#8170b4"
+    },
+    {
+      "key": "deliver-a",
+      "title": "Deliver A",
+      "placement": { "stage": "deliver" },
+      "color": "#d76c91"
+    }
   ],
   "links": [
-    { "key": "collect-a-prepare-b", "from": "collect-a", "to": "prepare-b", "amount": 400 },
-    { "key": "prepare-b-deliver-b", "from": "prepare-b", "to": "deliver-b", "amount": 400 },
-    { "key": "collect-b-prepare-a", "from": "collect-b", "to": "prepare-a", "amount": 300 },
-    { "key": "prepare-a-deliver-a", "from": "prepare-a", "to": "deliver-a", "amount": 300 },
-    { "key": "bypass", "from": "collect-a", "to": "deliver-a", "amount": 100, "color": "#c58a29" }
+    {
+      "key": "collect-a-prepare-b",
+      "from": "collect-a",
+      "to": "prepare-b",
+      "amount": 400
+    },
+    {
+      "key": "prepare-b-deliver-b",
+      "from": "prepare-b",
+      "to": "deliver-b",
+      "amount": 400
+    },
+    {
+      "key": "collect-b-prepare-a",
+      "from": "collect-b",
+      "to": "prepare-a",
+      "amount": 300
+    },
+    {
+      "key": "prepare-a-deliver-a",
+      "from": "prepare-a",
+      "to": "deliver-a",
+      "amount": 300
+    },
+    {
+      "key": "bypass",
+      "from": "collect-a",
+      "to": "deliver-a",
+      "amount": 100,
+      "color": "#c58a29"
+    }
   ]
 }
