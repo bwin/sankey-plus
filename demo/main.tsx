@@ -9,6 +9,7 @@ import {
   type SankeyGraph,
 } from '../src/index.js';
 import { examples } from './fixtures.js';
+import { ValidationPanel } from './validation-panel.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 import '../src/style.css';
@@ -394,6 +395,7 @@ function App() {
         </div>
       </section>
       <section className="integration-panel">
+        {example === 'validation' && <ValidationPanel graph={graph} />}
         <div>
           <h3>Controlled by the host</h3>
           <p>Choose a selection here or attach your own click action.</p>

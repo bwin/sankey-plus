@@ -92,7 +92,7 @@ async function verifyPackageTypes() {
   const example = path.join(dir, 'built-package-consumer.ts');
   await fs.writeFile(
     example,
-    "import { SankeyDiagram, type SankeyGraph } from '@bwin/sankey-plus';\nimport '@bwin/sankey-plus/style.css';\nconst graph: SankeyGraph = {stages: [], nodes: [], links: []};\nvoid [SankeyDiagram, graph];\n",
+    "import { SankeyDiagram, validateGraph, type SankeyGraph } from '@bwin/sankey-plus';\nimport '@bwin/sankey-plus/style.css';\nconst graph: SankeyGraph = {stages: [], nodes: [], links: []};\nvoid [SankeyDiagram, validateGraph(graph), graph];\n",
   );
   const program = ts.createProgram([example], {
     noEmit: true,

@@ -52,6 +52,7 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 - One-hop hover highlighting, keyboard navigation, node/link clicks and externally controlled selection.
 - Custom labels, tooltips with both connected nodes, typed metadata and light/dark theme tokens.
 - Common value scaling and explicit totals larger than their connected transfers.
+- Non-throwing `validateGraph` preflight for untrusted JSON and form data: it returns all semantic issues for structurally well-shaped graphs and `invalid-graph` for malformed structure before rendering.
 
 ## Guides
 

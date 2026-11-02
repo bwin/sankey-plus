@@ -46,7 +46,28 @@ Click handlers receive facts plus a React mouse or keyboard activation event. Se
 
 ## Validation errors
 
-`SankeyInputError.issues` contains `code`, `message`, and optional `nodeKey` / `linkKey`. Codes are `invalid-key`, `invalid-title`, `duplicate-key`, `unknown-endpoint`, `unknown-stage`, `invalid-placement`, `invalid-number`, `total-too-small`, `backward-stage-link`, `cycle`, `incompatible-placement`, `invalid-unit`, `invalid-rate`, `conflicting-rate`, `missing-conversion`, and `incompatible-totals`.
+`SankeyInputError.issues` contains `code`, `message`, and optional `nodeKey` / `linkKey`. Semantic codes are `invalid-key`, `invalid-title`, `duplicate-key`, `unknown-endpoint`, `unknown-stage`, `invalid-placement`, `invalid-number`, `total-too-small`, `backward-stage-link`, `cycle`, `incompatible-placement`, `invalid-unit`, `invalid-rate`, `conflicting-rate`, `missing-conversion`, and `incompatible-totals`. These failures throw `SankeyInputError`. A malformed shape can fail before semantic validation with a `TypeError` (for example, `nodes: [null]`), so do not rely on `SankeyInputError` as a complete boundary for untrusted data.
+
+### Non-throwing validation
+
+`validateGraph(graph: unknown)` never throws. It pre-checks that the value is a non-null object with `stages`, `nodes` and `links` arrays, and that every node, link and supplied conversion-rate entry is an object. `conversionRates`, when supplied, must itself be an array. Malformed structure returns one or more `invalid-graph` issues and stops before semantic validation. If inspection fails unexpectedly, such as from a throwing accessor, `validateGraph` also returns `invalid-graph` instead of throwing. `invalid-graph` is specific to `validateGraph`; the component's `SankeyInputError` path does not use it.
+
+For structurally well-shaped plain data, `validateGraph` applies the component's graph validation and returns every semantic issue found. An empty array means the graph is valid.
+
+```ts
+import { validateGraph, type SankeyGraph } from '@bwin/sankey-plus';
+
+const candidate: unknown = await response.json();
+const issues = validateGraph(candidate);
+if (issues.length) {
+  console.error(issues.map((issue) => `${issue.code}: ${issue.message}`));
+} else {
+  const graph = candidate as SankeyGraph;
+  // render <SankeyDiagram graph={graph} ... />
+}
+```
+
+Use this as a preflight for untrusted JSON or form data; pass the original `unknown` value instead of casting first. The component still throws `SankeyInputError` for semantic invalidity and can throw `TypeError` for malformed shapes, and asynchronous layout failures can still surface while rendering. An error boundary remains an appropriate backstop.
 
 Use a React error boundary around diagrams backed by external data. Error boundaries catch validation failures during rendering and layout failures forwarded from the asynchronous calculation. Validate the structural shape of untrusted JSON before treating it as a `SankeyGraph`.
 

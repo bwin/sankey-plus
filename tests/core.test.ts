@@ -7,6 +7,7 @@ import {
   nodeColor,
   subjectExists,
 } from '../src/model.js';
+import { validateGraph } from '../src/validate.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { defaultLabel, presentation } from '../src/presentation.js';
 import {
@@ -137,6 +138,174 @@ test('validation catches bad totals, identities, numbers, placement and backward
   error(
     { ...base, links: [{ ...base.links[0], from: 'b', to: 'a' }] },
     'backward-stage-link',
+  );
+});
+test('validateGraph returns every semantic issue for well-shaped graphs', () => {
+  assert.deepEqual(validateGraph(base), []);
+  const graph: SankeyGraph = {
+    stages: ['a', 'b'],
+    nodes: [
+      { key: 'a', title: 'A', total: 100, placement: { stage: 'a' } },
+      { key: 'b', title: 'B', placement: { stage: 'b' } },
+    ],
+    links: [
+      { key: 'flow', from: 'a', to: 'b', amount: 500 },
+      { key: 'ghost-a', from: 'a', to: 'missing-a', amount: 10 },
+      { key: 'ghost-b', from: 'b', to: 'missing-b', amount: 5 },
+      { key: 'back', from: 'b', to: 'a', amount: 1 },
+    ],
+  };
+  assert.deepEqual(
+    validateGraph(graph).map(({ code, nodeKey, linkKey }) =>
+      nodeKey ? { code, nodeKey } : linkKey ? { code, linkKey } : { code },
+    ),
+    [
+      { code: 'unknown-endpoint', linkKey: 'ghost-a' },
+      { code: 'unknown-endpoint', linkKey: 'ghost-b' },
+      { code: 'backward-stage-link', linkKey: 'back' },
+      { code: 'cycle' },
+      { code: 'total-too-small', nodeKey: 'a' },
+      { code: 'total-too-small', nodeKey: 'a' },
+    ],
+  );
+});
+test('validateGraph reports malformed entries instead of partial semantic issues', () => {
+  const codes = (graph: unknown) =>
+    validateGraph(graph).map((issue) => issue.code);
+  for (const graph of [
+    null,
+    undefined,
+    'graph',
+    42,
+    [],
+    {},
+    { ...base, stages: 'a' },
+    { ...base, nodes: null },
+    { ...base, links: {} },
+    { ...base, nodes: [null] },
+  ])
+    assert.deepEqual(codes(graph), ['invalid-graph']);
+  assert.deepEqual(
+    codes({
+      ...base,
+      nodes: [...base.nodes, null],
+      links: [{ ...base.links[0], to: 'missing' }],
+    }),
+    ['invalid-graph'],
+  );
+  const sparseNodes = new Array<(typeof base.nodes)[number] | undefined>(3);
+  sparseNodes[0] = base.nodes[0];
+  sparseNodes[2] = base.nodes[1];
+  assert.deepEqual(codes({ ...base, nodes: sparseNodes }), ['invalid-graph']);
+  assert.deepEqual(codes({ ...base, links: new Array(1) }), ['invalid-graph']);
+  for (const conversionRates of [{}, 'USD', null, [null]])
+    assert.deepEqual(codes({ ...base, conversionRates }), ['invalid-graph']);
+});
+test('validateGraph tolerates symbol properties and symbol entries', () => {
+  assert.deepEqual(validateGraph({ ...base, [Symbol('extra')]: true }), []);
+  assert.deepEqual(
+    validateGraph({
+      stages: ['a'],
+      nodes: [
+        {
+          [Symbol('key')]: 'a',
+          title: 'A',
+          placement: { stage: 'a' },
+        },
+      ],
+      links: [],
+    }).map((issue) => issue.code),
+    ['invalid-key'],
+  );
+  assert.deepEqual(
+    validateGraph({
+      ...base,
+      nodes: [Symbol('node')],
+    }).map((issue) => issue.code),
+    ['invalid-graph'],
+  );
+});
+test('validateGraph never throws while inspecting adversarial input', () => {
+  const codes = (graph: unknown) =>
+    validateGraph(graph).map((issue) => issue.code);
+  const { proxy: revoked, revoke } = Proxy.revocable({}, {});
+  revoke();
+  assert.deepEqual(codes(revoked), ['invalid-graph']);
+
+  const throwingIssues = Object.create(SankeyInputError.prototype) as {
+    issues: unknown;
+  };
+  Object.defineProperty(throwingIssues, 'issues', {
+    get() {
+      throw new Error('issues getter');
+    },
+  });
+  const emptyIssues = Object.create(SankeyInputError.prototype) as {
+    issues: unknown;
+  };
+  Object.defineProperty(emptyIssues, 'issues', { get: () => [] });
+  const throwingPrototype = new Proxy(
+    {},
+    {
+      getPrototypeOf() {
+        throw new Error('prototype trap');
+      },
+    },
+  );
+  const graphThatThrowsWith = (value: unknown): Record<string, unknown> => {
+    const graph: Record<string, unknown> = { ...base };
+    Object.defineProperty(graph, 'nodes', {
+      get() {
+        throw value;
+      },
+    });
+    return graph;
+  };
+  for (const thrown of [throwingIssues, emptyIssues, throwingPrototype])
+    assert.deepEqual(codes(graphThatThrowsWith(thrown)), ['invalid-graph']);
+
+  const throwingNode = {
+    title: 'A',
+    placement: { stage: 'a' },
+    get key(): string {
+      throw new Error('node key');
+    },
+  };
+  assert.deepEqual(codes({ stages: ['a'], nodes: [throwingNode], links: [] }), [
+    'invalid-graph',
+  ]);
+  const throwingLink = {
+    from: 'a',
+    to: 'b',
+    amount: 1,
+    get key(): string {
+      throw new Error('link key');
+    },
+  };
+  assert.deepEqual(codes({ ...base, links: [throwingLink] }), [
+    'invalid-graph',
+  ]);
+});
+test('very large edge-node fan-in validates without spreading stage arrays', () => {
+  const count = 150_000;
+  const links = Array.from({ length: count }, (_, index) => ({
+    key: `in-${index}`,
+    from: 'source',
+    to: 'edge',
+    amount: 1,
+  }));
+  links.push({ key: 'out', from: 'edge', to: 'target', amount: count });
+  assert.deepEqual(
+    validateGraph({
+      stages: ['source', 'target'],
+      nodes: [
+        { key: 'source', title: 'Source', placement: { stage: 'source' } },
+        { key: 'edge', title: 'Edge', placement: { edge: 'top' } },
+        { key: 'target', title: 'Target', placement: { stage: 'target' } },
+      ],
+      links,
+    }),
+    [],
   );
 });
 test('layout rejects dimensions beyond finite SVG precision while preserving valid near-limit layouts', () => {
