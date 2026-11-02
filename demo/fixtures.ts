@@ -25,7 +25,7 @@ export const examples: {
     minLinkWidth?: number;
 }[] = [
     { key: 'distribution', name: 'Distribution', description: 'Two inputs, shared processing and partial totals, with a supplement above and deferred flow below.', graph: distribution },
-    { key: 'stages', name: 'Stages', description: 'Collect → Prepare → Deliver. Node order keeps Prepare B above Prepare A; the gold 100-unit link skips Prepare without moving either column.', graph: stagesData as SankeyGraph },
+    { key: 'stages', name: 'Stages', description: 'Collect → Prepare → Deliver. Node order keeps Prepare B above Prepare A; the gold 100-unit link skips Prepare without moving either column.', graph: stagesData },
     {
         key: 'trade', name: 'World trade',
         description: 'Countries trade four goods, with reserves released above and stock held for next year below. Illustrative annual values in USD billions; not actual trade statistics.',
@@ -47,7 +47,7 @@ export const examples: {
     { key: 'top', name: 'Top fan-out', description: 'The same routing rule, reflected above the main sequence.', graph: fanOut('top') },
     { key: 'crowded', name: 'Many edge nodes', description: 'Twelve destinations share the bottom edge and wrap into additional rows.', graph: fanOut('bottom', 12) },
     { key: 'partial', name: 'Partial allocation', description: 'An available total of 1,000 with only 500 transferred. No extra edge margins.', graph: simple },
-    { key: 'parallel', name: 'Parallel links', description: 'Three links share the same endpoints but keep distinct keys, colors and amounts. Inspect or select each independently.', graph: parallelData as SankeyGraph },
+    { key: 'parallel', name: 'Parallel links', description: 'Three links share the same endpoints but keep distinct keys, colors and amounts. Inspect or select each independently.', graph: parallelData },
     { key: 'stress', name: 'Stress test', description: '100 nodes and 300 links across four stages. The same deterministic graph used by npm run stress; crossings are expected in this dense case.', graph: stressGraph() },
     { key: 'empty', name: 'Empty', description: 'A quiet empty state, without unused edge bands.', graph: { stages: [], nodes: [], links: [] } },
 ];

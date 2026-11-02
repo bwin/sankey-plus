@@ -7,7 +7,7 @@ import { runInChunks } from '../src/layout-task.js';
 import { pointAt, distanceToSegment } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph } from '../src/types.js';
 
-const fixture = (name: string): SankeyGraph => JSON.parse(readFileSync(new URL(`../../demo/${name}.json`, import.meta.url), 'utf8'));
+const fixture = (name: string): SankeyGraph => JSON.parse(readFileSync(new URL(`../../demo/${name}.json`, import.meta.url), 'utf8')) as SankeyGraph;
 function portsFit(scene: Scene) {
     for (const node of scene.nodes) {
         assert.ok(node.x >= -.01 && node.y >= -.01 && node.x + node.w <= scene.width + .01 && node.y + node.h <= scene.height + .01, `contained ${node.key}`);

@@ -37,6 +37,7 @@ From the repository root, install with `npm ci`. `npm run dev` builds and serves
 
 ```sh
 npm run typecheck
+npm run lint
 npm test
 npm run build
 npm run verify:package

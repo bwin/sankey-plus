@@ -425,7 +425,7 @@ export function* layoutGraphSteps<I, T>(model: ResolvedGraph<I, T>, options: Lay
             const approach = (v: NodeGeometry) => out ? v.corridor ?? v.x + v.w / 2 : v.x + v.w / 2;
             connectedLinks.sort((a, b) => {
                 const aa = opposite(a), bb = opposite(b);
-                let order = 0;
+                let order: number;
                 if (!n.edge) {
                     const rank = (v: NodeGeometry) => v.edge === 'top' ? 0 : v.edge === 'bottom' ? 2 : 1;
                     order = rank(aa) - rank(bb);

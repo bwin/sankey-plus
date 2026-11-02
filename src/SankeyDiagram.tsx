@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
+import { forwardRef, useCallback, useEffect, useId, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type MouseEvent, type PointerEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { emphasis, resolveGraph } from './model.js';
 import { hitTest, layoutGraphSteps, type Scene, type TextBox } from './layout.js';
@@ -129,7 +129,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
                 if (value)
                     vars[key] = value;
             }
-            setTheme(old => JSON.stringify(old) === JSON.stringify(vars) ? old : vars as CSSProperties);
+            setTheme(old => JSON.stringify(old) === JSON.stringify(vars) ? old : vars);
         };
         const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(measure); };
         const observer = new ResizeObserver(schedule);
@@ -138,7 +138,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
         mutations.observe(el, { attributes: true, attributeFilter: ['class', 'style'] });
         for (let parent = el.parentElement; parent; parent = parent.parentElement)
             mutations.observe(parent, { attributes: true, attributeFilter: ['class', 'style'] });
-        document.fonts?.ready.then(schedule);
+        void document.fonts?.ready.then(schedule);
         document.fonts?.addEventListener('loadingdone', schedule);
         measure();
         return () => { disposed = true; cancelAnimationFrame(frame); observer.disconnect(); mutations.disconnect(); document.fonts?.removeEventListener('loadingdone', schedule); };
@@ -176,15 +176,17 @@ export function SankeyDiagram<I = unknown, T = unknown>(props: SankeyDiagramProp
     // pair another graph's geometry with the current graph's facts or callbacks.
     const scene = layoutResult?.request.model === model && 'scene' in layoutResult ? layoutResult.scene : null;
     const pending = model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
-    const exists = (s: SankeySubject | null | undefined) => !!s && (s.kind === 'node' ? model.nodes.has(s.key) : model.links.has(s.key));
+    const exists = useCallback((s: SankeySubject | null | undefined) => !!s && (s.kind === 'node' ? model.nodes.has(s.key) : model.links.has(s.key)), [model]);
     const selected = exists(selection) ? selection! : null;
     const active = scene && inspection && exists(inspection.subject) ? inspection : null;
-    const strong = useMemo(() => emphasis(model, active?.subject ?? null), [model, active?.subject.kind, active?.subject.key]);
+    const strong = useMemo(() => emphasis(model, active?.subject ?? null), [model, active?.subject]);
     const activeView = active ? presentation(model, active.subject, formatAmount, 'tooltip') : null;
     const tooltip = activeView ? (renderTooltip ? renderTooltip(activeView) : <DefaultDetails view={activeView}/>) : null;
-    useEffect(() => { if (inspection && !exists(inspection.subject))
-        setInspection(null); if (keyboardFocus && !exists(keyboardFocus))
-        setKeyboardFocus(null); setRoving(i => Math.min(i, Math.max(0, model.subjects.length - 1))); }, [model]);
+    useEffect(() => {
+        setInspection(old => old && exists(old.subject) ? old : null);
+        setKeyboardFocus(old => old && exists(old) ? old : null);
+        setRoving(i => Math.min(i, Math.max(0, model.subjects.length - 1)));
+    }, [exists, model]);
     function repositionInspection() {
         setInspection(old => {
             if (!old || old.modality === 'pointer') return null;
