@@ -1,0 +1,16 @@
+# Generated and installed output
+dist/
+demo-dist/
+.tests/
+node_modules/
+
+# npm-managed lockfile
+package-lock.json
+
+# Binary assets
+screenshots/
+*.tgz
+
+# The stylesheets are intentionally compact; the published CSS is copied as-is.
+src/style.css
+demo/demo.css
