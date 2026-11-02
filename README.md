@@ -23,14 +23,24 @@ import '@bwin/sankey-plus/style.css';
 const graph: SankeyGraph = {
   stages: ['input', 'output'],
   nodes: [
-    { key: 'source', title: 'Available', total: 1000, placement: { stage: 'input' } },
+    {
+      key: 'source',
+      title: 'Available',
+      total: 1000,
+      placement: { stage: 'input' },
+    },
     { key: 'target', title: 'Allocated', placement: { stage: 'output' } },
   ],
   links: [{ key: 'allocation', from: 'source', to: 'target', amount: 500 }],
 };
 
 export default function Example() {
-  return <SankeyDiagram graph={graph} accessibleName="Available and allocated amounts" />;
+  return (
+    <SankeyDiagram
+      graph={graph}
+      accessibleName="Available and allocated amounts"
+    />
+  );
 }
 ```
 
@@ -45,15 +55,15 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 
 ## Guides
 
-| Guide | Covers |
-| --- | --- |
-| [Getting started](https://github.com/bwin/sankey-plus/blob/master/docs/getting-started.md) | Integration, click handlers, selection and sizing |
-| [API reference](https://github.com/bwin/sankey-plus/blob/master/docs/api.md) | Props, graph data, stages, callback contexts and validation |
-| [Customization](https://github.com/bwin/sankey-plus/blob/master/docs/customization.md) | Labels, endpoint tooltips, formatting and themes |
-| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/master/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
-| [Examples](https://github.com/bwin/sankey-plus/blob/master/docs/examples.md) | What each interactive demo demonstrates |
-| [Development](https://github.com/bwin/sankey-plus/blob/master/docs/development.md) | Local setup, tests, builds and stress commands |
-| [Releasing](https://github.com/bwin/sankey-plus/blob/master/docs/releasing.md) | Changelog, dev → master, package verification, npm and GitHub releases |
+| Guide                                                                                                    | Covers                                                                 |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [Getting started](https://github.com/bwin/sankey-plus/blob/master/docs/getting-started.md)               | Integration, click handlers, selection and sizing                      |
+| [API reference](https://github.com/bwin/sankey-plus/blob/master/docs/api.md)                             | Props, graph data, stages, callback contexts and validation            |
+| [Customization](https://github.com/bwin/sankey-plus/blob/master/docs/customization.md)                   | Labels, endpoint tooltips, formatting and themes                       |
+| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/master/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits                 |
+| [Examples](https://github.com/bwin/sankey-plus/blob/master/docs/examples.md)                             | What each interactive demo demonstrates                                |
+| [Development](https://github.com/bwin/sankey-plus/blob/master/docs/development.md)                       | Local setup, tests, builds and stress commands                         |
+| [Releasing](https://github.com/bwin/sankey-plus/blob/master/docs/releasing.md)                           | Changelog, dev → master, package verification, npm and GitHub releases |
 
 Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](https://github.com/bwin/sankey-plus/blob/master/docs/performance.md) and [verification](https://github.com/bwin/sankey-plus/blob/master/docs/verification.md) for measurements and tested coverage. `master` contains the latest npm release; ongoing development happens on `dev`.
 

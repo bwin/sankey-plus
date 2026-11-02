@@ -14,13 +14,13 @@ Timing covers `resolveGraph` and `layoutGraph`, including route selection, obsta
 
 Node 22.17.0, median of ten calls after the first call in each case:
 
-| Fixture | Before | After |
-| --- | ---: | ---: |
-| 100 nodes / 300 links | 745.4 ms | 124.4 ms |
-| Original allocation fixture, 1,440 px | 23.6 ms | 22.6 ms |
-| Original allocation fixture, 360 px | 90.0 ms | 53.3 ms |
-| Four-sided fixture, 1,126 px | 45.8 ms | 39.1 ms |
-| Twelve wrapped destinations, 600 px | 19.2 ms | 3.0 ms |
+| Fixture                               |   Before |    After |
+| ------------------------------------- | -------: | -------: |
+| 100 nodes / 300 links                 | 745.4 ms | 124.4 ms |
+| Original allocation fixture, 1,440 px |  23.6 ms |  22.6 ms |
+| Original allocation fixture, 360 px   |  90.0 ms |  53.3 ms |
+| Four-sided fixture, 1,126 px          |  45.8 ms |  39.1 ms |
+| Twelve wrapped destinations, 600 px   |  19.2 ms |   3.0 ms |
 
 The first stress calculation took 789.0 ms before and 230.1 ms after in these Node processes. First-call numbers include JIT warm-up and vary between runs. The non-stress fixtures use two-line node labels; the stress fixture matches its automated test's default labels.
 

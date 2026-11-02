@@ -20,22 +20,40 @@ import '@bwin/sankey-plus/style.css';
 The packaged library is ESM and includes TypeScript declarations. Import its stylesheet separately. You can also copy `src/` into your application; its source entry already imports the stylesheet.
 
 ```tsx
-import {useState} from 'react';
-import {SankeyDiagram, type SankeyGraph, type SankeySubject} from '@bwin/sankey-plus';
+import { useState } from 'react';
+import {
+  SankeyDiagram,
+  type SankeyGraph,
+  type SankeySubject,
+} from '@bwin/sankey-plus';
 import '@bwin/sankey-plus/style.css';
 
 const graph: SankeyGraph = {
   stages: ['available', 'allocated'],
   nodes: [
-    {key: 'source', title: 'Available', total: 1000, placement: {stage: 'available'}},
-    {key: 'destination', title: 'Allocated', placement: {stage: 'allocated'}},
-    {key: 'reserve', title: 'Reserve', total: 300, placement: {edge: 'top'}},
-    {key: 'unused', title: 'Unallocated', placement: {edge: 'bottom'}},
+    {
+      key: 'source',
+      title: 'Available',
+      total: 1000,
+      placement: { stage: 'available' },
+    },
+    {
+      key: 'destination',
+      title: 'Allocated',
+      placement: { stage: 'allocated' },
+    },
+    {
+      key: 'reserve',
+      title: 'Reserve',
+      total: 300,
+      placement: { edge: 'top' },
+    },
+    { key: 'unused', title: 'Unallocated', placement: { edge: 'bottom' } },
   ],
   links: [
-    {key: 'allocation', from: 'source', to: 'destination', amount: 500},
-    {key: 'extra', from: 'reserve', to: 'destination', amount: 100},
-    {key: 'remainder', from: 'source', to: 'unused', amount: 200},
+    { key: 'allocation', from: 'source', to: 'destination', amount: 500 },
+    { key: 'extra', from: 'reserve', to: 'destination', amount: 100 },
+    { key: 'remainder', from: 'source', to: 'unused', amount: 200 },
   ],
 };
 
@@ -49,11 +67,11 @@ export function Example() {
       accessibleName="Allocation flow"
       selection={selection}
       onNodeClick={(facts, event) => {
-        setSelection({kind: 'node', key: facts.node.key});
+        setSelection({ kind: 'node', key: facts.node.key });
         // Original node + resolved quantities; event is a React activation event.
       }}
       onLinkClick={(facts) => {
-        setSelection({kind: 'link', key: facts.link.key});
+        setSelection({ kind: 'link', key: facts.link.key });
       }}
       formatAmount={formatAmount}
     />

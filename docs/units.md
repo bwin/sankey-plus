@@ -10,13 +10,25 @@ const graph: SankeyGraph = {
   conversionRates: [{ from: 'USD', to: 'COP', rate: 4000 }],
   stages: ['accounts', 'payments'],
   nodes: [
-    { key: 'wallet', title: 'Wallet', placement: { stage: 'accounts' }, totals: { USD: 150 } },
+    {
+      key: 'wallet',
+      title: 'Wallet',
+      placement: { stage: 'accounts' },
+      totals: { USD: 150 },
+    },
     { key: 'supplier', title: 'Supplier', placement: { stage: 'payments' } },
   ],
-  links: [{
-    key: 'payment', from: 'wallet', to: 'supplier', amount: 100,
-    inputUnit: 'USD', outputUnit: 'COP', conversionRate: 3900,
-  }],
+  links: [
+    {
+      key: 'payment',
+      from: 'wallet',
+      to: 'supplier',
+      amount: 100,
+      inputUnit: 'USD',
+      outputUnit: 'COP',
+      conversionRate: 3900,
+    },
+  ],
 };
 ```
 

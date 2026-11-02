@@ -1,24 +1,126 @@
 {
   "stages": ["sources", "distribution", "destinations"],
   "nodes": [
-    { "key": "bulk", "title": "Bulk supply", "placement": { "stage": "sources" }, "color": "#5265cc", "meta": { "note": "500,000 units: the largest transfer is 2,500 times the smallest." } },
-    { "key": "regional", "title": "Regional supply", "placement": { "stage": "sources" }, "color": "#c58a29" },
-    { "key": "trial", "title": "Trial supply", "placement": { "stage": "sources" }, "color": "#9b6ab5", "meta": { "note": "Only 200 units, displayed at the example's 4px minimum thickness. The amount is unchanged." } },
-    { "key": "reserve", "title": "Reserve release", "placement": { "edge": "top" }, "color": "#3589ac", "meta": { "note": "An additional 2,000 units enter from the top." } },
-    { "key": "distribution", "title": "Distribution", "placement": { "stage": "distribution" }, "color": "#168e9d", "meta": { "note": "Combines 527,200 units and distributes the same total. Small transfers use a 4px minimum; the bar reserves room for their displayed widths." } },
-    { "key": "core", "title": "Core delivery", "placement": { "stage": "destinations" }, "color": "#688670" },
-    { "key": "local", "title": "Local delivery", "placement": { "stage": "destinations" }, "color": "#8170b4" },
-    { "key": "pilot", "title": "Pilot delivery", "placement": { "stage": "destinations" }, "color": "#d76c91" },
-    { "key": "retained", "title": "Retained", "placement": { "edge": "bottom" }, "color": "#ba6750", "meta": { "note": "200 units are retained below the main flow. Labels and selection make the very thin transfer inspectable." } }
+    {
+      "key": "bulk",
+      "title": "Bulk supply",
+      "placement": { "stage": "sources" },
+      "color": "#5265cc",
+      "meta": {
+        "note": "500,000 units: the largest transfer is 2,500 times the smallest."
+      }
+    },
+    {
+      "key": "regional",
+      "title": "Regional supply",
+      "placement": { "stage": "sources" },
+      "color": "#c58a29"
+    },
+    {
+      "key": "trial",
+      "title": "Trial supply",
+      "placement": { "stage": "sources" },
+      "color": "#9b6ab5",
+      "meta": {
+        "note": "Only 200 units, displayed at the example's 4px minimum thickness. The amount is unchanged."
+      }
+    },
+    {
+      "key": "reserve",
+      "title": "Reserve release",
+      "placement": { "edge": "top" },
+      "color": "#3589ac",
+      "meta": { "note": "An additional 2,000 units enter from the top." }
+    },
+    {
+      "key": "distribution",
+      "title": "Distribution",
+      "placement": { "stage": "distribution" },
+      "color": "#168e9d",
+      "meta": {
+        "note": "Combines 527,200 units and distributes the same total. Small transfers use a 4px minimum; the bar reserves room for their displayed widths."
+      }
+    },
+    {
+      "key": "core",
+      "title": "Core delivery",
+      "placement": { "stage": "destinations" },
+      "color": "#688670"
+    },
+    {
+      "key": "local",
+      "title": "Local delivery",
+      "placement": { "stage": "destinations" },
+      "color": "#8170b4"
+    },
+    {
+      "key": "pilot",
+      "title": "Pilot delivery",
+      "placement": { "stage": "destinations" },
+      "color": "#d76c91"
+    },
+    {
+      "key": "retained",
+      "title": "Retained",
+      "placement": { "edge": "bottom" },
+      "color": "#ba6750",
+      "meta": {
+        "note": "200 units are retained below the main flow. Labels and selection make the very thin transfer inspectable."
+      }
+    }
   ],
   "links": [
-    { "key": "reserve-in", "from": "reserve", "to": "distribution", "amount": 2000, "color": "#3589ac" },
-    { "key": "bulk-in", "from": "bulk", "to": "distribution", "amount": 500000, "color": "#5265cc" },
-    { "key": "regional-in", "from": "regional", "to": "distribution", "amount": 25000, "color": "#c58a29" },
-    { "key": "trial-in", "from": "trial", "to": "distribution", "amount": 200, "color": "#9b6ab5" },
-    { "key": "core-out", "from": "distribution", "to": "core", "amount": 500000 },
-    { "key": "local-out", "from": "distribution", "to": "local", "amount": 25000 },
-    { "key": "pilot-out", "from": "distribution", "to": "pilot", "amount": 2000 },
-    { "key": "retained-out", "from": "distribution", "to": "retained", "amount": 200 }
+    {
+      "key": "reserve-in",
+      "from": "reserve",
+      "to": "distribution",
+      "amount": 2000,
+      "color": "#3589ac"
+    },
+    {
+      "key": "bulk-in",
+      "from": "bulk",
+      "to": "distribution",
+      "amount": 500000,
+      "color": "#5265cc"
+    },
+    {
+      "key": "regional-in",
+      "from": "regional",
+      "to": "distribution",
+      "amount": 25000,
+      "color": "#c58a29"
+    },
+    {
+      "key": "trial-in",
+      "from": "trial",
+      "to": "distribution",
+      "amount": 200,
+      "color": "#9b6ab5"
+    },
+    {
+      "key": "core-out",
+      "from": "distribution",
+      "to": "core",
+      "amount": 500000
+    },
+    {
+      "key": "local-out",
+      "from": "distribution",
+      "to": "local",
+      "amount": 25000
+    },
+    {
+      "key": "pilot-out",
+      "from": "distribution",
+      "to": "pilot",
+      "amount": 2000
+    },
+    {
+      "key": "retained-out",
+      "from": "distribution",
+      "to": "retained",
+      "amount": 200
+    }
   ]
 }

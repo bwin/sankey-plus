@@ -4,19 +4,19 @@
 
 [src/types.ts](../src/types.ts) contains the full generic contract. Node and link metadata types are independent and retained in all callback contexts.
 
-| Property | Purpose |
-| --- | --- |
-| `graph` | Ordered `stages`, `nodes` and `links` with stable keys. Required. |
-| `accessibleName` | Descriptive accessible name for the diagram. Required. |
-| `selection` | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled. |
-| `onNodeClick` | Receives node facts and the activation event. |
-| `onLinkClick` | Receives link facts and the activation event. |
-| `formatAmount` | Formats quantities with facts, field name and surface. |
-| `getLabel` | Returns plain text, an array of lines, or `null` to omit a label. |
-| `renderTooltip` | Returns non-interactive React content or `null`. |
-| `plotHeight` | Preferred central region height; default 336 CSS pixels. Edge bands add height. |
-| `minLinkWidth` | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative. |
-| `className` | Host styling, including the four theme tokens below. |
+| Property         | Purpose                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------ |
+| `graph`          | Ordered `stages`, `nodes` and `links` with stable keys. Required.                                            |
+| `accessibleName` | Descriptive accessible name for the diagram. Required.                                                       |
+| `selection`      | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                             |
+| `onNodeClick`    | Receives node facts and the activation event.                                                                |
+| `onLinkClick`    | Receives link facts and the activation event.                                                                |
+| `formatAmount`   | Formats quantities with facts, field name and surface.                                                       |
+| `getLabel`       | Returns plain text, an array of lines, or `null` to omit a label.                                            |
+| `renderTooltip`  | Returns non-interactive React content or `null`.                                                             |
+| `plotHeight`     | Preferred central region height; default 336 CSS pixels. Edge bands add height.                              |
+| `minLinkWidth`   | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative. |
+| `className`      | Host styling, including the four theme tokens below.                                                         |
 
 Measured width, `plotHeight`, `minLinkWidth` and the resulting scene extents must not exceed 10,000,000 CSS pixels. Values outside that range are rejected with a `SankeyInputError` (`invalid-number`) instead of producing non-finite SVG geometry.
 

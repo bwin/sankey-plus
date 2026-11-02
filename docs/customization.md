@@ -15,27 +15,33 @@ Default labels, tooltips and accessible descriptions use the runtime locale. Pas
     // context.surface: label / tooltip / accessible
     return `${value.toLocaleString()} units`;
   }}
-  getLabel={(view) => view.kind === 'node'
-    ? [view.node.title, `${view.text.total} total`]
-    : view.text.amount
+  getLabel={(view) =>
+    view.kind === 'node'
+      ? [view.node.title, `${view.text.total} total`]
+      : view.text.amount
   }
-  renderTooltip={(view) => view.kind === 'node' ? (
-    <>
-      <strong className="flow-tip-title">{view.node.title}</strong>
-      <dl>
-        <dt>Total</dt><dd>{view.text.total}</dd>
-        <dt>Incoming</dt><dd>{view.text.incoming}</dd>
-        <dt>Outgoing</dt><dd>{view.text.outgoing}</dd>
-      </dl>
-    </>
-  ) : (
-    <>
-      <strong className="flow-tip-title">
-        {view.fromNode.title} → {view.toNode.title}
-      </strong>
-      <span>{view.text.amount}</span>
-    </>
-  )}
+  renderTooltip={(view) =>
+    view.kind === 'node' ? (
+      <>
+        <strong className="flow-tip-title">{view.node.title}</strong>
+        <dl>
+          <dt>Total</dt>
+          <dd>{view.text.total}</dd>
+          <dt>Incoming</dt>
+          <dd>{view.text.incoming}</dd>
+          <dt>Outgoing</dt>
+          <dd>{view.text.outgoing}</dd>
+        </dl>
+      </>
+    ) : (
+      <>
+        <strong className="flow-tip-title">
+          {view.fromNode.title} → {view.toNode.title}
+        </strong>
+        <span>{view.text.amount}</span>
+      </>
+    )
+  }
 />
 ```
 
