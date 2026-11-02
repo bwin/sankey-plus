@@ -4,6 +4,10 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+### Added
+
+- Link facts expose `fromTotal`, `toTotal`, `fromShare` and `toShare`, resolved in the link's input/output units, so labels and tooltips can show percentage shares without re-deriving endpoint totals. Add a Shares demo built on the Distribution graph.
+
 ## [2.0.0] - 2026-11-01
 
 ### Breaking changes

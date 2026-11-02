@@ -102,6 +102,31 @@ export interface SankeyLinkFacts<NodeMeta = unknown, LinkMeta = unknown> {
   readonly input: SankeyQuantity;
   readonly output: SankeyQuantity;
   readonly conversionRate: number;
+  /**
+   * Read-only output fact; hosts do not construct it. Resolved source total in
+   * the link's input unit (declared, derived or mixed).
+   */
+  readonly fromTotal: number;
+  /**
+   * Read-only output fact; hosts do not construct it. Resolved target total in
+   * the link's output unit (declared, derived or mixed).
+   */
+  readonly toTotal: number;
+  /**
+   * Read-only output fact; hosts do not construct it. Native
+   * `input.amount / fromTotal`, clamped to 0..1 and 0 when `fromTotal` is
+   * unavailable or non-positive. Ignore it in formatter contexts with
+   * `isConverted: true`; it does not describe the converted value.
+   */
+  readonly fromShare: number;
+  /**
+   * Read-only output fact; hosts do not construct it. Native
+   * `output.amount / toTotal`, including the link's conversionRate, clamped to
+   * 0..1 and 0 when `toTotal` is unavailable or non-positive. Ignore it in
+   * formatter contexts with `isConverted: true`; it does not describe the
+   * converted value.
+   */
+  readonly toShare: number;
   /** Each endpoint valued in the graph's common layout unit. */
   readonly layoutInputAmount: number;
   readonly layoutOutputAmount: number;
