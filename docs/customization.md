@@ -66,7 +66,7 @@ Tooltip placement, viewport clamping, dismissal and accessible association are i
 
 ## Theme and colors
 
-The component inherits the font family, uses 12-pixel chart text, and exposes four theme tokens. Scope overrides on the component's class:
+The component inherits the font family, uses 12-pixel chart text, and exposes six theme tokens. Scope overrides on the component's class:
 
 ```css
 .my-flow {
@@ -74,12 +74,18 @@ The component inherits the font family, uses 12-pixel chart text, and exposes fo
   --flow-text: #24334a;
   --flow-muted-text: #68758b;
   --flow-focus: #2644af;
+  --flow-headroom: var(--flow-muted-text);
+  --flow-headroom-track: color-mix(
+    in srgb,
+    var(--flow-surface) 86%,
+    var(--flow-muted-text)
+  );
 }
 ```
 
 Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palette color based on their key; links inherit their destination color. Unsupported CSS colors fall back to the palette. No application-specific theme provider is needed.
 
-Distribution demonstrates a dark surface using these same tokens: `--flow-surface: #101b2d`, `--flow-text: #e4ebf6`, `--flow-muted-text: #a4b1c7` and `--flow-focus: #bac8ff`. The tooltip inherits the diagram's tokens even though it is portaled to the document body. Other examples retain their light surface.
+Distribution demonstrates a dark surface using these same tokens: `--flow-surface: #101b2d`, `--flow-text: #e4ebf6`, `--flow-muted-text: #a4b1c7` and `--flow-focus: #bac8ff`. The default headroom tokens follow those overrides: the hatch line uses `--flow-muted-text`, and the track mixes 86% of `--flow-surface` with it, so the overlay stays dark rather than becoming a near-white block. Override `--flow-headroom` or `--flow-headroom-track` directly for stronger contrast. The tooltip inherits the diagram's tokens even though it is portaled to the document body. Other examples retain their light surface.
 
 ## Stable callbacks
 
