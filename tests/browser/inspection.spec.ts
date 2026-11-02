@@ -24,6 +24,16 @@ test('changing graphs clears an active keyboard inspection', async ({
 
   await page.getByRole('tab', { name: 'Stages' }).dispatchEvent('click');
   await expect(page.getByRole('heading', { name: 'Stages' })).toBeVisible();
+  await expect(page.locator('[data-flow-subject]').first()).toBeVisible();
+  await expect(page.getByRole('tooltip')).toBeHidden();
+
+  // Returning to the first graph would reactivate a stale inspection if the
+  // model-change effect had not cleared it.
+  await page.getByRole('tab', { name: 'Distribution' }).dispatchEvent('click');
+  await expect(
+    page.getByRole('heading', { name: 'Distribution' }),
+  ).toBeVisible();
+  await expect(page.locator('[data-flow-subject]').first()).toBeVisible();
   await expect(page.getByRole('tooltip')).toBeHidden();
 
   expect(errors).toEqual([]);
