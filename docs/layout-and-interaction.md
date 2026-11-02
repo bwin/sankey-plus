@@ -46,6 +46,10 @@ The chart creates a scroll container only when its canvas is wider than the host
 
 The routing search is bounded. Pathological custom graphs may still need a larger host container. There is no promise of a globally optimal layout or perfect clearance for every possible graph.
 
+## Headroom
+
+With `showHeadroom`, declared capacity on a pure source or pure sink is drawn as a subtle hatch. Fully derived totals and mixed-direction relays are omitted, because their combined gap can mix units and roles. Vertical main-stage bars place the hatch at the bottom; horizontal top/bottom bars place it at the right end, matching their horizontal port axis. Hatches below 0.5 CSS pixels are omitted. The hatch is decorative and pointer-transparent, so the node bar remains the hit target. It does not change totals, widths, scale, labels, routing or hit testing. `minLinkWidth` floors count toward the covered stack: if the displayed ports fill the quantitative total, no headroom is shown.
+
 ## Visual examples
 
 The same curve style connects stages, top sources and bottom destinations:

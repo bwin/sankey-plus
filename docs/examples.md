@@ -16,6 +16,7 @@
 | Fan-in                | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total.                                                             |
 | Many edge nodes       | Twelve destinations wrapping into rows with separate lanes.                                                                                                      |
 | Partial allocation    | A 1,000-unit node with a 500-unit transfer; no unused edge bands.                                                                                                |
+| Headroom              | The same 1,000/500 allocation with a hatched unallocated half and a headroom label.                                                                              |
 | Parallel links        | Three distinct ribbons between the same pair of nodes, each independently inspectable and selectable.                                                            |
 | Stress test           | The same 100-node/300-link graph as the command-line stress benchmark. Dense crossings are expected.                                                             |
 | Empty                 | No data and no chart SVG.                                                                                                                                        |
@@ -79,6 +80,12 @@ This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; 
 The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/docs-wide-range-proportional.jpg). [Minimum-width semantics](api.md#quantities).
 
 ![Wide range with a 4px minimum thickness](../screenshots/docs-wide-range-minimum.jpg)
+
+## Headroom
+
+The Headroom example reuses the 1,000-unit available / 500-unit allocated graph and enables `showHeadroom`. The bottom half of the Available bar is hatched, and its label adds **50% headroom**. Allocated is fully explained by its incoming transfer, so it has no hatch and is labelled **Fully allocated**.
+
+The hatch is a drawing aid only. Available still totals 1,000, the transfer remains 500, and the destination total stays 500. Headroom is limited to declared or partially declared pure sources and sinks; fully derived totals and mixed-direction relays are not hatched, because their combined gap may mix units or roles. With `minLinkWidth`, the displayed port widths are subtracted from the quantitative `total * scale`; a floor-expanded stack consumes the bar rather than creating extra unused capacity, and hatches below 0.5 CSS pixels are omitted. [Headroom semantics](api.md#headroom).
 
 ## Fan-in
 

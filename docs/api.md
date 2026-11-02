@@ -16,7 +16,8 @@
 | `renderTooltip`  | Returns non-interactive React content or `null`.                                                             |
 | `plotHeight`     | Preferred central region height; default 336 CSS pixels. Edge bands add height.                              |
 | `minLinkWidth`   | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative. |
-| `className`      | Host styling, including the four theme tokens below.                                                         |
+| `showHeadroom`   | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                  |
+| `className`      | Host styling, including theme token overrides.                                                               |
 
 Measured width, `plotHeight`, `minLinkWidth` and the resulting scene extents must not exceed 10,000,000 CSS pixels. Values outside that range are rejected with a `SankeyInputError` (`invalid-number`) instead of producing non-finite SVG geometry.
 
@@ -33,6 +34,12 @@ Links between stage nodes may skip columns, but must always move to a later stag
 Quantities must be finite. Link amounts must be positive. Each declared unit balance must be non-negative and at least its incoming and outgoing sums independently. Without a declaration, its total is `max(incoming, outgoing)`. Converted per-unit totals are summed for node size; all bars and ribbons share one value scale. Incoming plus outgoing is never the required total for a relay within one unit. [Multi-unit semantics and examples](units.md) explain partial declarations and conversions.
 
 Set `minLinkWidth={4}` to make small transfers easier to see. Each endpoint is displayed at `max(convertedAmount * scale, minLinkWidth)` CSS pixels. The floor is applied after unit conversion; labels, tooltip values and callback facts retain the actual amounts. Values below the floor can have identical thicknesses, and a small currency taper can disappear if both ends reach the floor. Node bars expand to fit incoming/outgoing port stacks, and routing reserves the displayed widths. Dense stacks may increase chart height or require local horizontal scrolling. The default `0` retains proportional geometry. See the [Wide range example](examples.md#wide-range).
+
+### Headroom
+
+Set `showHeadroom` to hatch declared capacity that is not covered by incident port stacks. The overlay is intentionally conservative: it appears only on a pure source (no incoming flow) or pure sink (no outgoing flow) whose total is declared or partially declared. Fully derived totals and mixed-direction relays are not hatched, because a relay's combined gap can mix incoming and outgoing units and roles.
+
+For an eligible node, headroom is `max(0, total - max(incoming, outgoing))` in the layout unit: the bottom of a vertical main-stage bar, or the right end of a horizontal top/bottom bar. The overlay uses `total * scale` as its limit and subtracts the larger displayed incoming or outgoing stack. With `minLinkWidth`, those stacks include the pixel floor, so a floor-expanded stack consumes the bar rather than creating unused capacity. Hatches below 0.5 CSS pixels are omitted. The hatch is non-interactive and hidden from assistive technology; the node bar remains the hit target. Enabling it does not change totals, widths, scale, labels, routing or callback facts.
 
 Keys are unique within each kind. Parallel links need different keys. Invalid data, unknown endpoints, backward/same-stage links and directed cycles throw `SankeyInputError`. Its `issues` include diagnostic codes and affected keys. Mixed-role edge nodes must fit between their main-stage sources and targets. Use a host error boundary for invalid external data.
 

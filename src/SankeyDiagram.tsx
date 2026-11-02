@@ -272,6 +272,7 @@ export function SankeyDiagram<I = unknown, T = unknown>(
     className,
     plotHeight = 336,
     minLinkWidth = 0,
+    showHeadroom = false,
     selection,
     onNodeClick,
     onLinkClick,
@@ -288,7 +289,8 @@ export function SankeyDiagram<I = unknown, T = unknown>(
     lastAnchor = useRef({ x: 0, y: 0 });
   const uid = useId(),
     tooltipId = `${uid}-details`,
-    helpId = `${uid}-help`;
+    helpId = `${uid}-help`,
+    headroomPatternId = `${uid}-headroom`;
   const [measurement, setMeasurement] = useState({
     width: 0,
     font: '12px sans-serif',
@@ -875,6 +877,31 @@ export function SankeyDiagram<I = unknown, T = unknown>(
             }}
             onClick={click}
           >
+            {showHeadroom && (
+              <defs>
+                <pattern
+                  id={headroomPatternId}
+                  width={6}
+                  height={6}
+                  patternUnits="userSpaceOnUse"
+                  patternTransform="rotate(45)"
+                >
+                  <rect
+                    width={6}
+                    height={6}
+                    fill="var(--flow-headroom-track, transparent)"
+                  />
+                  <line
+                    x1={0}
+                    y1={0}
+                    x2={0}
+                    y2={6}
+                    stroke="var(--flow-headroom, #68758b)"
+                    strokeWidth={2}
+                  />
+                </pattern>
+              </defs>
+            )}
             {ordered.map((f) => {
               const subject: SankeySubject = {
                   kind: 'link',
@@ -972,6 +999,20 @@ export function SankeyDiagram<I = unknown, T = unknown>(
                     pointerEvents="none"
                     aria-hidden="true"
                   />
+                  {showHeadroom && n.headroom && (
+                    <rect
+                      className="flow-headroom"
+                      data-headroom-node={n.key}
+                      x={n.headroom.x}
+                      y={n.headroom.y}
+                      width={n.headroom.w}
+                      height={n.headroom.h}
+                      fill={`url(#${headroomPatternId})`}
+                      opacity={strongItem ? 1 : 0.25}
+                      pointerEvents="none"
+                      aria-hidden="true"
+                    />
+                  )}
                   {isSelected && (
                     <g
                       className="flow-decoration"

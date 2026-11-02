@@ -358,6 +358,7 @@ function App() {
                 accessibleName={`${current.name} diagram`}
                 plotHeight={current.plotHeight ?? 336}
                 minLinkWidth={current.minLinkWidth}
+                showHeadroom={current.showHeadroom}
                 selection={selection}
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}

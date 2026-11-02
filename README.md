@@ -52,6 +52,7 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 - One-hop hover highlighting, keyboard navigation, node/link clicks and externally controlled selection.
 - Custom labels, tooltips with both connected nodes, typed metadata and light/dark theme tokens.
 - Common value scaling and explicit totals larger than their connected transfers.
+- Optional headroom hatching for declared partial source/sink capacity; mixed-direction relays stay unhatched.
 
 ## Guides
 

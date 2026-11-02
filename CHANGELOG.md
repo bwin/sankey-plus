@@ -4,6 +4,10 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+### Added
+
+- Optional `showHeadroom` hatching for declared partial source/sink capacity, with `minLinkWidth`-aware placement and theme-derived colors. Mixed-direction relays and derived totals are omitted.
+
 ## [2.0.0] - 2026-11-01
 
 ### Breaking changes

@@ -67,6 +67,7 @@ export const examples: {
   getLabel?: SankeyDiagramProps['getLabel'];
   plotHeight?: number;
   minLinkWidth?: number;
+  showHeadroom?: boolean;
 }[] = [
   {
     key: 'distribution',
@@ -163,6 +164,28 @@ export const examples: {
     description:
       'An available total of 1,000 with only 500 transferred. No extra edge margins.',
     graph: simple,
+  },
+  {
+    key: 'headroom',
+    name: 'Headroom',
+    description:
+      'The same 1,000-unit available balance with only 500 transferred. The hatch marks 500 units of unallocated source capacity.',
+    graph: simple,
+    showHeadroom: true,
+    getLabel: (view) => {
+      if (view.kind === 'link') return view.text.amount;
+      const headroom = Math.max(
+        0,
+        view.total - Math.max(view.incoming, view.outgoing),
+      );
+      const share =
+        view.total > 0 ? Math.round((headroom / view.total) * 100) : 0;
+      return [
+        view.node.title,
+        view.text.total,
+        headroom > 0 ? `${share}% headroom` : 'Fully allocated',
+      ];
+    },
   },
   {
     key: 'parallel',

@@ -1,4 +1,4 @@
-.flow-diagram{--flow-surface:#fff;--flow-text:#24334a;--flow-muted-text:#68758b;--flow-focus:#2644af;min-width:0;max-width:100%;position:relative;font-family:inherit;color:var(--flow-text);isolation:isolate}
+.flow-diagram{--flow-surface:#fff;--flow-text:#24334a;--flow-muted-text:#68758b;--flow-focus:#2644af;--flow-headroom:var(--flow-muted-text,#68758b);--flow-headroom-track:color-mix(in srgb,var(--flow-surface,#fff) 86%,var(--flow-muted-text,#68758b));min-width:0;max-width:100%;position:relative;font-family:inherit;color:var(--flow-text);isolation:isolate}
 .flow-scroll{max-width:100%;scrollbar-width:thin;scrollbar-color:#c2ccda transparent}
 /* Only create a scroll container for a genuinely wider canvas. Leave scroll
    chaining native so vertical wheel gestures can reach the surrounding page. */
@@ -6,11 +6,12 @@
 .flow-canvas{display:block;max-width:none;overflow:clip;touch-action:pan-x pan-y pinch-zoom;background:var(--flow-surface)}
 .flow-canvas [role=button]{cursor:pointer;pointer-events:none}
 .flow-decoration{fill:none;pointer-events:none}
+.flow-headroom{pointer-events:none}
 .flow-label{fill:var(--flow-text);paint-order:stroke;stroke:var(--flow-surface);stroke-width:3px;stroke-linejoin:round;font-weight:450}
 .flow-link-label{font-variant-numeric:tabular-nums}
 /* Inspection fades only paint and labels. Selection/focus outlines and the
    portaled tooltip update immediately; reduced-motion rules below opt out. */
-.flow-canvas [data-node-paint],.flow-canvas [data-link-paint],.flow-canvas .flow-label{transition:opacity 120ms ease-out}
+.flow-canvas [data-node-paint],.flow-canvas [data-link-paint],.flow-canvas .flow-headroom,.flow-canvas .flow-label{transition:opacity 120ms ease-out}
 .flow-sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
 .flow-empty{padding:48px 24px;text-align:center;color:var(--flow-muted-text);font-size:14px}
 .flow-measuring{width:100%;display:grid;place-items:center;color:var(--flow-muted-text);font-size:12px}
