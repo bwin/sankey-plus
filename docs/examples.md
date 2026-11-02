@@ -9,6 +9,7 @@
 | Distribution          | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata.                                                     |
 | Inspection bridge     | External `highlight` on the Distribution graph, with a live `onInspectChange` subject/modality readout and independent selection.                                |
 | Stages                | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare.                                        |
+| Shares                | Resolved source and target percentages in link labels and tooltips; each share uses its endpoint total in the link's own unit.                                   |
 | World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
 | Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
 | Layout overlay        | Distribution with stage headings and a rounded Process A callout from the public layout snapshot, plus diagnostics and SVG download.                             |
@@ -41,6 +42,12 @@ stages: ['collect', 'prepare', 'deliver'];
 Within Prepare, `prepare-b` appears before `prepare-a`, so B stays above A. The gold 100-unit `bypass` link goes directly from Collect A to Deliver A without shifting either stage. Stage keys identify columns; they do not create built-in headings. Same-stage and backward links are invalid. See [stages and order](api.md#stages-and-order).
 
 ![Stages with shared columns and a gold link skipping the middle stage](../screenshots/docs-stages.jpg)
+
+## Shares
+
+The [Shares example](../demo/fixtures.ts) reuses the Distribution graph with a formatter that appends resolved endpoint shares. The 350-unit Input A → Process A link is **35% of its source** (350 of 1,000) and **39% of its destination** (350 of Process A's 900). Link labels show the source share; tooltips show both endpoint shares alongside the formatted amounts.
+
+`fromTotal` and `toTotal` come from each node's resolved balance in the link's `inputUnit` and `outputUnit`, so shares compare like units even when the graph uses several currencies or a different layout unit. Node amounts, converted values and transfer rates keep their normal formatting. [Share field semantics](units.md#callback-and-presentation-fields).
 
 ## World trade
 

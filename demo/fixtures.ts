@@ -1,4 +1,8 @@
-import type { SankeyGraph, SankeyDiagramProps } from '../src/index.js';
+import type {
+  SankeyAmountContext,
+  SankeyDiagramProps,
+  SankeyGraph,
+} from '../src/index.js';
 import full from './feature-demo.json';
 import distributionData from './distribution.json';
 import stagesData from './stages.json';
@@ -11,6 +15,19 @@ import { renderOverlay } from './layout-overlay.js';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
+const tradeAmount = (value: number) => `$${value.toLocaleString('en-US')} bn`;
+const formatAmount = (value: number, context: SankeyAmountContext) => {
+  const formatted = `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${context.unit ?? 'units'}`;
+  if (
+    context.kind !== 'link' ||
+    context.isConverted ||
+    (context.field !== 'amount' && context.field !== 'outputAmount')
+  )
+    return formatted;
+  const isInput = context.field === 'amount';
+  const share = isInput ? context.fromShare : context.toShare;
+  return `${formatted} (${Math.round(share * 100)}% of ${isInput ? 'source' : 'target'})`;
+};
 export function fanOut(
   edge: 'top' | 'bottom' = 'bottom',
   count = 3,
@@ -64,7 +81,8 @@ export const examples: {
   name: string;
   description: string;
   graph: SankeyGraph;
-  formatAmount?: (value: number, context?: { unit?: string }) => string;
+  formatAmount?: SankeyDiagramProps['formatAmount'];
+  formatQuantity?: (value: number, context?: { unit?: string }) => string;
   getLabel?: SankeyDiagramProps['getLabel'];
   plotHeight?: number;
   minLinkWidth?: number;
@@ -95,13 +113,22 @@ export const examples: {
     graph: stagesData,
   },
   {
+    key: 'shares',
+    name: 'Shares',
+    description:
+      'Link labels append the source share; tooltips show both source and target shares. 350 is 35% of the 1,000 at Input A and 39% of the 900 at Process A. Shares use the total at each endpoint in the link unit, not the layout unit.',
+    graph: distribution,
+    formatAmount,
+  },
+  {
     key: 'trade',
     name: 'World trade',
     description:
       'Countries trade four goods, with reserves released above and stock held for next year below. Illustrative annual values in USD billions; not actual trade statistics.',
     graph: tradeData as SankeyGraph,
     plotHeight: 420,
-    formatAmount: (value) => `$${value.toLocaleString('en-US')} bn`,
+    formatAmount: tradeAmount,
+    formatQuantity: tradeAmount,
     getLabel: (view) => {
       if (view.kind === 'link') return view.text.amount;
       const { stage, edge } = view.node.placement;

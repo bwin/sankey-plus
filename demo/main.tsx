@@ -260,10 +260,11 @@ function App() {
     graph =
       transitionVariant && current.altGraph ? current.altGraph : current.graph;
   const formatAmount = current.formatAmount ?? format;
+  const formatQuantity = current.formatQuantity ?? format;
   const customDetails = useCallback(
     (view: SankeyPresentation) =>
-      details(view, formatAmount, graph.defaultUnit),
-    [formatAmount, graph.defaultUnit],
+      details(view, formatQuantity, graph.defaultUnit),
+    [formatQuantity, graph.defaultUnit],
   );
   const { hostRef, readyMs } = useExampleTiming(
     `${example}:${viewport}:${custom}:${transitionVariant}`,
@@ -277,7 +278,7 @@ function App() {
       : selection?.kind === 'link'
         ? (() => {
             const f = graph.links.find((f) => f.key === selection.key);
-            return f ? linkName(f, graph, formatAmount) : undefined;
+            return f ? linkName(f, graph, formatQuantity) : undefined;
           })()
         : undefined;
   const clicked = (subject: SankeySubject, name: string) => {
@@ -445,7 +446,7 @@ function App() {
                 onLinkClick={(f) =>
                   clicked(
                     { kind: 'link', key: f.link.key },
-                    linkName(f.link, graph, formatAmount),
+                    linkName(f.link, graph, formatQuantity),
                   )
                 }
               />
@@ -528,7 +529,7 @@ function App() {
                     key: f.key,
                   })}
                 >
-                  {linkName(f, graph, formatAmount)}
+                  {linkName(f, graph, formatQuantity)}
                 </option>
               ))}
             </optgroup>

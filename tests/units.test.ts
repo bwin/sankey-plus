@@ -99,6 +99,16 @@ const noLabels = (g: SankeyGraph) =>
     ...g.nodes.map((n) => [`node:${n.key}`, []] as [string, string[]]),
     ...g.links.map((l) => [`link:${l.key}`, []] as [string, string[]]),
   ]);
+const declaredFx = (): SankeyGraph => {
+  const g = fx(3900);
+  return {
+    ...g,
+    nodes: [
+      { ...g.nodes[0], totals: { USD: 250 } },
+      { ...g.nodes[1], totals: { COP: 500000 } },
+    ],
+  };
+};
 
 test('a large FX ratio credits the output currency without multiplying ribbon width', () => {
   const g = fx(),
@@ -367,6 +377,139 @@ test('separate balances use per-unit max, declared/auto totals and one converted
   assert.equal(model.links.get('usd-in')!.input.unit, 'USD');
   assert.equal(pool.node, graph.nodes[1]);
   assert.equal(model.links.get('eur-in')!.link, graph.links[0]);
+});
+
+test('unitless shares use declared and derived endpoint totals', () => {
+  const g: SankeyGraph = {
+    stages: ['a', 'b'],
+    nodes: [
+      { key: 'a', title: 'A', total: 1000, placement: { stage: 'a' } },
+      { key: 'b', title: 'B', placement: { stage: 'b' } },
+    ],
+    links: [{ key: 'ab', from: 'a', to: 'b', amount: 500 }],
+  };
+  const link = resolveGraph(g).links.get('ab')!;
+  assert.equal(link.fromTotal, 1000);
+  assert.equal(link.toTotal, 500);
+  approx(link.fromShare, 0.5);
+  approx(link.toShare, 1);
+});
+
+test('shares use the link unit rather than the layout unit', () => {
+  const model = resolveGraph(graph),
+    link = model.links.get('eur-out')!,
+    calls: SankeyAmountContext[] = [];
+  assert.equal(model.layoutUnit, 'USD');
+  assert.equal(model.nodes.get('pool')!.total, 270);
+  assert.equal(link.fromTotal, 200);
+  assert.equal(link.toTotal, 150);
+  approx(link.fromShare, 0.75);
+  approx(link.toShare, 1);
+  const view = presentation(
+    model,
+    { kind: 'link', key: 'eur-out' },
+    (amount, context) => {
+      calls.push(context);
+      return `${amount} ${context.unit}`;
+    },
+    'tooltip',
+  );
+  if (view.kind !== 'link') throw new Error('link expected');
+  assert.equal(view.fromTotal, 200);
+  assert.equal(view.toTotal, 150);
+  approx(view.fromShare, 0.75);
+  approx(view.toShare, 1);
+  const call = calls[0];
+  if (call?.kind !== 'link') throw new Error('link context expected');
+  assert.equal(call.fromTotal, 200);
+  assert.equal(call.toTotal, 150);
+  approx(call.fromShare, 0.75);
+  approx(call.toShare, 1);
+});
+
+test('cross-unit shares use native totals and the actual transfer rate', () => {
+  const model = resolveGraph(declaredFx()),
+    link = model.links.get('fx')!;
+  assert.deepEqual(link.input, { amount: 100, unit: 'USD' });
+  assert.deepEqual(link.output, { amount: 390000, unit: 'COP' });
+  assert.equal(link.fromTotal, 250);
+  assert.equal(link.toTotal, 500000);
+  approx(link.fromShare, 0.4);
+  approx(link.toShare, 0.78);
+  const calls: SankeyAmountContext[] = [];
+  const view = presentation(
+    model,
+    { kind: 'link', key: 'fx' },
+    (amount, context) => {
+      calls.push(context);
+      return `${amount} ${context.unit}`;
+    },
+    'tooltip',
+  );
+  if (view.kind !== 'link') throw new Error('link expected');
+  assert.equal(view.fromTotal, 250);
+  assert.equal(view.toTotal, 500000);
+  approx(view.fromShare, 0.4);
+  approx(view.toShare, 0.78);
+  const native = calls.filter((context) => !context.isConverted);
+  assert.equal(native.length, 2);
+  for (const context of native) {
+    assert.equal(context.kind, 'link');
+    if (context.kind !== 'link') throw new Error('link context expected');
+    assert.equal(context.fromTotal, 250);
+    assert.equal(context.toTotal, 500000);
+    approx(context.fromShare, 0.4);
+    approx(context.toShare, 0.78);
+  }
+});
+
+test('converted formatter contexts retain native-only shares', () => {
+  const model = resolveGraph(declaredFx()),
+    calls: SankeyAmountContext[] = [];
+  presentation(
+    model,
+    { kind: 'link', key: 'fx' },
+    (amount, context) => {
+      calls.push(context);
+      return `${amount} ${context.unit}`;
+    },
+    'tooltip',
+  );
+  const converted = calls.filter((context) => context.isConverted);
+  assert.equal(converted.length, 2);
+  for (const context of converted) {
+    assert.equal(context.kind, 'link');
+    if (context.kind !== 'link') throw new Error('link context expected');
+    assert.equal(context.unit, 'USD');
+    assert.equal(context.fromTotal, 250);
+    assert.equal(context.toTotal, 500000);
+    approx(context.fromShare, 0.4);
+    approx(context.toShare, 0.78);
+  }
+});
+
+test('derived target totals produce destination shares', () => {
+  const g: SankeyGraph = {
+    stages: ['a', 'b'],
+    nodes: [
+      { key: 'a', title: 'A', total: 900, placement: { stage: 'a' } },
+      { key: 'b', title: 'B', placement: { stage: 'b' } },
+    ],
+    links: [
+      { key: 'first', from: 'a', to: 'b', amount: 300 },
+      { key: 'second', from: 'a', to: 'b', amount: 200 },
+    ],
+  };
+  const model = resolveGraph(g),
+    target = model.nodes.get('b')!,
+    first = model.links.get('first')!;
+  assert.equal(target.total, 500);
+  assert.equal(target.totalSource, 'derived');
+  assert.equal(first.fromTotal, 900);
+  assert.equal(first.toTotal, 500);
+  approx(first.fromShare, 1 / 3);
+  approx(first.toShare, 0.6);
+  approx(model.links.get('second')!.toShare, 0.4);
 });
 
 test('a default unit values scalar totals but link units stay explicit', () => {
