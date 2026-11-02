@@ -51,6 +51,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
     "test": "node scripts/test.mjs",
     "stress": "node scripts/benchmark-layout.mjs --case stress-100-300",
     "benchmark": "node scripts/benchmark-layout.mjs",
@@ -63,14 +64,19 @@
     "react-dom": ">=18.2.0"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@rollup/plugin-commonjs": "^29.0.3",
     "@rollup/plugin-node-resolve": "^16.0.3",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "eslint": "^10.14.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "rollup": "^4.65.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.72.1"
   }
 }

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { resolveGraph, emphasis, nodeColor } from '../src/model.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { defaultLabel, presentation } from '../src/presentation.js';
-import { crossings, distanceToRoute, distanceToSegment, inflate, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
+import { crossings, distanceToRoute, distanceToSegment, intersects, pointAt, ribbonBounds, routeCollisions } from '../src/paths.js';
 import { SankeyInputError, type SankeyGraph, type SankeyIssueCode } from '../src/types.js';
 import { stressGraph } from '../fixtures/stress.js';
 const full = JSON.parse(readFileSync(new URL('../../demo/feature-demo.json', import.meta.url), 'utf8')) as SankeyGraph;

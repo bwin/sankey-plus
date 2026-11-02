@@ -41,7 +41,7 @@ test('cancelling between chunks closes the iterator and prevents further work', 
     function* work() { try { while (progress < 100) { progress++; yield; } return progress; } finally { closed = true; } }
     await assert.rejects(runInChunks(work(), controller.signal, {
         budgetMs: 1, now: () => clock++,
-        yieldToHost: async () => { if (++pauses === 3) controller.abort(reason); },
+        yieldToHost: () => { if (++pauses === 3) controller.abort(reason); return Promise.resolve(); },
     }), error => error === reason);
     assert.equal(progress, 2);
     assert.equal(closed, true);

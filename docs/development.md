@@ -22,6 +22,7 @@ The development command builds once and starts the server at **http://127.0.0.1:
 
 ```sh
 npm run typecheck
+npm run lint
 npm test
 npm run build
 npm run verify:package
@@ -50,7 +51,7 @@ Node 22 was used for verification. React 19.2 was used for the demo; the library
 
 ## Automatic demo deployment
 
-[The demo workflow](https://github.com/bwin/sankey-plus/blob/master/.github/workflows/demo.yml) checks pushes to `dev` and `master`, plus pull requests targeting `master`. It can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, runs the tests, builds the library/demo and, on `master` only, uploads `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed. Development branches run checks without publishing the demo.
+[The demo workflow](https://github.com/bwin/sankey-plus/blob/master/.github/workflows/demo.yml) checks pushes to `dev` and `master`, plus pull requests targeting `master`. It can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, runs the linter and tests, builds the library/demo and, on `master` only, uploads `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed. Development branches run checks without publishing the demo.
 
 The repository's Pages publishing source is **GitHub Actions**. The `github-pages` environment accepts only `master` deployments; only that job has Pages write and identity-token permissions. No personal access token or npm publishing secret is stored in the workflow. Generated files stay out of Git.
 
