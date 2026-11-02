@@ -146,3 +146,233 @@ test('chunked layout propagates input and callback errors', async () => {
     (error) => error === failure,
   );
 });
+
+test('main-stage headroom starts below the larger port stack', () => {
+  const graph: SankeyGraph = {
+    stages: ['input', 'output'],
+    nodes: [
+      {
+        key: 'available',
+        title: 'Available',
+        total: 1000,
+        placement: { stage: 'input' },
+      },
+      {
+        key: 'allocated',
+        title: 'Allocated',
+        total: 500,
+        placement: { stage: 'output' },
+      },
+    ],
+    links: [
+      { key: 'allocation', from: 'available', to: 'allocated', amount: 500 },
+    ],
+  };
+  const scene = layoutGraph(resolveGraph(graph), { width: 900 });
+  const available = scene.nodes.find((n) => n.key === 'available')!,
+    allocated = scene.nodes.find((n) => n.key === 'allocated')!,
+    headroom = available.headroom!;
+  assert.ok(headroom);
+  assert.equal(headroom.x, available.x);
+  assert.equal(headroom.w, available.w);
+  assert.ok(Math.abs(headroom.h - 500 * scene.scale) < 1e-9);
+  assert.ok(
+    Math.abs(headroom.y - (available.y + available.h - headroom.h)) < 1e-9,
+  );
+  assert.equal(headroom.y + headroom.h, available.y + available.h);
+  assert.equal(allocated.headroom, undefined);
+});
+
+test('edge headroom occupies the right end of the horizontal bar', () => {
+  const graph: SankeyGraph = {
+    stages: ['stage'],
+    nodes: [
+      {
+        key: 'source',
+        title: 'Source',
+        total: 500,
+        placement: { stage: 'stage' },
+      },
+      {
+        key: 'reserve',
+        title: 'Reserve',
+        total: 1000,
+        placement: { edge: 'bottom' },
+      },
+    ],
+    links: [{ key: 'fill', from: 'source', to: 'reserve', amount: 500 }],
+  };
+  const scene = layoutGraph(resolveGraph(graph), { width: 900 });
+  const node = scene.nodes.find((n) => n.key === 'reserve')!,
+    headroom = node.headroom!;
+  assert.ok(headroom);
+  assert.equal(headroom.y, node.y);
+  assert.equal(headroom.h, node.h);
+  assert.ok(Math.abs(headroom.w - 500 * scene.scale) < 1e-9);
+  assert.ok(Math.abs(headroom.x + headroom.w - (node.x + node.w)) < 1e-9);
+});
+
+test('fully allocated nodes omit headroom', () => {
+  const graph: SankeyGraph = {
+    stages: ['input', 'output'],
+    nodes: [
+      {
+        key: 'source',
+        title: 'Source',
+        total: 500,
+        placement: { stage: 'input' },
+      },
+      {
+        key: 'target',
+        title: 'Target',
+        total: 500,
+        placement: { stage: 'output' },
+      },
+    ],
+    links: [{ key: 'flow', from: 'source', to: 'target', amount: 500 }],
+  };
+  const scene = layoutGraph(resolveGraph(graph), { width: 900 });
+  assert.ok(scene.nodes.every((n) => n.headroom === undefined));
+});
+
+test('mixed-direction multi-unit relays are not hatched', () => {
+  const graph: SankeyGraph = {
+    defaultUnit: 'USD',
+    conversionRates: [
+      { from: 'EUR', to: 'USD', rate: 2 },
+      { from: 'GBP', to: 'USD', rate: 3 },
+    ],
+    stages: ['source', 'relay', 'target'],
+    nodes: [
+      { key: 'source', title: 'Source', placement: { stage: 'source' } },
+      {
+        key: 'relay',
+        title: 'Relay',
+        placement: { stage: 'relay' },
+        totals: { EUR: 120, GBP: 60 },
+      },
+      { key: 'target', title: 'Target', placement: { stage: 'target' } },
+    ],
+    links: [
+      {
+        key: 'in',
+        from: 'source',
+        to: 'relay',
+        amount: 100,
+        inputUnit: 'EUR',
+        outputUnit: 'EUR',
+      },
+      {
+        key: 'out',
+        from: 'relay',
+        to: 'target',
+        amount: 50,
+        inputUnit: 'GBP',
+        outputUnit: 'GBP',
+      },
+    ],
+  };
+  const model = resolveGraph(graph),
+    relay = model.nodes.get('relay')!;
+  assert.equal(relay.totalSource, 'declared');
+  assert.ok(relay.total > Math.max(relay.incoming, relay.outgoing));
+  const scene = layoutGraph(model, { width: 900 });
+  assert.equal(scene.nodes.find((n) => n.key === 'relay')!.headroom, undefined);
+});
+
+test('derived pure sources do not have headroom', () => {
+  const graph: SankeyGraph = {
+    stages: ['source', 'target'],
+    nodes: [
+      { key: 'source', title: 'Source', placement: { stage: 'source' } },
+      { key: 'target', title: 'Target', placement: { stage: 'target' } },
+    ],
+    links: [{ key: 'flow', from: 'source', to: 'target', amount: 500 }],
+  };
+  const model = resolveGraph(graph),
+    source = model.nodes.get('source')!;
+  assert.equal(source.totalSource, 'derived');
+  assert.equal(source.incoming, 0);
+  assert.ok(source.outgoing > 0);
+  const scene = layoutGraph(model, { width: 900 });
+  assert.equal(
+    scene.nodes.find((n) => n.key === 'source')!.headroom,
+    undefined,
+  );
+});
+
+test('declared pure sources use multi-unit totals for headroom', () => {
+  const graph: SankeyGraph = {
+    defaultUnit: 'USD',
+    conversionRates: [{ from: 'EUR', to: 'USD', rate: 2 }],
+    stages: ['source', 'target'],
+    nodes: [
+      {
+        key: 'source',
+        title: 'Source',
+        totals: { EUR: 100, USD: 400 },
+        placement: { stage: 'source' },
+      },
+      { key: 'target', title: 'Target', placement: { stage: 'target' } },
+    ],
+    links: [
+      {
+        key: 'flow',
+        from: 'source',
+        to: 'target',
+        amount: 100,
+        inputUnit: 'EUR',
+        outputUnit: 'EUR',
+      },
+    ],
+  };
+  const model = resolveGraph(graph),
+    source = model.nodes.get('source')!;
+  assert.equal(source.totalSource, 'declared');
+  assert.equal(source.total, 600);
+  assert.equal(source.incoming, 0);
+  assert.equal(source.outgoing, 200);
+  const scene = layoutGraph(model, { width: 900 });
+  const node = scene.nodes.find((n) => n.key === 'source')!,
+    headroom = node.headroom!;
+  assert.ok(headroom);
+  assert.ok(Math.abs(headroom.h - 400 * scene.scale) < 1e-9);
+  assert.equal(
+    scene.nodes.find((n) => n.key === 'target')!.headroom,
+    undefined,
+  );
+});
+
+test('minLinkWidth floors never become headroom', () => {
+  const graph: SankeyGraph = {
+    stages: ['input', 'output'],
+    nodes: [
+      {
+        key: 'source',
+        title: 'Source',
+        total: 1000,
+        placement: { stage: 'input' },
+      },
+      {
+        key: 'target',
+        title: 'Target',
+        total: 100,
+        placement: { stage: 'output' },
+      },
+    ],
+    links: [{ key: 'flow', from: 'source', to: 'target', amount: 50 }],
+  };
+  const scene = layoutGraph(resolveGraph(graph), {
+    width: 900,
+    minLinkWidth: 100,
+  });
+  const source = scene.nodes.find((n) => n.key === 'source')!,
+    target = scene.nodes.find((n) => n.key === 'target')!,
+    headroom = source.headroom!;
+  assert.equal(source.h, 1000 * scene.scale);
+  assert.ok(headroom);
+  assert.ok(Math.abs(headroom.h - (source.h - 100)) < 1e-9);
+  assert.ok(headroom.h < (1000 - 50) * scene.scale);
+  assert.ok(target.h > 100 * scene.scale);
+  assert.equal(target.headroom, undefined);
+});

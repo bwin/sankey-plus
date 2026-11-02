@@ -6,10 +6,24 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Link facts expose `fromTotal`, `toTotal`, `fromShare` and `toShare`, resolved in the link's input/output units, so labels and tooltips can show percentage shares without re-deriving endpoint totals. Add a Shares demo built on the Distribution graph.
 - Optional `highlight` and `onInspectChange` props: external one-hop emphasis unions with internal inspection, and a deduplicated callback reports the inspected subject and pointer/keyboard/touch modality without changing selection. Attaching the callback while a subject is inspected replays that subject once.
 - Inspection bridge example tab with a node highlight picker and a live inspection callback readout.
 - Linked table example with focusable node/link rows that drive external one-hop emphasis and mirror chart inspection back into the active row, while selection stays independently controlled.
 - Playwright coverage for external highlight, inspection readout, dismissal, selection independence and tab stops on the Inspection bridge example.
+- Optional `showHeadroom` hatching for declared partial source/sink capacity, with `minLinkWidth`-aware placement and theme-derived colors. Mixed-direction relays and derived totals are omitted.
+- Optional `transition` crossfade between completed scenes, with configurable duration and easing, reduced-motion support and a `duration: 0` opt-out. Path geometry is not interpolated.
+- Transitions example that swaps 500- and 750-unit allocation states with a 320 ms crossfade.
+- Public read-only layout snapshots with node/link geometry, label boxes, stage positions, central plot and edge bands, layout-unit node scalars and collision diagnostics.
+- `onLayout` completion callback and `renderOverlay` for non-interactive SVG annotations, both using the same typed read-only snapshot.
+- Typed `SankeyDiagramHandle` ref access for `getLayout()`, `getSvgElement()` and `focusSubject()`, including a generic forwardRef declaration that remains usable without a ref.
+- Layout overlay example with stage headings, a rounded node callout, diagnostics readout and SVG download.
+- Non-throwing `validateGraph(graph: unknown)` preflight that returns all semantic `SankeyIssue` values for structurally well-shaped graphs and `invalid-graph` for malformed top-level or nested entries, without weakening the component's throw-on-invalid rendering behavior.
+- Validation demo tab with valid, cycle, unknown-endpoint and total-too-small variants, showing returned issue codes, messages and affected keys.
+
+### Fixed
+
+- Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
 
 ## [2.0.0] - 2026-11-01
 

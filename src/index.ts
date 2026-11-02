@@ -1,12 +1,18 @@
 export { SankeyDiagram } from './SankeyDiagram.js';
 export { SankeyInputError } from './types.js';
+export { validateGraph } from './validate.js';
 export type {
   SankeyActivationEvent,
+  SankeyDiagramHandle,
   SankeyDiagramProps,
   SankeyGraph,
   SankeyInspection,
   SankeyIssue,
   SankeyIssueCode,
+  SankeyLayout,
+  SankeyLayoutLabel,
+  SankeyLayoutLink,
+  SankeyLayoutNode,
   SankeyNode,
   SankeyPlacement,
   SankeySubject,
@@ -20,4 +26,5 @@ export type {
   SankeyTotals,
   SankeyUnitTotals,
   SankeyFormattedTotals,
+  SankeyTransition,
 } from './types.js';

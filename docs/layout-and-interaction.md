@@ -20,6 +20,12 @@
 
 `onInspectChange` reports the internal inspection subject and its `pointer`, `keyboard` or `touch` modality, or `null` after dismissal. Pointer-leave dismissal waits about 300 ms, then reports `null`. It fires once per subject or modality change, including removal of the inspected subject during a graph update, and is deduplicated across renders. Attaching the callback while a subject is inspected replays that subject once; changing the callback identity does not duplicate the report, while removing and re-adding it reports the current subject again. Selection changes never trigger it.
 
+## Scene transitions
+
+`transition` optionally crossfades one completed scene into the next completed scene after graph or layout changes. The old drawing fades out while the new drawing fades in. Nodes, links and labels are not moved or tweened, and no intermediate layout is calculated. The old copy is clipped to the current scene and ignores pointer input, is hidden from assistive technology and has no tab stops; focus, hit testing and tooltips belong to the new scene only.
+
+`duration` defaults to 280 ms and `easing` to `ease-out`. `duration: 0` disables the effect, and `prefers-reduced-motion: reduce` skips it entirely. Rapid updates replace the previous fading copy instead of stacking overlays. Selection and external-highlight changes refresh the snapshot; transient hover/emphasis is not captured. Options that alter scene markup follow the same refresh rule. Container resize and font measurement can also trigger a new completed scene and therefore a transition. The inspection fade is separate and still runs in 120 ms. See [the Transitions example](examples.md#transitions).
+
 ## Layout and routing
 
 Top/bottom nodes are horizontal quantitative bars with full labels, facts and interactions. Both link directions use the inward face: below a top bar and above a bottom bar. Multiple edge nodes pack within their valid source/target intervals and wrap into rows. A side without nodes reserves no extra band.
@@ -51,6 +57,20 @@ Wrapping increases height. If stage spacing or an individual ribbon cannot clear
 The chart creates a scroll container only when its canvas is wider than the host. Wheel input uses native browser scrolling and can continue to the surrounding page. Visual clipping uses `overflow: clip` without creating extra hidden scroll containers; no wheel handlers cancel or redirect input. Touch gestures also remain native: the canvas keeps `pan-x pan-y pinch-zoom` in `touch-action`, so pinch zoom is not cancelled by pointer inspection. A tap inspects and pins its subject.
 
 The routing search is bounded. Pathological custom graphs may still need a larger host container. There is no promise of a globally optimal layout or perfect clearance for every possible graph.
+
+## Headroom
+
+With `showHeadroom`, declared capacity on a pure source or pure sink is drawn as a subtle hatch. Fully derived totals and mixed-direction relays are omitted, because their combined gap can mix units and roles. Vertical main-stage bars place the hatch at the bottom; horizontal top/bottom bars place it at the right end, matching their horizontal port axis. Hatches below 0.5 CSS pixels are omitted. The hatch is decorative and pointer-transparent, so the node bar remains the hit target. It does not change totals, widths, scale, labels, routing or hit testing. `minLinkWidth` floors count toward the covered stack: if the displayed ports fill the quantitative total, no headroom is shown.
+
+## Snapshots and overlays
+
+The completed scene is available as a typed read-only layout snapshot through `onLayout` and `getLayout()`; treat its maps and objects as immutable even though the maps are runtime `Map` instances. It contains the same measured geometry that was rendered: canvas extents, the top/bottom edge bands, the common value scale, central plot band, stage columns, node bars and layout-unit facts, painted link paths and widths, measured label boxes, and the final crossing/obstacle diagnostics. Labels retain the lines that were fitted to their available width; `labelHidden` marks a link label that was omitted to avoid a collision. `onLayout` reports each completed scene once; attaching a callback while a completed scene is current reports that snapshot once, and changing callback identity alone does not replay it.
+
+For example, a host can read `plot.top` or `topBand` to place stage headings, use `nodes` rects to outline a subject, or read `diagnostics.crossings` to show whether a dense graph retains crossings. Snapshot coordinates are in the SVG view box, not screen coordinates. A resize keeps the previous complete snapshot and rendered scene current until the replacement completes. Changing the graph or layout options clears the snapshot to `null` until the new scene commits, so cached handles do not mix another graph's geometry with the current facts. See [snapshot fields](api.md#snapshot-fields).
+
+`renderOverlay` adds decorative SVG after links, nodes and labels. The component wraps it in a `pointer-events: none`, `aria-hidden` group so annotations cannot capture pointer or keyboard input or duplicate accessible content. Use theme variables such as `--flow-muted-text` and `--flow-focus` to keep annotations legible on light and dark hosts. Overlays are for headings, callouts and other non-interactive context only. They must not be the sole source of important information, and they do not change layout, routing, hit testing or selection.
+
+The [Layout overlay example](examples.md#layout-overlay) annotates the Distribution graph with stage headings and a callout around Process A, shows the snapshot's collision diagnostics, and downloads a self-contained SVG copy.
 
 ## Visual examples
 

@@ -41,6 +41,7 @@ export interface NodeGeometry extends Rect {
   hi: number;
   preferred: number;
   footprint: number;
+  headroom?: Rect;
 }
 export interface LinkGeometry {
   key: string;
@@ -871,6 +872,36 @@ export function* layoutGraphSteps<I, T>(
     }
   }
   portGroups.forEach(setPorts);
+  // Declared capacity beyond the larger displayed port stack is drawn as
+  // headroom. Mixed-direction relays are ambiguous when their units differ,
+  // and derived totals already equal the required flow, so only declared or
+  // partially declared pure sources/sinks are eligible. Widths include
+  // minLinkWidth, so floor-expanded space is never mistaken for capacity.
+  const incomingWidths = new Map<string, number>(),
+    outgoingWidths = new Map<string, number>();
+  for (const f of links) {
+    incomingWidths.set(f.to, (incomingWidths.get(f.to) ?? 0) + f.endWidth);
+    outgoingWidths.set(
+      f.from,
+      (outgoingWidths.get(f.from) ?? 0) + f.startWidth,
+    );
+  }
+  for (const n of nodes) {
+    yield;
+    const facts = model.nodes.get(n.key)!,
+      source = facts.incoming === 0 && facts.outgoing > 0,
+      sink = facts.outgoing === 0 && facts.incoming > 0;
+    if (facts.totalSource === 'derived' || (!source && !sink)) continue;
+    const stack = Math.max(
+        incomingWidths.get(n.key) ?? 0,
+        outgoingWidths.get(n.key) ?? 0,
+      ),
+      size = Math.min(n.edge ? n.w : n.h, facts.total * scale - stack);
+    if (size <= 0.5) continue;
+    n.headroom = n.edge
+      ? { x: n.x + n.w - size, y: n.y, w: size, h: n.h }
+      : { x: n.x, y: n.y + n.h - size, w: n.w, h: size };
+  }
   const obstacleCache = new Map<string, Rect[]>();
   const obstacles = (f: LinkGeometry) => {
     let boxes = obstacleCache.get(f.key);

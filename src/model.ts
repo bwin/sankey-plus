@@ -190,6 +190,11 @@ export function resolveGraph<I, T>(
       input,
       output,
       conversionRate,
+      // Endpoint totals and shares are filled in after node balances resolve.
+      fromTotal: 0,
+      toTotal: 0,
+      fromShare: 0,
+      toShare: 0,
       layoutInputAmount,
       layoutOutputAmount,
       referenceRates,
@@ -313,16 +318,22 @@ export function resolveGraph<I, T>(
         .map((f) => nodes.get(f.to)?.node.placement?.stage)
         .filter((s): s is string => s !== undefined)
         .map((s) => graph.stages.indexOf(s));
-      if (
-        sources.length &&
-        targets.length &&
-        Math.max(...sources) >= Math.min(...targets)
-      )
-        issues.push({
-          code: 'incompatible-placement',
-          nodeKey: id,
-          message: `Edge node ${id} cannot fit between its main sources and targets.`,
-        });
+      if (sources.length && targets.length) {
+        const latestSource = sources.reduce(
+            (latest, stage) => Math.max(latest, stage),
+            -Infinity,
+          ),
+          earliestTarget = targets.reduce(
+            (earliest, stage) => Math.min(earliest, stage),
+            Infinity,
+          );
+        if (latestSource >= earliestTarget)
+          issues.push({
+            code: 'incompatible-placement',
+            nodeKey: id,
+            message: `Edge node ${id} cannot fit between its main sources and targets.`,
+          });
+      }
     }
     nodes.set(id, {
       ...facts,
@@ -342,6 +353,25 @@ export function resolveGraph<I, T>(
         : undefined,
       incomingLinks: ins,
       outgoingLinks: outs,
+    });
+  }
+  const share = (amount: number, total: number) =>
+    total > 0 ? Math.min(1, Math.max(0, amount / total)) : 0;
+  for (const [id, facts] of links) {
+    const fromTotal =
+      nodes
+        .get(facts.link.from)!
+        .totals.find((row) => row.unit === facts.input.unit)?.total ?? 0;
+    const toTotal =
+      nodes
+        .get(facts.link.to)!
+        .totals.find((row) => row.unit === facts.output.unit)?.total ?? 0;
+    links.set(id, {
+      ...facts,
+      fromTotal,
+      toTotal,
+      fromShare: share(facts.input.amount, fromTotal),
+      toShare: share(facts.output.amount, toTotal),
     });
   }
   if (issues.length) throw new SankeyInputError(issues);

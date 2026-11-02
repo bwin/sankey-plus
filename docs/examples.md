@@ -10,14 +10,19 @@
 | Inspection bridge     | External `highlight` on the Distribution graph, with a live `onInspectChange` subject/modality readout and independent selection.                                |
 | Linked table          | A focusable node/link table that drives chart emphasis and mirrors chart inspection back into the active row, without changing selection.                        |
 | Stages                | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare.                                        |
+| Shares                | Resolved source and target percentages in link labels and tooltips; each share uses its endpoint total in the link's own unit.                                   |
 | World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
 | Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
+| Layout overlay        | Distribution with stage headings and a rounded Process A callout from the public layout snapshot, plus diagnostics and SVG download.                             |
 | Wide range            | 200–500,000-unit transfers with a 4px minimum visible thickness; exact amounts stay in labels and tooltips.                                                      |
+| Transitions           | Two allocation states for the same graph; use Swap data to crossfade 500 ↔ 750 units without interpolating geometry.                                             |
 | Four-sided flow       | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps.                                         |
 | Fan-out / Top fan-out | Separate ordered turns below and above the main sequence.                                                                                                        |
 | Fan-in                | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total.                                                             |
 | Many edge nodes       | Twelve destinations wrapping into rows with separate lanes.                                                                                                      |
 | Partial allocation    | A 1,000-unit node with a 500-unit transfer; no unused edge bands.                                                                                                |
+| Validation            | Non-throwing `validateGraph` issues for valid, cycle, unknown-endpoint and total-too-small variants. Invalid variants never reach the chart.                     |
+| Headroom              | The same 1,000/500 allocation with a hatched unallocated half and a headroom label.                                                                              |
 | Parallel links        | Three distinct ribbons between the same pair of nodes, each independently inspectable and selectable.                                                            |
 | Stress test           | The same 100-node/300-link graph as the command-line stress benchmark. Dense crossings are expected.                                                             |
 | Empty                 | No data and no chart SVG.                                                                                                                                        |
@@ -81,6 +86,12 @@ Within Prepare, `prepare-b` appears before `prepare-a`, so B stays above A. The 
 
 ![Stages with shared columns and a gold link skipping the middle stage](../screenshots/docs-stages.jpg)
 
+## Shares
+
+The [Shares example](../demo/fixtures.ts) reuses the Distribution graph with a formatter that appends resolved endpoint shares. The 350-unit Input A → Process A link is **35% of its source** (350 of 1,000) and **39% of its destination** (350 of Process A's 900). Link labels show the source share; tooltips show both endpoint shares alongside the formatted amounts.
+
+`fromTotal` and `toTotal` come from each node's resolved balance in the link's `inputUnit` and `outputUnit`, so shares compare like units even when the graph uses several currencies or a different layout unit. Node amounts, converted values and transfer rates keep their normal formatting. [Share field semantics](units.md#callback-and-presentation-fields).
+
 ## World trade
 
 The [World trade fixture](../demo/trade.json) has 18 nodes and 26 links across `exporters`, `global-goods` and `importers`, plus two top and two bottom nodes. It uses **invented annual values in USD billions**, not actual trade statistics. The four center nodes aggregate the goods available from current exports and opening warehouse stocks:
@@ -117,6 +128,12 @@ Inspect either conversion link to see its actual input/output amounts and transf
 
 ![Actual transfer amounts and rate separated from reference valuation](../screenshots/docs-currency-tooltip.jpg)
 
+## Layout overlay
+
+The Layout overlay tab reuses the Distribution graph and passes a `renderOverlay` function from [demo/layout-overlay.tsx](https://github.com/bwin/sankey-plus/blob/master/demo/layout-overlay.tsx). The overlay reads the public snapshot and draws stage headings above the three columns plus a rounded callout around `process-a`. It uses theme variables only, so it remains legible without participating in hit testing or accessibility.
+
+The footer reports the snapshot's `crossings` and `obstacleCollisions`, refreshed by `onLayout` only for this tab; switching examples clears the readout so it never shows another graph's diagnostics. Both values come from the completed scene and should be shown as diagnostics, not treated as errors for dense graphs. The footer also clones the live `<svg>` obtained through the imperative handle, injects theme variables and label/canvas styles, and downloads a self-contained file. The overlay is decorative: labels, tooltips, selection and keyboard navigation still come from the diagram itself. See [snapshot fields](api.md#snapshot-fields) and [snapshots and overlays](layout-and-interaction.md#snapshots-and-overlays).
+
 ## Wide range
 
 The [Wide range fixture](../demo/wide-range.json) has 9 nodes and 8 links with amounts of **200, 2,000, 25,000 and 500,000 units**. Three sources and a top reserve release feed Distribution, which passes 527,200 units to three destinations and a bottom retained balance.
@@ -126,6 +143,24 @@ This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; 
 The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/docs-wide-range-proportional.jpg). [Minimum-width semantics](api.md#quantities).
 
 ![Wide range with a 4px minimum thickness](../screenshots/docs-wide-range-minimum.jpg)
+
+## Validation
+
+The [Validation example](https://github.com/bwin/sankey-plus/blob/master/demo/validation-panel.tsx) runs `validateGraph` on four variants of the [simple fixture](../demo/fixtures.ts): a valid graph, a directed cycle, an unknown link endpoint and a total that is too small for its outgoing transfer. Choosing a variant lists every returned issue with its `code`, `message` and affected node or link key.
+
+Only the valid graph is passed to the demo's chart. The invalid variants are preflight examples and never reach `SankeyDiagram`, so this demo does not need an error boundary. The component still throws `SankeyInputError` for invalid render input in normal use; see [non-throwing validation](api.md#non-throwing-validation).
+
+## Headroom
+
+The Headroom example reuses the 1,000-unit available / 500-unit allocated graph and enables `showHeadroom`. The bottom half of the Available bar is hatched, and its label adds **50% headroom**. Allocated is fully explained by its incoming transfer, so it has no hatch and is labelled **Fully allocated**.
+
+The hatch is a drawing aid only. Available still totals 1,000, the transfer remains 500, and the destination total stays 500. Headroom is limited to declared or partially declared pure sources and sinks; fully derived totals and mixed-direction relays are not hatched, because their combined gap may mix units or roles. With `minLinkWidth`, the displayed port widths are subtracted from the quantitative `total * scale`; a floor-expanded stack consumes the bar rather than creating extra unused capacity, and hatches below 0.5 CSS pixels are omitted. [Headroom semantics](api.md#headroom).
+
+## Transitions
+
+The [Transitions example](../demo/fixtures.ts) reuses the simple two-stage graph with a second variant where the allocation is **750 instead of 500 units**. Nodes and stages are unchanged. Use **Swap data** in the chart footer to replace the graph; the completed 500-unit scene crossfades into the completed 750-unit scene over **320 ms**.
+
+The widths are not tweened. The old drawing fades out while the new drawing fades in, so there is no intermediate geometry or node movement. `transition={false}` (the default) updates directly. `duration: 0` disables the effect for one diagram, and `prefers-reduced-motion: reduce` skips it. Changing the Canvas width or the selected node can also affect the next crossfade because a new completed scene or refreshed snapshot is used. See [scene transitions](api.md#scene-transitions).
 
 ## Fan-in
 

@@ -50,6 +50,7 @@ async function main() {
     'dist/index.d.ts',
     'dist/SankeyDiagram.d.ts',
     'dist/types.d.ts',
+    'dist/validate.d.ts',
     'dist/style.css',
     'dist/style.css.d.ts',
   ]);
@@ -121,7 +122,7 @@ async function main() {
 
   await fs.writeFile(
     path.join(consumer, 'consumer.ts'),
-    "import { SankeyDiagram, type SankeyGraph } from '@bwin/sankey-plus';\nimport '@bwin/sankey-plus/style.css';\nconst graph: SankeyGraph = {stages: [], nodes: [], links: []};\nvoid [SankeyDiagram, graph];\n",
+    "import { SankeyDiagram, validateGraph, type SankeyGraph } from '@bwin/sankey-plus';\nimport '@bwin/sankey-plus/style.css';\nconst graph: SankeyGraph = {stages: [], nodes: [], links: []};\nvoid [SankeyDiagram, validateGraph(graph), graph];\n",
   );
   await fs.writeFile(
     path.join(consumer, 'tsconfig.json'),
@@ -152,8 +153,15 @@ async function main() {
   );
   console.log('Strict NodeNext consumer typecheck passed.');
 
-  const runtimeCheck =
-    "const pkg = await import('@bwin/sankey-plus');\nfor (const name of ['SankeyDiagram', 'SankeyInputError']) {\n  if (typeof pkg[name] !== 'function') throw new Error(`Missing runtime export: ${name}`);\n}";
+  const runtimeCheck = `const pkg = await import('@bwin/sankey-plus');
+const diagram = pkg.SankeyDiagram;
+if (typeof diagram !== 'function' && !(diagram && typeof diagram.render === 'function'))
+  throw new Error('Missing runtime export: SankeyDiagram');
+for (const name of ['SankeyInputError', 'validateGraph']) {
+  if (typeof pkg[name] !== 'function')
+    throw new Error(\`Missing runtime export: \${name}\`);
+}
+`;
   run(process.execPath, ['--input-type=module', '--eval', runtimeCheck], {
     cwd: consumer,
   });
