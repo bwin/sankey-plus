@@ -33,9 +33,11 @@ import {
   identity,
   presentation,
   same,
+  scopeGhostMarkup,
   showConverted,
   subjectName,
   tooltipPosition,
+  transitionTiming,
 } from './presentation.js';
 import type {
   SankeyActivationEvent,
@@ -55,6 +57,23 @@ type Inspection = {
   };
   pinned: boolean;
   modality: 'pointer' | 'touch' | 'keyboard';
+};
+type SceneSnapshot = {
+  scene: Scene;
+  selection: string;
+  markup: string;
+  width: number;
+  height: number;
+  font: string;
+};
+type SceneGhost = {
+  id: number;
+  markup: string;
+  width: number;
+  height: number;
+  font: string;
+  duration: number;
+  easing: string;
 };
 function Text({
   box,
@@ -278,6 +297,7 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     accessibleName,
     className,
     plotHeight = 336,
+    transition: transitionProp,
     minLinkWidth = 0,
     selection,
     onNodeClick,
@@ -288,9 +308,16 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     getLabel,
     renderTooltip,
   } = props;
+  const transition = transitionTiming(transitionProp),
+    transitionDuration = transition?.duration ?? 0,
+    transitionEasing = transition?.easing ?? 'ease-out',
+    selectionSignature = selection ? `${selection.kind}:${selection.key}` : '';
   const root = useRef<HTMLDivElement>(null),
     svg = useRef<SVGSVGElement>(null),
-    controls = useRef(new Map<string, SVGGElement>());
+    ghostSvg = useRef<SVGSVGElement>(null),
+    controls = useRef(new Map<string, SVGGElement>()),
+    sceneSnapshot = useRef<SceneSnapshot | null>(null),
+    ghostSequence = useRef(0);
   const closeTimer = useRef<number | null>(null),
     interactingWithTooltip = useRef(false),
     tooltipHandle = useRef<DetailsHandle>(null),
@@ -311,7 +338,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
   const [theme, setTheme] = useState<CSSProperties>({});
   const [inspection, setInspection] = useState<Inspection | null>(null),
     [roving, setRoving] = useState(0),
-    [keyboardFocus, setKeyboardFocus] = useState<SankeySubject | null>(null);
+    [keyboardFocus, setKeyboardFocus] = useState<SankeySubject | null>(null),
+    [ghost, setGhost] = useState<SceneGhost | null>(null);
   const input = useRef<'pointer' | 'keyboard'>('keyboard'),
     suppressed = useRef<SankeySubject | null>(null),
     lastKeyboard = useRef(0);
@@ -488,6 +516,73 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
   }, [snapshot, onLayout]);
   const pending =
     model.nodes.size > 0 && layoutResult?.request !== layoutRequest;
+  // Snapshot completed scenes only while transitions are enabled. Selection
+  // changes refresh the snapshot without starting a new crossfade. Future
+  // scene-affecting options (for example showHeadroom) belong in this list.
+  useBrowserLayoutEffect(() => {
+    const enabled =
+      transitionDuration > 0 &&
+      !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!enabled) {
+      sceneSnapshot.current = null;
+      setGhost(null);
+      return;
+    }
+    const el = svg.current;
+    if (!scene || !el) return;
+    const previous = sceneSnapshot.current,
+      sceneChanged = previous?.scene !== scene,
+      selectionChanged = previous?.selection !== selectionSignature;
+    if (!sceneChanged && !selectionChanged) return;
+    const next: SceneSnapshot = {
+      scene,
+      selection: selectionSignature,
+      markup: el.innerHTML,
+      width: scene.width,
+      height: scene.height,
+      font: measurement.font,
+    };
+    sceneSnapshot.current = next;
+    if (!previous || !sceneChanged) return;
+    ghostSequence.current += 1;
+    const id = ghostSequence.current,
+      prefix = `flow-${uid}-${id}-`.replace(/[^a-zA-Z0-9_-]/g, '');
+    setGhost({
+      id,
+      markup: scopeGhostMarkup(previous.markup, prefix),
+      width: previous.width,
+      height: previous.height,
+      font: previous.font,
+      duration: transitionDuration,
+      easing: transitionEasing,
+    });
+  }, [
+    scene,
+    measurement.font,
+    transitionDuration,
+    transitionEasing,
+    selectionSignature,
+    uid,
+  ]);
+  useBrowserLayoutEffect(() => {
+    if (!model.nodes.size) {
+      sceneSnapshot.current = null;
+      setGhost(null);
+    }
+  }, [model]);
+  // Remove the ghost by its own id so a rapid replacement is not cleared by a
+  // timer or animation-end event from the previous crossfade.
+  useEffect(() => {
+    if (!ghost) return;
+    const timer = window.setTimeout(
+      () => setGhost((current) => (current?.id === ghost.id ? null : current)),
+      ghost.duration + 80,
+    );
+    return () => window.clearTimeout(timer);
+  }, [ghost]);
+  useBrowserLayoutEffect(() => {
+    if (ghost) ghostSvg.current?.setAttribute('inert', '');
+  }, [ghost]);
   const exists = useCallback(
     (s: SankeySubject | null | undefined) => subjectExists(model, s),
     [model],
@@ -895,6 +990,30 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
           className={`flow-scroll${scene.width > measurement.width ? ' flow-scroll--overflow' : ''}`}
           data-flow-scroll=""
         >
+          {ghost && (
+            <svg
+              key={ghost.id}
+              ref={ghostSvg}
+              className="flow-canvas flow-canvas--ghost"
+              aria-hidden="true"
+              focusable="false"
+              width={ghost.width}
+              height={ghost.height}
+              viewBox={`0 0 ${ghost.width} ${ghost.height}`}
+              style={{
+                font: ghost.font,
+                animationDuration: `${ghost.duration}ms`,
+                animationTimingFunction: ghost.easing,
+              }}
+              onAnimationEnd={(event) => {
+                if (event.target === event.currentTarget)
+                  setGhost((current) =>
+                    current?.id === ghost.id ? null : current,
+                  );
+              }}
+              dangerouslySetInnerHTML={{ __html: ghost.markup }}
+            />
+          )}
           <svg
             ref={svg}
             role="group"
@@ -902,7 +1021,7 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
             width={scene.width}
             height={scene.height}
             viewBox={`0 0 ${scene.width} ${scene.height}`}
-            className="flow-canvas"
+            className={`flow-canvas${ghost ? ' flow-canvas--entering' : ''}`}
             style={{
               font: measurement.font,
               cursor: active?.modality === 'pointer' ? 'pointer' : undefined,
@@ -932,177 +1051,189 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
             }}
             onClick={click}
           >
-            {ordered.map((f) => {
-              const subject: SankeySubject = {
-                  kind: 'link',
-                  key: f.key,
-                },
-                isSelected = same(subject, selected),
-                focused = same(subject, keyboardFocus),
-                strongFlow = strong.links.has(f.key),
-                opacity = strongFlow
-                  ? same(subject, active?.subject ?? null)
-                    ? 0.75
-                    : 0.4
-                  : 0.1;
-              return (
-                <g
-                  key={f.key}
-                  {...subjectProps(subject)}
-                  data-emphasis={strongFlow ? 'strong' : 'faded'}
-                >
-                  {isSelected && (
-                    <g
-                      aria-hidden="true"
-                      className="flow-decoration"
-                      data-selection-outline=""
-                    >
-                      <path
-                        d={f.ribbon?.path ?? f.route.path}
-                        stroke="var(--flow-surface, white)"
-                        strokeWidth={(f.ribbon ? 0 : f.width) + 8}
-                      />
-                      <path
-                        d={f.ribbon?.path ?? f.route.path}
-                        stroke={f.color}
-                        strokeWidth={(f.ribbon ? 0 : f.width) + 5}
-                      />
-                      <path
-                        d={f.ribbon?.path ?? f.route.path}
-                        stroke="var(--flow-surface, white)"
-                        strokeWidth={(f.ribbon ? 0 : f.width) + 2}
-                      />
-                    </g>
-                  )}
-                  <path
-                    data-link-paint=""
-                    d={f.ribbon?.path ?? f.route.path}
-                    fill={f.ribbon ? f.color : 'none'}
-                    stroke={f.ribbon ? 'none' : f.color}
-                    strokeWidth={f.width}
-                    opacity={opacity}
-                    pointerEvents="none"
-                    aria-hidden="true"
-                  />
-                  {focused && (
-                    <g className="flow-decoration" aria-hidden="true">
-                      <path
-                        d={f.route.path}
-                        stroke="var(--flow-surface, white)"
-                        strokeWidth={4}
-                      />
-                      <path
-                        d={f.route.path}
-                        stroke="var(--flow-focus, #2644af)"
-                        strokeWidth={2}
-                        strokeDasharray="4 4"
-                      />
-                    </g>
-                  )}
-                </g>
-              );
-            })}
-            {scene.nodes.map((n) => {
-              const subject: SankeySubject = {
-                  kind: 'node',
-                  key: n.key,
-                },
-                isSelected = same(subject, selected),
-                focused = same(subject, keyboardFocus),
-                strongItem = strong.nodes.has(n.key);
-              return (
-                <g
-                  key={n.key}
-                  {...subjectProps(subject)}
-                  data-emphasis={strongItem ? 'strong' : 'faded'}
-                >
-                  <rect
-                    data-node-paint=""
-                    x={n.x}
-                    y={n.y}
-                    width={n.w}
-                    height={n.h}
-                    fill={n.zero ? 'none' : n.color}
-                    stroke={n.zero ? n.color : undefined}
-                    strokeWidth={1}
-                    opacity={strongItem ? 1 : 0.25}
-                    pointerEvents="none"
-                    aria-hidden="true"
-                  />
-                  {isSelected && (
-                    <g
-                      className="flow-decoration"
-                      data-selection-outline=""
-                      aria-hidden="true"
-                    >
-                      <rect
-                        x={n.x - 4}
-                        y={n.y - 4}
-                        width={n.w + 8}
-                        height={n.h + 8}
-                        stroke="var(--flow-surface, white)"
-                        strokeWidth={6}
-                      />
-                      <rect
-                        x={n.x - 4}
-                        y={n.y - 4}
-                        width={n.w + 8}
-                        height={n.h + 8}
-                        stroke={n.color}
-                        strokeWidth={2}
-                      />
-                    </g>
-                  )}
-                  {focused && (
-                    <rect
-                      className="flow-decoration"
-                      x={n.x - 8}
-                      y={n.y - 8}
-                      width={n.w + 16}
-                      height={n.h + 16}
-                      stroke="var(--flow-focus, #2644af)"
-                      strokeWidth={1.5}
-                      strokeDasharray="3 3"
-                      aria-hidden="true"
-                    />
-                  )}
-                </g>
-              );
-            })}
-            {scene.links
-              .filter(
-                (f) =>
-                  !f.labelHidden ||
-                  same(active?.subject ?? null, {
+            <g
+              className="flow-scene-content"
+              style={
+                ghost
+                  ? {
+                      animationDuration: `${ghost.duration}ms`,
+                      animationTimingFunction: ghost.easing,
+                    }
+                  : undefined
+              }
+            >
+              {ordered.map((f) => {
+                const subject: SankeySubject = {
                     kind: 'link',
                     key: f.key,
-                  }),
-              )
-              .map((f) => (
+                  },
+                  isSelected = same(subject, selected),
+                  focused = same(subject, keyboardFocus),
+                  strongFlow = strong.links.has(f.key),
+                  opacity = strongFlow
+                    ? same(subject, active?.subject ?? null)
+                      ? 0.75
+                      : 0.4
+                    : 0.1;
+                return (
+                  <g
+                    key={f.key}
+                    {...subjectProps(subject)}
+                    data-emphasis={strongFlow ? 'strong' : 'faded'}
+                  >
+                    {isSelected && (
+                      <g
+                        aria-hidden="true"
+                        className="flow-decoration"
+                        data-selection-outline=""
+                      >
+                        <path
+                          d={f.ribbon?.path ?? f.route.path}
+                          stroke="var(--flow-surface, white)"
+                          strokeWidth={(f.ribbon ? 0 : f.width) + 8}
+                        />
+                        <path
+                          d={f.ribbon?.path ?? f.route.path}
+                          stroke={f.color}
+                          strokeWidth={(f.ribbon ? 0 : f.width) + 5}
+                        />
+                        <path
+                          d={f.ribbon?.path ?? f.route.path}
+                          stroke="var(--flow-surface, white)"
+                          strokeWidth={(f.ribbon ? 0 : f.width) + 2}
+                        />
+                      </g>
+                    )}
+                    <path
+                      data-link-paint=""
+                      d={f.ribbon?.path ?? f.route.path}
+                      fill={f.ribbon ? f.color : 'none'}
+                      stroke={f.ribbon ? 'none' : f.color}
+                      strokeWidth={f.width}
+                      opacity={opacity}
+                      pointerEvents="none"
+                      aria-hidden="true"
+                    />
+                    {focused && (
+                      <g className="flow-decoration" aria-hidden="true">
+                        <path
+                          d={f.route.path}
+                          stroke="var(--flow-surface, white)"
+                          strokeWidth={4}
+                        />
+                        <path
+                          d={f.route.path}
+                          stroke="var(--flow-focus, #2644af)"
+                          strokeWidth={2}
+                          strokeDasharray="4 4"
+                        />
+                      </g>
+                    )}
+                  </g>
+                );
+              })}
+              {scene.nodes.map((n) => {
+                const subject: SankeySubject = {
+                    kind: 'node',
+                    key: n.key,
+                  },
+                  isSelected = same(subject, selected),
+                  focused = same(subject, keyboardFocus),
+                  strongItem = strong.nodes.has(n.key);
+                return (
+                  <g
+                    key={n.key}
+                    {...subjectProps(subject)}
+                    data-emphasis={strongItem ? 'strong' : 'faded'}
+                  >
+                    <rect
+                      data-node-paint=""
+                      x={n.x}
+                      y={n.y}
+                      width={n.w}
+                      height={n.h}
+                      fill={n.zero ? 'none' : n.color}
+                      stroke={n.zero ? n.color : undefined}
+                      strokeWidth={1}
+                      opacity={strongItem ? 1 : 0.25}
+                      pointerEvents="none"
+                      aria-hidden="true"
+                    />
+                    {isSelected && (
+                      <g
+                        className="flow-decoration"
+                        data-selection-outline=""
+                        aria-hidden="true"
+                      >
+                        <rect
+                          x={n.x - 4}
+                          y={n.y - 4}
+                          width={n.w + 8}
+                          height={n.h + 8}
+                          stroke="var(--flow-surface, white)"
+                          strokeWidth={6}
+                        />
+                        <rect
+                          x={n.x - 4}
+                          y={n.y - 4}
+                          width={n.w + 8}
+                          height={n.h + 8}
+                          stroke={n.color}
+                          strokeWidth={2}
+                        />
+                      </g>
+                    )}
+                    {focused && (
+                      <rect
+                        className="flow-decoration"
+                        x={n.x - 8}
+                        y={n.y - 8}
+                        width={n.w + 16}
+                        height={n.h + 16}
+                        stroke="var(--flow-focus, #2644af)"
+                        strokeWidth={1.5}
+                        strokeDasharray="3 3"
+                        aria-hidden="true"
+                      />
+                    )}
+                  </g>
+                );
+              })}
+              {scene.links
+                .filter(
+                  (f) =>
+                    !f.labelHidden ||
+                    same(active?.subject ?? null, {
+                      kind: 'link',
+                      key: f.key,
+                    }),
+                )
+                .map((f) => (
+                  <Text
+                    key={`t-${f.key}`}
+                    box={f.label}
+                    className="flow-label flow-link-label"
+                    opacity={strong.links.has(f.key) ? 1 : 0.25}
+                  />
+                ))}
+              {scene.nodes.map((n) => (
                 <Text
-                  key={`t-${f.key}`}
-                  box={f.label}
-                  className="flow-label flow-link-label"
-                  opacity={strong.links.has(f.key) ? 1 : 0.25}
+                  key={`i-${n.key}`}
+                  box={n.label}
+                  className="flow-label"
+                  opacity={strong.nodes.has(n.key) ? 1 : 0.25}
                 />
               ))}
-            {scene.nodes.map((n) => (
-              <Text
-                key={`i-${n.key}`}
-                box={n.label}
-                className="flow-label"
-                opacity={strong.nodes.has(n.key) ? 1 : 0.25}
-              />
-            ))}
-            {renderOverlay && snapshot ? (
-              <g
-                className="flow-overlay"
-                pointerEvents="none"
-                aria-hidden="true"
-              >
-                {renderOverlay(snapshot)}
-              </g>
-            ) : null}
+              {renderOverlay && snapshot ? (
+                <g
+                  className="flow-overlay"
+                  pointerEvents="none"
+                  aria-hidden="true"
+                >
+                  {renderOverlay(snapshot)}
+                </g>
+              ) : null}
+            </g>
           </svg>
         </div>
       )}

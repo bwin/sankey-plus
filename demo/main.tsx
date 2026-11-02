@@ -194,7 +194,8 @@ function App() {
   const diagram = useRef<SankeyDiagramHandle>(null);
   const [example, setExample] = useState('distribution'),
     [selection, setSelection] = useState<SankeySubject | null>(null),
-    [viewport, setViewport] = useState('auto');
+    [viewport, setViewport] = useState('auto'),
+    [transitionVariant, setTransitionVariant] = useState(false);
   const [clicksSelect, setClicksSelect] = useState(true),
     [custom, setCustom] = useState(true),
     [events, setEvents] = useState(0),
@@ -252,7 +253,8 @@ function App() {
     window.setTimeout(() => URL.revokeObjectURL(url), 0);
   };
   const current = examples.find((e) => e.key === example)!,
-    graph = current.graph;
+    graph =
+      transitionVariant && current.altGraph ? current.altGraph : current.graph;
   const formatAmount = current.formatAmount ?? format;
   const customDetails = useCallback(
     (view: SankeyPresentation) =>
@@ -260,7 +262,7 @@ function App() {
     [formatAmount, graph.defaultUnit],
   );
   const { hostRef, readyMs } = useExampleTiming(
-    `${example}:${viewport}:${custom}`,
+    `${example}:${viewport}:${custom}:${transitionVariant}`,
   );
   const selectedName =
     selection?.kind === 'node'
@@ -282,6 +284,7 @@ function App() {
   const chooseExample = (key: string) => {
     setExample(key);
     setSelection(null);
+    setTransitionVariant(false);
     setDiagnostics(null);
   };
   const navigateExamples = (
@@ -415,6 +418,7 @@ function App() {
                 accessibleName={`${current.name} diagram`}
                 plotHeight={current.plotHeight ?? 336}
                 minLinkWidth={current.minLinkWidth}
+                transition={current.transition}
                 selection={selection}
                 formatAmount={formatAmount}
                 getLabel={custom ? (current.getLabel ?? labels) : undefined}
@@ -449,6 +453,15 @@ function App() {
                   {diagnostics.obstacleCollisions} obstacle collisions
                 </span>
               ) : null}
+              {current.altGraph && (
+                <button
+                  className="clear-button"
+                  aria-pressed={transitionVariant}
+                  onClick={() => setTransitionVariant((value) => !value)}
+                >
+                  Swap data
+                </button>
+              )}
               <button className="clear-button" onClick={downloadSvg}>
                 Download SVG
               </button>

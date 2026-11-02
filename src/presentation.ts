@@ -1,11 +1,186 @@
-import type {
-  SankeyAmountContext,
-  SankeyDiagramProps,
-  SankeySubject,
-  SankeyPresentation,
-  SankeyUnitTotals,
+import {
+  SankeyInputError,
+  type SankeyAmountContext,
+  type SankeyDiagramProps,
+  type SankeySubject,
+  type SankeyPresentation,
+  type SankeyUnitTotals,
 } from './types.js';
 import type { ResolvedGraph } from './model.js';
+/** Resolved crossfade timing; null disables the effect. */
+export type SankeyTransitionTiming = {
+  readonly duration: number;
+  readonly easing: string;
+};
+/** Normalize the public transition prop and reject unusable durations. */
+export function transitionTiming(
+  transition: SankeyDiagramProps['transition'],
+): SankeyTransitionTiming | null {
+  if (!transition) return null;
+  const duration = transition.duration ?? 280;
+  if (!Number.isFinite(duration) || duration < 0 || duration > 10_000)
+    throw new SankeyInputError([
+      {
+        code: 'invalid-number',
+        message:
+          'transition.duration must be finite, between 0 and 10,000 milliseconds.',
+      },
+    ]);
+  return { duration, easing: transition.easing ?? 'ease-out' };
+}
+function decodeAttributeReferences(value: string) {
+  return value
+    .replace(/&quot;|&#0*34;|&#x0*22;/gi, '"')
+    .replace(/&apos;|&#0*39;|&#x0*27;/gi, "'")
+    .replace(/&#0*35;|&#x0*23;/gi, '#')
+    .replace(/&amp;/gi, '&');
+}
+function scopeHashReference(value: string, prefix: string) {
+  const match = /^(?:#|&#0*35;|&#x0*23;)/i.exec(value);
+  return match ? `#${prefix}${value.slice(match[0].length)}` : value;
+}
+function scopeUrlReferences(value: string, prefix: string) {
+  return value.replace(/url\(([^)]*)\)/gi, (token, body: string) => {
+    const decoded = decodeAttributeReferences(body).trim(),
+      quote =
+        decoded.startsWith('"') || decoded.startsWith("'") ? decoded[0] : '',
+      inner = quote && decoded.endsWith(quote) ? decoded.slice(1, -1) : decoded;
+    return inner.startsWith('#') ? `url(#${prefix}${inner.slice(1)})` : token;
+  });
+}
+function scopeGhostMarkupWithDom(markup: string, prefix: string) {
+  const doc = new DOMParser().parseFromString(
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${markup}</svg>`,
+    'text/html',
+  );
+  const root = doc.body.querySelector('svg');
+  if (!root) return null;
+  for (const element of root.querySelectorAll('*')) {
+    const id = element.getAttribute('id');
+    if (id) element.setAttribute('id', `${prefix}${id}`);
+    element.removeAttribute('tabindex');
+    for (const attribute of Array.from(element.attributes)) {
+      const name = attribute.name.toLowerCase();
+      if (name === 'id' || name === 'tabindex') continue;
+      attribute.value =
+        name === 'href' || name === 'xlink:href'
+          ? scopeHashReference(attribute.value, prefix)
+          : scopeUrlReferences(attribute.value, prefix);
+    }
+  }
+  return root.innerHTML;
+}
+function tagEnd(markup: string, start: number) {
+  let quote = '';
+  for (let index = start + 1; index < markup.length; index += 1) {
+    const char = markup[index];
+    if (quote) {
+      if (char === quote) quote = '';
+    } else if (char === '"' || char === "'") quote = char;
+    else if (char === '>') return index;
+  }
+  return -1;
+}
+function scopeGhostTag(tag: string, prefix: string) {
+  const name = /^<\s*[^\s/>]+/.exec(tag)?.[0];
+  if (!name || /^<\s*[!/?]/.test(tag)) return tag;
+  let result = name,
+    index = name.length;
+  while (index < tag.length) {
+    const attributeStart = index;
+    while (index < tag.length && /\s/.test(tag[index])) index += 1;
+    if (index >= tag.length) {
+      result += tag.slice(attributeStart);
+      break;
+    }
+    if (tag[index] === '>' || (tag[index] === '/' && tag[index + 1] === '>')) {
+      result += tag.slice(attributeStart);
+      break;
+    }
+    const nameStart = index;
+    while (index < tag.length && !/[\s=/>]/.test(tag[index])) index += 1;
+    const attributeName = tag.slice(nameStart, index);
+    if (!attributeName) {
+      result += tag.slice(attributeStart);
+      break;
+    }
+    const beforeEqualsStart = index;
+    while (index < tag.length && /\s/.test(tag[index])) index += 1;
+    const beforeEquals = tag.slice(beforeEqualsStart, index);
+    let equals = '',
+      quote = '',
+      value = '';
+    if (tag[index] === '=') {
+      index += 1;
+      const afterEqualsStart = index;
+      while (index < tag.length && /\s/.test(tag[index])) index += 1;
+      equals = '=' + tag.slice(afterEqualsStart, index);
+      if (tag[index] === '"' || tag[index] === "'") {
+        quote = tag[index];
+        index += 1;
+        const valueStart = index;
+        while (index < tag.length && tag[index] !== quote) index += 1;
+        value = tag.slice(valueStart, index);
+        if (tag[index] === quote) index += 1;
+      } else {
+        const valueStart = index;
+        while (index < tag.length && !/[\s>]/.test(tag[index])) index += 1;
+        value = tag.slice(valueStart, index);
+      }
+    }
+    const lower = attributeName.toLowerCase();
+    if (lower === 'tabindex') continue;
+    if (lower === 'id') value = prefix + value;
+    else if (lower === 'href' || lower === 'xlink:href')
+      value = scopeHashReference(value, prefix);
+    else value = scopeUrlReferences(value, prefix);
+    result +=
+      tag.slice(attributeStart, nameStart) +
+      attributeName +
+      beforeEquals +
+      equals +
+      quote +
+      value +
+      quote;
+  }
+  return result;
+}
+/**
+ * Conservative tag scanner for environments without DOMParser. It skips text
+ * nodes but does not interpret comments, CDATA or arbitrary CSS escapes.
+ */
+export function scopeGhostMarkupFallback(markup: string, prefix: string) {
+  let result = '',
+    index = 0;
+  while (index < markup.length) {
+    const start = markup.indexOf('<', index);
+    if (start < 0) {
+      result += markup.slice(index);
+      break;
+    }
+    result += markup.slice(index, start);
+    const end = tagEnd(markup, start);
+    if (end < 0) {
+      result += markup.slice(start);
+      break;
+    }
+    result += scopeGhostTag(markup.slice(start, end + 1), prefix);
+    index = end + 1;
+  }
+  return result;
+}
+/** Scope ids, hrefs and URL references in a temporary ghost SVG copy. */
+export function scopeGhostMarkup(markup: string, prefix: string) {
+  if (typeof DOMParser !== 'undefined') {
+    try {
+      const scoped = scopeGhostMarkupWithDom(markup, prefix);
+      if (scoped !== null) return scoped;
+    } catch {
+      // Fall back to the markup scanner when SVG parsing is unavailable.
+    }
+  }
+  return scopeGhostMarkupFallback(markup, prefix);
+}
 const numeric = new Intl.NumberFormat(undefined, {
   maximumSignificantDigits: 15,
 });

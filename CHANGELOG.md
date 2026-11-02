@@ -6,6 +6,8 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Added
 
+- Optional `transition` crossfade between completed scenes, with configurable duration and easing, reduced-motion support and a `duration: 0` opt-out. Path geometry is not interpolated.
+- Transitions example that swaps 500- and 750-unit allocation states with a 320 ms crossfade.
 - Public read-only layout snapshots with node/link geometry, label boxes, stage positions, central plot and edge bands, layout-unit node scalars and collision diagnostics.
 - `onLayout` completion callback and `renderOverlay` for non-interactive SVG annotations, both using the same typed read-only snapshot.
 - Typed `SankeyDiagramHandle` ref access for `getLayout()`, `getSvgElement()` and `focusSubject()`, including a generic forwardRef declaration that remains usable without a ref.
