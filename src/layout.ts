@@ -1246,6 +1246,9 @@ export function* layoutGraphSteps<I, T>(
     }
   }
   // A fixed two-pass budget avoids combinatorial search or hover-time layout work.
+  // The budget counts adjacent-pair trials, not accepted swaps. Within each pass,
+  // visit the same pair index in every eligible group before advancing so one
+  // large early group cannot consume all later groups' trials.
   // Simple ordered turns are constructed above and are never heuristically permuted.
   const eligible = portGroups.filter(
     (g) =>
@@ -1253,22 +1256,29 @@ export function* layoutGraphSteps<I, T>(
       g.links.length > 1 &&
       g.links.every((f) => !byKey.get(g.out ? f.to : f.from)!.edge),
   );
-  let swaps = 0;
+  const pairCount = eligible.reduce(
+    (count, group) => Math.max(count, group.links.length - 1),
+    0,
+  );
+  let swapTrials = 0;
   for (let pass = 0; pass < 2; pass++)
-    for (const group of eligible)
-      for (let i = 0; i < group.links.length - 1 && swaps < 64; i++, swaps++) {
+    for (let pair = 0; pair < pairCount && swapTrials < 64; pair++)
+      for (const group of eligible) {
+        if (swapTrials >= 64) break;
+        if (pair >= group.links.length - 1) continue;
         yield;
-        const a = group.links[i],
-          b = group.links[i + 1],
+        swapTrials++;
+        const a = group.links[pair],
+          b = group.links[pair + 1],
           oldA = a.route,
           oldB = b.route,
           before = score(a, oldA) + score(b, oldB);
-        [group.links[i], group.links[i + 1]] = [b, a];
+        [group.links[pair], group.links[pair + 1]] = [b, a];
         setPorts(group);
         a.route = ordinary(a);
         b.route = ordinary(b);
         if (score(a, a.route) + score(b, b.route) >= before - 0.01) {
-          [group.links[i], group.links[i + 1]] = [a, b];
+          [group.links[pair], group.links[pair + 1]] = [a, b];
           setPorts(group);
           a.route = oldA;
           b.route = oldB;
@@ -1279,13 +1289,32 @@ export function* layoutGraphSteps<I, T>(
   // then approach the shared destination horizontally. Keep the existing ports
   // and accept only a measurable improvement without a new crossing pair or
   // increased obstacle collisions.
+  // Apply the same fair ordering here: visit the same candidate index in every
+  // eligible group before advancing, rather than spending the budget group by
+  // group.
+  const convergenceGroups = portGroups
+    .filter((group) => !group.out && !group.node.edge)
+    .map((group) => ({
+      edgeInputs: group.links.filter((f) => byKey.get(f.from)!.edge),
+      flows: group.links.filter((f) => !byKey.get(f.from)!.edge),
+    }))
+    .filter((group) => group.edgeInputs.length && group.flows.length);
+  const candidateCount = convergenceGroups.reduce(
+    (count, group) => Math.max(count, group.flows.length),
+    0,
+  );
   let convergenceTrials = 0;
-  for (const group of portGroups.filter((g) => !g.out && !g.node.edge)) {
-    const edgeInputs = group.links.filter((f) => byKey.get(f.from)!.edge);
-    if (!edgeInputs.length) continue;
-    for (const f of group.links.filter((f) => !byKey.get(f.from)!.edge)) {
+  for (
+    let candidateIndex = 0;
+    candidateIndex < candidateCount && convergenceTrials < 64;
+    candidateIndex++
+  )
+    for (const { edgeInputs, flows } of convergenceGroups) {
+      if (convergenceTrials >= 64) break;
+      const f = flows[candidateIndex];
+      if (!f) continue;
       yield;
-      if (convergenceTrials++ >= 64) break;
+      convergenceTrials++;
       const conflicting = edgeInputs.filter(
         (other) =>
           ribbonOverlap(f.route, f.width, other.route, other.width) > 0.05,
@@ -1365,7 +1394,6 @@ export function* layoutGraphSteps<I, T>(
       }
       if (!worse && improvement > 0.05) f.route = candidate;
     }
-  }
   // Vertically translated stage curves squeeze touching strokes together on
   // their sloping section. For parallel links with matching port spacing,
   // follow a shared normal-offset wave instead. Leave detours and all other

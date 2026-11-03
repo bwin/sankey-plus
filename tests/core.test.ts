@@ -1032,6 +1032,52 @@ test('100 nodes and 300 links produce finite geometry without input changes', ()
   assert.equal(scene.diagnostics.obstacleCollisions, 0);
   assert.equal(JSON.stringify(graph), before);
 });
+test('crossing-reduction trials reach later port groups after a large group', () => {
+  const graph: SankeyGraph = {
+    stages: ['a', 'b', 'c'],
+    nodes: [
+      { key: 'a0', title: 'A0', placement: { stage: 'a' } },
+      { key: 'a1', title: 'A1', placement: { stage: 'a' } },
+      { key: 'b0', title: 'B0', placement: { stage: 'b' } },
+      { key: 'b1', title: 'B1', placement: { stage: 'b' } },
+      { key: 'b2', title: 'B2', placement: { stage: 'b' } },
+      { key: 'c0', title: 'C0', placement: { stage: 'c' } },
+      { key: 'c1', title: 'C1', placement: { stage: 'c' } },
+    ],
+    links: [
+      // A0's outgoing group has 66 adjacent pairs, so the old global trial
+      // budget was exhausted before B0's outgoing group was visited.
+      ...Array.from({ length: 64 }, (_, i) => ({
+        key: `early-${i}`,
+        from: 'a0',
+        to: 'b0',
+        amount: 10,
+      })),
+      { key: 'l0-0-0', from: 'a0', to: 'b2', amount: 20 },
+      { key: 'l0-0-1', from: 'a0', to: 'b0', amount: 52 },
+      { key: 'l0-0-2', from: 'a0', to: 'b1', amount: 72 },
+      { key: 'l0-1-0', from: 'a1', to: 'b0', amount: 61 },
+      { key: 'l0-1-1', from: 'a1', to: 'b2', amount: 51 },
+      { key: 'l0-1-2', from: 'a1', to: 'b1', amount: 11 },
+      { key: 'l1-0-0', from: 'b0', to: 'c1', amount: 47 },
+      { key: 'l1-0-1', from: 'b0', to: 'c1', amount: 70 },
+      { key: 'l1-1-0', from: 'b1', to: 'c0', amount: 32 },
+      { key: 'l1-1-1', from: 'b1', to: 'c0', amount: 26 },
+      { key: 'l1-1-2', from: 'b1', to: 'c0', amount: 16 },
+      { key: 'l1-2-0', from: 'b2', to: 'c1', amount: 39 },
+      { key: 'l1-2-1', from: 'b2', to: 'c0', amount: 63 },
+    ],
+  };
+  const scene = layoutGraph(resolveGraph(graph), { width: 900 });
+  const first = scene.links.find((f) => f.key === 'l1-0-0')!;
+  const second = scene.links.find((f) => f.key === 'l1-0-1')!;
+  // The accepted swap lowers this pair's route score through shorter routes;
+  // the fixture's aggregate crossing count happens to stay unchanged.
+  assert.ok(
+    first.start.y > second.start.y,
+    'the later group still reverses a worse initial port order',
+  );
+});
 
 for (const width of [1440, 1311, 960, 600, 360])
   test(`original allocations at ${width}px clear neighboring labels`, () => {
