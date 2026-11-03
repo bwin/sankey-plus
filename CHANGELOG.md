@@ -4,6 +4,8 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-03
+
 ### Added
 
 - Link facts expose `fromTotal`, `toTotal`, `fromShare` and `toShare`, resolved in the link's input/output units, so labels and tooltips can show percentage shares without re-deriving endpoint totals. Add a Shares demo built on the Distribution graph.
@@ -102,7 +104,8 @@ The public component props and exported TypeScript API remain compatible with 1.
 - Custom labels/tooltips, one-hop inspection, controlled selection, click callbacks and keyboard navigation.
 - Responsive edge wrapping, routing/collision diagnostics, React 18.2+ peer support, MIT license and author metadata for Benjamin Winkler | bwin.
 
-[Unreleased]: https://github.com/bwin/sankey-plus/compare/v2.0.0...dev
+[Unreleased]: https://github.com/bwin/sankey-plus/compare/v2.1.0...dev
+[2.1.0]: https://github.com/bwin/sankey-plus/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/bwin/sankey-plus/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/bwin/sankey-plus/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bwin/sankey-plus/tree/v1.0.0
