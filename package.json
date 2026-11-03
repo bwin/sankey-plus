@@ -4,6 +4,12 @@
   "license": "MIT",
   "author": "Benjamin Winkler | bwin",
   "type": "module",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "sideEffects": [
+    "*.css"
+  ],
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"
