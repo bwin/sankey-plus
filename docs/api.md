@@ -4,29 +4,33 @@
 
 [src/types.ts](../src/types.ts) contains the full generic contract. Node and link metadata types are independent and retained in all callback contexts.
 
-| Property          | Purpose                                                                                                                       |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `graph`           | Ordered `stages`, `nodes` and `links` with stable keys. Required.                                                             |
-| `accessibleName`  | Descriptive accessible name for the diagram. Required.                                                                        |
-| `selection`       | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                                              |
-| `highlight`       | One subject, an array of subjects, or `null` for external one-hop emphasis. Unioned with inspection.                          |
-| `onInspectChange` | Reports internal `{subject, modality}` changes, or `null`; replays the current inspection on attach. Never changes selection. |
-| `onNodeClick`     | Receives node facts and the activation event.                                                                                 |
-| `onLinkClick`     | Receives link facts and the activation event.                                                                                 |
-| `formatAmount`    | Formats quantities with facts, field name and surface.                                                                        |
-| `getLabel`        | Returns plain text, an array of lines, or `null` to omit a label.                                                             |
-| `renderTooltip`   | Returns non-interactive React content or `null`.                                                                              |
-| `plotHeight`      | Preferred central region height; default 336 CSS pixels. Edge bands add height.                                               |
-| `transition`      | Optional crossfade between completed scenes. `false` (default) or `{duration?, easing?}`.                                     |
-| `minLinkWidth`    | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative.                  |
-| `showHeadroom`    | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                                   |
-| `onLayout`        | Receives a read-only layout snapshot once per completed scene; attaching while a scene is current reports it once.            |
-| `renderOverlay`   | Returns non-interactive SVG content for a completed scene, painted above labels in a `pointer-events: none` group.            |
-| `className`       | Host styling, including theme token overrides.                                                                                |
+| Property          | Purpose                                                                                                                                                                                                                                                               |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `graph`           | Ordered `stages`, `nodes` and `links` with stable keys. Required. Treat it as immutable and pass a new reference when data changes; in-place mutations are not detected (resolution is memoized on graph identity).                                                   |
+| `accessibleName`  | Descriptive accessible name for the diagram. Required.                                                                                                                                                                                                                |
+| `selection`       | One `{kind: 'node' \| 'link', key}` or `null`. Fully controlled.                                                                                                                                                                                                      |
+| `highlight`       | One subject, an array of subjects, or `null` for external one-hop emphasis. Unioned with inspection.                                                                                                                                                                  |
+| `onInspectChange` | Reports internal `{subject, modality}` changes, or `null`; replays the current inspection on attach. Never changes selection.                                                                                                                                         |
+| `onNodeClick`     | Receives node facts and the activation event.                                                                                                                                                                                                                         |
+| `onLinkClick`     | Receives link facts and the activation event.                                                                                                                                                                                                                         |
+| `formatAmount`    | Formats quantities with facts, field name and surface. Keep it stable (module-level or memoized); a new identity rebuilds labels and restarts layout. See [stable callbacks](customization.md#stable-callbacks) and [getting started](getting-started.md).            |
+| `getLabel`        | Returns plain text, an array of lines, or `null` to omit a label. Keep it stable (module-level or memoized); a new identity rebuilds labels and restarts layout. See [stable callbacks](customization.md#stable-callbacks) and [getting started](getting-started.md). |
+| `renderTooltip`   | Returns non-interactive React content or `null`.                                                                                                                                                                                                                      |
+| `plotHeight`      | Preferred central region height; default 336 CSS pixels. Edge bands add height.                                                                                                                                                                                       |
+| `transition`      | Optional crossfade between completed scenes. `false` (default) or `{duration?, easing?}`.                                                                                                                                                                             |
+| `minLinkWidth`    | Minimum displayed ribbon thickness in CSS pixels; default 0 (proportional). Must be finite and non-negative.                                                                                                                                                          |
+| `showHeadroom`    | Hatches declared source/sink capacity; mixed-direction relays are omitted; default `false`.                                                                                                                                                                           |
+| `onLayout`        | Receives a read-only layout snapshot once per completed scene; attaching while a scene is current reports it once.                                                                                                                                                    |
+| `renderOverlay`   | Returns non-interactive SVG content for a completed scene, painted above labels in a `pointer-events: none` group.                                                                                                                                                    |
+| `className`       | Host styling, including theme token overrides.                                                                                                                                                                                                                        |
 
 Measured width, `plotHeight`, `minLinkWidth` and the resulting scene extents must not exceed 10,000,000 CSS pixels. Values outside that range are rejected with a `SankeyInputError` (`invalid-number`) instead of producing non-finite SVG geometry.
 
 A node has `key`, `title`, and exactly one placement: `{stage: 'stage-key'}` or `{edge: 'top' | 'bottom'}`. It can have `total` or per-unit `totals`, `color`, and `meta`. A link has `key`, `from`, `to`, and input `amount`, plus explicit `inputUnit`/`outputUnit` for named-unit data, `conversionRate`, `color` and `meta`. The graph can provide `defaultUnit` and reference `conversionRates` for widths and combined totals. See [units and conversion](units.md).
+
+## Server rendering
+
+Server rendering is supported, but output is limited to the sized “Preparing diagram…” placeholder; the diagram lays out after hydration. See [getting started](getting-started.md) for placeholder and resize behavior.
 
 ## Scene transitions
 
