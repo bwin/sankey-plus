@@ -21,6 +21,10 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 - Non-throwing `validateGraph(graph: unknown)` preflight that returns all semantic `SankeyIssue` values for structurally well-shaped graphs and `invalid-graph` for malformed top-level or nested entries, without weakening the component's throw-on-invalid rendering behavior.
 - Validation demo tab with valid, cycle, unknown-endpoint and total-too-small variants, showing returned issue codes, messages and affected keys.
 
+### Changed
+
+- Obstacle detour searches index boxes by the grid rows and columns they span and use typed arrays for search state, roughly halving layout time on graphs whose routes need repeated detours. Scenes, diagnostics and search budgets are unchanged.
+
 ### Fixed
 
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.

@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  avoidObstacles,
   crossings,
   cubic,
   describe,
@@ -388,4 +389,59 @@ test('epsilon-sized and zero-size obstacles retain the original clipping behavio
               referenceCollisions(r, [box], 0),
             );
         }
+});
+
+test('obstacle detours are orthogonal, clear of every box and connect both ends', () => {
+  let seed = 3;
+  const random = (max: number) => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return Math.floor((seed / 2 ** 32) * max);
+  };
+  const bounds = { x: 0, y: 0, w: 200, h: 200 };
+  let routed = 0;
+  for (let trial = 0; trial < 60; trial++) {
+    // Include degenerate boxes: epsilon-sized obstacles must not block a grid edge.
+    const boxes: Rect[] = Array.from({ length: 4 + random(12) }, () => ({
+      x: 20 + random(150),
+      y: random(190),
+      w: random(5) ? 4 + random(30) : 1e-6,
+      h: random(5) ? 4 + random(40) : 1e-6,
+    }));
+    const start = { x: 5, y: 5 + random(190) },
+      end = { x: 195, y: 5 + random(190) };
+    const points = avoidObstacles(start, end, boxes, bounds);
+    if (!points) continue;
+    routed++;
+    assert.deepEqual(points[0], start, `trial ${trial} start`);
+    assert.deepEqual(points.at(-1), end, `trial ${trial} end`);
+    for (let i = 1; i < points.length; i++)
+      assert.ok(
+        points[i].x === points[i - 1].x || points[i].y === points[i - 1].y,
+        `trial ${trial} segment ${i} is axis-aligned`,
+      );
+    assert.equal(
+      routeCollisions(describe('', points), boxes),
+      0,
+      `trial ${trial} is clear of obstacles`,
+    );
+  }
+  assert.ok(routed > 30, `only ${routed} of 60 searches found a route`);
+});
+
+test('a detour goes around a wall and no route exists past a column that spans the bounds', () => {
+  const bounds = { x: 0, y: 0, w: 100, h: 100 };
+  const around = avoidObstacles(
+    { x: 0, y: 50 },
+    { x: 100, y: 50 },
+    [{ x: 40, y: 20, w: 20, h: 60 }],
+    bounds,
+  )!;
+  assert.ok(around.some((p) => p.y <= 19.9 || p.y >= 80.1));
+  const sealed = avoidObstacles(
+    { x: 0, y: 50 },
+    { x: 100, y: 50 },
+    [{ x: 40, y: -10, w: 20, h: 120 }],
+    bounds,
+  );
+  assert.equal(sealed, null);
 });

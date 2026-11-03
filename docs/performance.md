@@ -38,7 +38,13 @@ The initial sampling profile showed obstacle/segment intersection checks as the 
 - Reuse each link's unrelated node/label obstacles within one layout attempt.
 - Use numeric visibility-grid edge keys and reuse search directions instead of creating strings and arrays for each search step.
 
+- Test each visibility-grid edge only against boxes whose open row or column range contains it, and keep search state in typed arrays. An axis-aligned segment cannot hit any other box, so results are identical.
+
 Crossing and obstacle diagnostics remain enabled. This improvement does not come from skipping checks or reducing the routing search budget.
+
+## Collision-heavy layouts
+
+The stress graph never leaves a route colliding with a bar or label, so it does not reach the detour search or the width-retry loop. The `obstacle-8x12` case (eight columns of twelve long-titled nodes, about a third of the links skipping a column) does: an unresolved collision re-runs the whole layout at up to six widths, and each pass repeats the detour searches. In Node on one machine its median fell from 4,294 ms to 1,882 ms with byte-identical scenes (same hash) across all six benchmark cases. That is still far slower than the stress graph; the repeated whole-layout retries are the remaining cost, and graphs with many unresolved collisions can take many seconds.
 
 ## Correctness and reproduction
 

@@ -607,15 +607,44 @@ export function avoidObstacles(
     ex = xs.indexOf(num(end.x)),
     ey = ys.indexOf(num(end.y));
   if (Math.min(sx, sy, ex, ey) < 0) return null;
+  // A horizontal grid edge can only be blocked by a box whose open y-range
+  // contains its row, and a vertical edge by one whose open x-range contains
+  // its column (the clipping rule rejects every other axis-aligned segment, even
+  // for epsilon-sized boxes). Index boxes by the rows and columns they span so
+  // an edge test visits only those, not every obstacle.
+  const rowBoxes: Rect[][] = Array.from({ length: ny }, () => []),
+    columnBoxes: Rect[][] = Array.from({ length: nx }, () => []);
+  const firstAbove = (lines: number[], value: number) => {
+    let lo = 0,
+      hi = lines.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      if (lines[mid] > value) hi = mid;
+      else lo = mid + 1;
+    }
+    return lo;
+  };
+  for (const r of relevant) {
+    const maxY = r.y + r.h - 1e-5,
+      maxX = r.x + r.w - 1e-5;
+    for (let i = firstAbove(ys, r.y + 1e-5); i < ny && ys[i] < maxY; i++)
+      rowBoxes[i].push(r);
+    for (let i = firstAbove(xs, r.x + 1e-5); i < nx && xs[i] < maxX; i++)
+      columnBoxes[i].push(r);
+  }
   const cell = (x: number, y: number) => y * nx + x;
   const startId = cell(sx, sy) * 3,
     goal = cell(ex, ey);
-  const best = new Map<number, number>([[startId, 0]]),
-    previous = new Map<number, number>();
+  // Per (cell, arrival direction) search state, indexed by the packed id.
+  const best = new Float64Array(nx * ny * 3).fill(Infinity),
+    previous = new Int32Array(nx * ny * 3).fill(-1);
+  best[startId] = 0;
   const open = [{ id: startId, score: 0 }];
   // An edge is identified by its lower cell index and horizontal/vertical
-  // direction. Numeric keys avoid building strings for every search step.
-  const blocked = new Map<number, boolean>();
+  // direction: 0 = not tested yet, 1 = clear, 2 = blocked.
+  const blocked = new Uint8Array(nx * ny * 2);
+  const from = { x: 0, y: 0 },
+    to = { x: 0, y: 0 };
   const directions = [
     [1, 0, 1],
     [-1, 0, 1],
@@ -646,41 +675,48 @@ export function avoidObstacles(
       y = Math.floor(index / nx);
     if (index === goal) {
       const points: Point[] = [];
-      let cursor: number | undefined = id;
-      while (cursor !== undefined) {
+      let cursor = id;
+      while (cursor >= 0) {
         const v = Math.floor(cursor / 3);
         points.push({ x: xs[v % nx], y: ys[Math.floor(v / nx)] });
-        cursor = previous.get(cursor);
+        cursor = previous[cursor];
       }
       return points.reverse();
     }
-    const a = { x: xs[x], y: ys[y] };
-    const costSoFar = best.get(id)!;
+    const ax = xs[x],
+      ay = ys[y];
+    const costSoFar = best[id];
     for (const [dx, dy, dir] of directions) {
       const xx = x + dx,
         yy = y + dy;
       if (xx < 0 || yy < 0 || xx >= nx || yy >= ny) continue;
-      const b = { x: xs[xx], y: ys[yy] },
+      const bx = xs[xx],
+        by = ys[yy],
         nextCell = cell(xx, yy),
         next = nextCell * 3 + dir,
         edge = Math.min(index, nextCell) * 2 + dir - 1;
-      if (!blocked.has(edge))
-        blocked.set(
-          edge,
-          relevant.some((r) => segmentHits(a, b, r)),
-        );
-      if (blocked.get(edge)) continue;
+      if (!blocked[edge]) {
+        from.x = ax;
+        from.y = ay;
+        to.x = bx;
+        to.y = by;
+        const candidates = dir === 1 ? rowBoxes[y] : columnBoxes[x];
+        blocked[edge] = candidates.some((r) => segmentHits(from, to, r))
+          ? 2
+          : 1;
+      }
+      if (blocked[edge] === 2) continue;
       const cost =
         costSoFar +
-        Math.abs(b.x - a.x) +
-        Math.abs(b.y - a.y) +
+        Math.abs(bx - ax) +
+        Math.abs(by - ay) +
         (direction && direction !== dir ? bendCost : 0);
-      if (cost >= (best.get(next) ?? Infinity) - 1e-6) continue;
-      best.set(next, cost);
-      previous.set(next, id);
+      if (cost >= best[next] - 1e-6) continue;
+      best[next] = cost;
+      previous[next] = id;
       open.push({
         id: next,
-        score: cost + Math.abs(b.x - end.x) + Math.abs(b.y - end.y),
+        score: cost + Math.abs(bx - end.x) + Math.abs(by - end.y),
       });
       let k = open.length - 1;
       while (k > 0) {
