@@ -23,8 +23,8 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Changed
 
-- Mark the package as side-effect-free except for its stylesheet, so bundlers can tree-shake unused JavaScript.
-- Declare Node.js 22 or later in `engines`.
+- Mark the package as side-effect-free except for its stylesheet, so bundlers can skip the single runtime bundle when none of its exports are used. The stylesheet remains an explicit import.
+- Declare Node.js 20.19 or later in `engines`.
 
 ### Fixed
 

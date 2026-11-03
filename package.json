@@ -5,7 +5,7 @@
   "author": "Benjamin Winkler | bwin",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=20.19.0"
   },
   "sideEffects": [
     "*.css"
