@@ -86,6 +86,19 @@ const route = (points: number[][]) =>
     points.map(([x, y]) => ({ x, y })),
   );
 
+test('describe computes bounds for very large point arrays without argument spreads', () => {
+  const points = Array.from({ length: 200_000 }, (_, i) => ({
+    x: i - 100_000,
+    y: (i % 1_000) - 500,
+  }));
+  assert.deepEqual(describe('', points).bounds, {
+    x: -100_000,
+    y: -500,
+    w: 199_999,
+    h: 999,
+  });
+});
+
 test('adaptive samples track broad, tight and reversing cubic curves', () => {
   const cases = [
     [

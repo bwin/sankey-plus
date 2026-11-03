@@ -24,10 +24,14 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ### Changed
 
 - Obstacle detour searches index boxes by the grid rows and columns they span and use typed arrays for search state, roughly halving layout time on graphs whose routes need repeated detours. Scenes, diagnostics and search budgets are unchanged.
+- Mark the package as side-effect-free except for its stylesheet, so bundlers can skip the single runtime bundle when none of its exports are used. The stylesheet remains an explicit import.
+- Declare Node.js 20.19 or later in `engines`.
 
 ### Fixed
 
+- The fixed crossing-reduction trial budget is spread across eligible port groups instead of being consumed by the first groups.
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
+- Layout no longer spreads argument lists over potentially unbounded link, node, route and label collections. Port construction now uses precomputed node indexes and link groups instead of per-node `indexOf`/`filter` scans.
 
 ## [2.0.0] - 2026-11-01
 

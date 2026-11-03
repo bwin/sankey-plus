@@ -38,23 +38,31 @@ const CURVE_TOLERANCE = 0.1,
   OFFSET_TOLERANCE = 0.025,
   BEND_HANDLE = 0.8;
 export function describe(path: string, points: Point[]): Route {
-  let length = 0;
-  for (let i = 1; i < points.length; i++)
-    length += Math.hypot(
-      points[i].x - points[i - 1].x,
-      points[i].y - points[i - 1].y,
-    );
-  const xs = points.map((p) => p.x),
-    ys = points.map((p) => p.y);
+  let length = 0,
+    minX = Infinity,
+    maxX = -Infinity,
+    minY = Infinity,
+    maxY = -Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const p = points[i];
+    if (i) {
+      const prior = points[i - 1];
+      length += Math.hypot(p.x - prior.x, p.y - prior.y);
+    }
+    minX = Math.min(minX, p.x);
+    maxX = Math.max(maxX, p.x);
+    minY = Math.min(minY, p.y);
+    maxY = Math.max(maxY, p.y);
+  }
   return {
     path,
     points,
     length,
     bounds: {
-      x: Math.min(...xs),
-      y: Math.min(...ys),
-      w: Math.max(...xs) - Math.min(...xs),
-      h: Math.max(...ys) - Math.min(...ys),
+      x: minX,
+      y: minY,
+      w: maxX - minX,
+      h: maxY - minY,
     },
   };
 }
