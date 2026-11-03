@@ -4,7 +4,7 @@
 
 ## Labels and tooltips
 
-Default labels, tooltips and accessible descriptions use the runtime locale. Pass a stable `formatAmount` callback when output must be identical on a server and in a browser with a different locale.
+Default labels, tooltips and accessible descriptions use the runtime locale. Pass a stable `formatAmount` callback when formatted output must stay consistent across renders and after hydration. Pin the locale explicitly when server and browser environments can differ.
 
 ```tsx
 <SankeyDiagram
