@@ -24,6 +24,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ### Fixed
 
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
+- Unitless node totals are reported on the affected node with guidance to set `graph.defaultUnit` or use `totals` with named units, instead of only emitting the graph-level link-unit message.
 
 ## [2.0.0] - 2026-11-01
 

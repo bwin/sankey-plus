@@ -12,10 +12,11 @@ const close = (a: number, b: number) =>
 /** Rates describe equivalent values, so every path must imply the same ratio. */
 export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
   const units = new Set<string>();
-  let unitless = false;
+  let unitlessLinks = false;
+  const unitlessNodeTotals: string[] = [];
   const register = (unit: unknown, context: Partial<SankeyIssue>) => {
-    if (unit === undefined) unitless = true;
-    else if (!validUnit(unit))
+    if (unit === undefined) return;
+    if (!validUnit(unit))
       issues.push({
         code: 'invalid-unit',
         message:
@@ -26,21 +27,32 @@ export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
   };
   if (graph.defaultUnit !== undefined) register(graph.defaultUnit, {});
   for (const link of graph.links) {
+    if (link.inputUnit === undefined || link.outputUnit === undefined)
+      unitlessLinks = true;
     register(link.inputUnit, { linkKey: link.key });
     register(link.outputUnit, { linkKey: link.key });
   }
   for (const node of graph.nodes) {
-    if (node.total !== undefined)
+    if (node.total !== undefined) {
+      if (graph.defaultUnit === undefined) unitlessNodeTotals.push(node.key);
       register(graph.defaultUnit, { nodeKey: node.key });
+    }
     for (const unit of Object.keys(node.totals ?? {}))
       register(unit, { nodeKey: node.key });
   }
-  if (unitless && units.size)
+  if (unitlessLinks && units.size)
     issues.push({
       code: 'invalid-unit',
       message:
         'Unitless amounts cannot be mixed with named units. Give every link explicit inputUnit and outputUnit values.',
     });
+  if (units.size)
+    for (const nodeKey of unitlessNodeTotals)
+      issues.push({
+        code: 'invalid-unit',
+        message: `Unitless total on ${nodeKey} cannot be mixed with named units. Set graph.defaultUnit or use totals with named units.`,
+        nodeKey,
+      });
   const layoutUnit = graph.defaultUnit ?? units.values().next().value;
   type Edge = { unit: string; rate: number; original: SankeyConversionRate };
   const adjacency = new Map<string, Edge[]>();

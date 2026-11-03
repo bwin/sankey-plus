@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolveGraph } from '../src/model.js';
+import { validateGraph } from '../src/validate.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { intersects, pointAt, insidePolygon } from '../src/paths.js';
 import {
@@ -388,11 +389,91 @@ test('unitless shares use declared and derived endpoint totals', () => {
     ],
     links: [{ key: 'ab', from: 'a', to: 'b', amount: 500 }],
   };
+  assert.deepEqual(validateGraph(g), []);
   const link = resolveGraph(g).links.get('ab')!;
   assert.equal(link.fromTotal, 1000);
   assert.equal(link.toTotal, 500);
   approx(link.fromShare, 0.5);
   approx(link.toShare, 1);
+});
+
+test('unitless node totals report the node rather than blaming link units', () => {
+  const namedLinks: SankeyGraph = {
+    stages: ['a', 'b'],
+    nodes: [
+      { key: 'a', title: 'A', total: 1000, placement: { stage: 'a' } },
+      { key: 'b', title: 'B', placement: { stage: 'b' } },
+    ],
+    links: [
+      {
+        key: 'ab',
+        from: 'a',
+        to: 'b',
+        amount: 500,
+        inputUnit: 'USD',
+        outputUnit: 'USD',
+      },
+    ],
+  };
+  const issues = validateGraph(namedLinks);
+  assert.deepEqual(
+    issues.map(({ code, nodeKey }) => ({ code, nodeKey })),
+    [{ code: 'invalid-unit', nodeKey: 'a' }],
+  );
+  assert.match(issues[0].message, /graph\.defaultUnit/);
+  assert.match(issues[0].message, /totals/);
+  assert.doesNotMatch(issues[0].message, /link explicit/);
+  assert.throws(
+    () => resolveGraph(namedLinks),
+    (error: unknown) =>
+      error instanceof SankeyInputError &&
+      error.issues.some(
+        (issue) => issue.code === 'invalid-unit' && issue.nodeKey === 'a',
+      ) &&
+      !error.issues.some(
+        (issue) => issue.code === 'invalid-unit' && !issue.nodeKey,
+      ),
+  );
+
+  const both: SankeyGraph = {
+    ...namedLinks,
+    links: [
+      namedLinks.links[0],
+      { key: 'loose', from: 'a', to: 'b', amount: 10 },
+    ],
+  };
+  assert.deepEqual(
+    validateGraph(both).map(({ code, nodeKey, linkKey }) => ({
+      code,
+      nodeKey,
+      linkKey,
+    })),
+    [
+      { code: 'invalid-unit', nodeKey: undefined, linkKey: undefined },
+      { code: 'invalid-unit', nodeKey: 'a', linkKey: undefined },
+    ],
+  );
+});
+
+test('unitless link units keep the graph-level link guidance', () => {
+  const g: SankeyGraph = {
+    defaultUnit: 'USD',
+    stages: ['a', 'b'],
+    nodes: [
+      { key: 'a', title: 'A', placement: { stage: 'a' } },
+      { key: 'b', title: 'B', placement: { stage: 'b' } },
+    ],
+    links: [{ key: 'ab', from: 'a', to: 'b', amount: 5 }],
+  };
+  const issues = validateGraph(g);
+  assert.deepEqual(
+    issues.map(({ code, nodeKey, linkKey }) => ({ code, nodeKey, linkKey })),
+    [{ code: 'invalid-unit', nodeKey: undefined, linkKey: undefined }],
+  );
+  assert.match(
+    issues[0].message,
+    /every link explicit inputUnit and outputUnit values/,
+  );
 });
 
 test('shares use the link unit rather than the layout unit', () => {
