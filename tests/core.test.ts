@@ -1071,6 +1071,8 @@ test('crossing-reduction trials reach later port groups after a large group', ()
   const scene = layoutGraph(resolveGraph(graph), { width: 900 });
   const first = scene.links.find((f) => f.key === 'l1-0-0')!;
   const second = scene.links.find((f) => f.key === 'l1-0-1')!;
+  // The accepted swap lowers this pair's route score through shorter routes;
+  // the fixture's aggregate crossing count happens to stay unchanged.
   assert.ok(
     first.start.y > second.start.y,
     'the later group still reverses a worse initial port order',

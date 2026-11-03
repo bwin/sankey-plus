@@ -23,7 +23,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Fixed
 
-- Crossing-reduction trials are shared across port groups instead of being consumed in group order, so later groups are no longer skipped when an early group has many adjacent pairs.
+- The fixed crossing-reduction trial budget is spread across eligible port groups instead of being consumed by the first groups.
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
 
 ## [2.0.0] - 2026-11-01
