@@ -456,6 +456,7 @@ export function nodeColor(key: string, supplied?: string) {
   )
     return supplied;
   let hash = 2166136261;
-  for (const char of key) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
+  for (const char of key)
+    hash = Math.imul(hash ^ char.codePointAt(0)!, 16777619);
   return palette[(hash >>> 0) % palette.length];
 }

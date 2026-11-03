@@ -24,6 +24,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ### Fixed
 
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
+- Default node colors hash full Unicode code points, so keys containing astral characters may change to a different palette color.
 
 ## [2.0.0] - 2026-11-01
 

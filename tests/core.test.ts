@@ -672,6 +672,11 @@ test('layout is deterministic and does not mutate deeply frozen input', () => {
   assert.equal(JSON.stringify(full), before);
   assert.equal(nodeColor('stable'), nodeColor('stable'));
 });
+test('default colors hash full astral code points', () => {
+  // U+1F600 and U+1F601 share a high surrogate; only their low surrogates differ.
+  assert.notEqual(nodeColor('😀'), nodeColor('😁'));
+  assert.equal(nodeColor('stable'), '#8b8849');
+});
 test('an invalid plot height fails instead of producing broken SVG', () => {
   assert.throws(
     () => layoutGraph(resolveGraph(base), { width: 800, plotHeight: NaN }),
