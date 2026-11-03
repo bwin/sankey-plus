@@ -24,7 +24,7 @@ const { resolveGraph } = await import(
 const { layoutGraph } = await import(
   pathToFileURL(path.join(modules, 'layout.js')).href
 );
-const { stressGraph } = await import(
+const { stressGraph, obstacleGraph } = await import(
   pathToFileURL(path.join(project, '.tests/fixtures/stress.js')).href
 );
 const readGraph = async (name) =>
@@ -59,11 +59,12 @@ const cases = [
   { name: 'allocations-mobile', graph: allocations, width: 360 },
   { name: 'four-sided', graph: full, width: 1126 },
   { name: 'wrapped-fan', graph: fan, width: 600 },
+  { name: 'obstacle-8x12', graph: obstacleGraph(), width: 1300 },
 ].filter((c) => !option('--case') || c.name === option('--case'));
 if (!cases.length) throw Error('Unknown --case');
-// Keep the stress fixture identical to its regression test. Other fixtures use the demo's two-line node labels.
+// Keep the generated fixtures on their default labels; the stress fixture must match its regression test. Other fixtures use the demo's two-line node labels.
 for (const c of cases)
-  if (c.name !== 'stress-100-300') {
+  if (c.name !== 'stress-100-300' && c.name !== 'obstacle-8x12') {
     const model = resolveGraph(c.graph);
     c.labels = new Map(
       c.graph.nodes.map((n) => [
