@@ -92,7 +92,8 @@ const MAX_EXTENT = 10_000_000;
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 // Keep bounds checks out of the argument list so large graphs cannot exceed
-// the engine's function-argument limit. Math.max/min preserve NaN behavior.
+// the engine's function-argument limit. Empty inputs retain Math.max/min's
+// -Infinity/Infinity fallback, and NaN behavior is unchanged.
 const maxOf = (values: readonly number[]): number => {
   let result = -Infinity;
   for (let i = 0; i < values.length; i++) result = Math.max(result, values[i]);

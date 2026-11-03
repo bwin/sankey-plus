@@ -24,7 +24,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ### Fixed
 
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
-- Layout bounds calculations no longer use argument spreads or quadratic node/link lookups, so very large graphs lay out with lower overhead and without `RangeError` limits.
+- Layout no longer spreads argument lists over potentially unbounded link, node, route and label collections. Port construction now uses precomputed node indexes and link groups instead of per-node `indexOf`/`filter` scans.
 
 ## [2.0.0] - 2026-11-01
 
