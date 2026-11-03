@@ -4,22 +4,31 @@
 
 ## Labels and tooltips
 
-Default labels, tooltips and accessible descriptions use the runtime locale. Pass a stable `formatAmount` callback when output must be identical on a server and in a browser with a different locale.
+Default labels, tooltips and accessible descriptions use the runtime locale. Pass a stable `formatAmount` callback when formatted output must stay consistent across renders and after hydration. Pin the locale explicitly when server and browser environments can differ.
 
 ```tsx
+import {
+  SankeyDiagram,
+  type SankeyAmountContext,
+  type SankeyPresentation,
+} from '@bwin/sankey-plus';
+
+const formatAmount = (value: number, context: SankeyAmountContext): string => {
+  // context.field: total / incoming / outgoing / amount
+  // context.surface: label / tooltip / accessible
+  return `${value.toLocaleString('en-US')} units`;
+};
+
+const getLabel = (view: SankeyPresentation): string | readonly string[] =>
+  view.kind === 'node'
+    ? [view.node.title, `${view.text.total} total`]
+    : view.text.amount;
+
 <SankeyDiagram
   graph={graph}
   accessibleName="Allocation flow"
-  formatAmount={(value, context) => {
-    // context.field: total / incoming / outgoing / amount
-    // context.surface: label / tooltip / accessible
-    return `${value.toLocaleString()} units`;
-  }}
-  getLabel={(view) =>
-    view.kind === 'node'
-      ? [view.node.title, `${view.text.total} total`]
-      : view.text.amount
-  }
+  formatAmount={formatAmount}
+  getLabel={getLabel}
   renderTooltip={(view) =>
     view.kind === 'node' ? (
       <>
@@ -42,7 +51,7 @@ Default labels, tooltips and accessible descriptions use the runtime locale. Pas
       </>
     )
   }
-/>
+/>;
 ```
 
 Labels use measured text and horizontal truncation. Arrays retain all lines, including per-unit balances and a converted total; layout reserves additional vertical space for longer node labels. Link labels avoid bars and other labels; a label with no suitable space is hidden until its link is inspected. Tooltips and accessible descriptions retain the full information. See [units and conversion](units.md) for native amounts, converted widths, `text.totals`, `text.converted` and conversion-rate equations. Custom callbacks own their content: use those structured fields when showing a multi-unit node instead of only `text.total`.
