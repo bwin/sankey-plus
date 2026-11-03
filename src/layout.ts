@@ -91,6 +91,18 @@ const LANE_GAP = 4;
 const MAX_EXTENT = 10_000_000;
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
+// Keep bounds checks out of the argument list so large graphs cannot exceed
+// the engine's function-argument limit. Math.max/min preserve NaN behavior.
+const maxOf = (values: readonly number[]): number => {
+  let result = -Infinity;
+  for (let i = 0; i < values.length; i++) result = Math.max(result, values[i]);
+  return result;
+};
+const minOf = (values: readonly number[]): number => {
+  let result = Infinity;
+  for (let i = 0; i < values.length; i++) result = Math.min(result, values[i]);
+  return result;
+};
 function fitted(
   lines: readonly string[],
   width: number,
@@ -117,7 +129,7 @@ function labelBox(
   measure: (s: string) => number,
   lineHeight: number,
 ): TextBox {
-  const w = lines.length ? Math.max(...lines.map(measure)) : 0,
+  const w = lines.length ? maxOf(lines.map(measure)) : 0,
     h = lines.length * lineHeight;
   return {
     lines,
@@ -256,6 +268,9 @@ export function* layoutGraphSteps<I, T>(
   const linkWidth = (link: { key: string }, valueScale: number) =>
     Math.max(minLinkWidth, amount(link) * valueScale);
   const stageIndex = new Map(model.stages.map((s, i) => [s, i]));
+  const inputIndex = new Map(
+    model.graph.nodes.map((node, index) => [node.key, index]),
+  );
   const stages = model.stages.map((s) =>
     [...model.nodes.values()].filter((n) => n.node.placement.stage === s),
   );
@@ -290,7 +305,7 @@ export function* layoutGraphSteps<I, T>(
     stages.length === 1 && !leftExtra && !rightExtra
       ? width / 2 - BAR / 2
       : PAD + (index + leftExtra) * step;
-  const maxCount = Math.max(0, ...stages.map((s) => s.length));
+  const maxCount = Math.max(0, maxOf(stages.map((s) => s.length)));
   const labelHeight = (n: (typeof edges)[number]) =>
     label('node', n.node.key, n.node.title).length * lineHeight;
   const expandedStages = stages.map(
@@ -324,15 +339,18 @@ export function* layoutGraphSteps<I, T>(
   const centralHeight = Math.max(
     plotHeight,
     maxCount * (lineHeight * 2 + GAP),
-    ...stages.map((stage, i) =>
-      expandedStages[i]
-        ? sum(
-            stage.map(
-              (n) =>
-                Math.max(lineHeight * 2, labelHeight(n), nodeSize(n, 0)) + GAP,
-            ),
-          ) + GAP
-        : 0,
+    maxOf(
+      stages.map((stage, i) =>
+        expandedStages[i]
+          ? sum(
+              stage.map(
+                (n) =>
+                  Math.max(lineHeight * 2, labelHeight(n), nodeSize(n, 0)) +
+                  GAP,
+              ),
+            ) + GAP
+          : 0,
+      ),
     ),
   );
   if (!Number.isFinite(centralHeight) || centralHeight > MAX_EXTENT)
@@ -352,7 +370,7 @@ export function* layoutGraphSteps<I, T>(
       );
   }
   if (!Number.isFinite(scale))
-    scale = centralHeight / Math.max(1, ...edges.map(geomTotal));
+    scale = centralHeight / Math.max(1, maxOf(edges.map(geomTotal)));
   const fitScale = (
     used: (valueScale: number) => number,
     available: number,
@@ -387,9 +405,9 @@ export function* layoutGraphSteps<I, T>(
       .filter((s): s is string => s !== undefined)
       .map((s) => stageIndex.get(s)!);
     if (sourceColumns.length)
-      lo = Math.max(lo, axis(Math.max(...sourceColumns)) + BAR + CLEAR);
+      lo = Math.max(lo, axis(maxOf(sourceColumns)) + BAR + CLEAR);
     if (targetColumns.length)
-      hi = Math.min(hi, axis(Math.min(...targetColumns)) - CLEAR);
+      hi = Math.min(hi, axis(minOf(targetColumns)) - CLEAR);
     limits.set(n.node.key, { lo, hi });
     if (minLinkWidth > 0) {
       const available = Math.max(8, hi - lo - 28),
@@ -434,15 +452,15 @@ export function* layoutGraphSteps<I, T>(
         });
         if (links.length < 2) continue;
         const targets = links.map((f) => model.nodes.get(f.to)!),
-          lo = Math.max(...targets.map((n) => limits.get(n.node.key)!.lo)),
-          hi = Math.min(...targets.map((n) => limits.get(n.node.key)!.hi)),
+          lo = maxOf(targets.map((n) => limits.get(n.node.key)!.lo)),
+          hi = minOf(targets.map((n) => limits.get(n.node.key)!.hi)),
           available = hi - lo;
         const textWidths = targets.map((n) =>
           Math.min(
             148,
             Math.max(
               0,
-              ...label('node', n.node.key, n.node.title).map(measure),
+              maxOf(label('node', n.node.key, n.node.title).map(measure)),
             ),
           ),
         );
@@ -453,7 +471,7 @@ export function* layoutGraphSteps<I, T>(
           (targets.length - 1) * GAP;
         if (needed <= available) continue;
         const strip = available * 0.55,
-          labelWidth = Math.min(Math.max(...textWidths), available - strip);
+          labelWidth = Math.min(maxOf(textWidths), available - strip);
         const channelWidth = Math.max(
           8,
           strip -
@@ -505,7 +523,7 @@ export function* layoutGraphSteps<I, T>(
       fitScale(used, available);
     }
   scale = Math.max(Number.MIN_VALUE, scale);
-  const widestEdge = Math.max(0, ...edges.map((n) => nodeSize(n, scale)));
+  const widestEdge = Math.max(0, maxOf(edges.map((n) => nodeSize(n, scale))));
   const mainLabelLimit = Math.max(
     48,
     Math.min(160, (step - BAR - widestEdge - 40) / 2),
@@ -533,7 +551,7 @@ export function* layoutGraphSteps<I, T>(
       const barY = y + (footprints[i] - h) / 2;
       nodes.push({
         key: n.node.key,
-        index: model.graph.nodes.indexOf(n.node),
+        index: inputIndex.get(n.node.key)!,
         x,
         y: barY,
         w: BAR,
@@ -577,7 +595,7 @@ export function* layoutGraphSteps<I, T>(
         const members = nodes.filter((v) => v.stage === other.stage && !v.edge);
         const right = Math.max(
           other.x + BAR,
-          ...members.map((v) => v.label.x + v.label.w),
+          maxOf(members.map((v) => v.label.x + v.label.w)),
         );
         sx += right * amount(f);
         sw += amount(f);
@@ -588,7 +606,7 @@ export function* layoutGraphSteps<I, T>(
       const other = byKey.get(f.to);
       if (other && !other.edge) {
         const members = nodes.filter((v) => v.stage === other.stage && !v.edge);
-        const left = Math.min(other.x, ...members.map((v) => v.label.x));
+        const left = Math.min(other.x, minOf(members.map((v) => v.label.x)));
         tx += left * amount(f);
         tw += amount(f);
         routeHi = Math.min(routeHi, left - 8);
@@ -607,7 +625,7 @@ export function* layoutGraphSteps<I, T>(
         Math.max(40, Math.min(148, hi - lo, width - 2 * PAD)),
         measure,
       );
-    const footprint = Math.max(w, ...lines.map(measure), 0);
+    const footprint = Math.max(w, maxOf(lines.map(measure)), 0);
     const preferred =
       sw && tw
         ? (sx / sw + tx / tw) / 2
@@ -618,7 +636,7 @@ export function* layoutGraphSteps<I, T>(
             : PAD + ((width - 2 * PAD) * (i + 1)) / (edges.length + 1);
     const node: NodeGeometry = {
       key: n.key,
-      index: model.graph.nodes.indexOf(n),
+      index: inputIndex.get(n.key)!,
       x: 0,
       y: 0,
       w,
@@ -675,11 +693,11 @@ export function* layoutGraphSteps<I, T>(
   yield;
   const maxRibbon = Math.max(
     0,
-    ...model.graph.links.map((f) => linkWidth(f, scale)),
+    maxOf(model.graph.links.map((f) => linkWidth(f, scale))),
   );
   const edgeLabelHeight = Math.max(
     lineHeight * 2,
-    ...nodes.filter((n) => n.edge).map((n) => n.label.h),
+    maxOf(nodes.filter((n) => n.edge).map((n) => n.label.h)),
   );
   const clearance = 72 + maxRibbon / 2,
     baseRowPitch = Math.max(86, edgeLabelHeight + BAR + maxRibbon + 32);
@@ -725,7 +743,10 @@ export function* layoutGraphSteps<I, T>(
     rows[side].length
       ? clearance +
         BAR +
-        Math.max(lineHeight * 2, ...rows[side].flat().map((n) => n.label.h)) +
+        Math.max(
+          lineHeight * 2,
+          maxOf(rows[side].flat().map((n) => n.label.h)),
+        ) +
         12 +
         rowOffsets[side].at(-1)!
       : 0;
@@ -767,14 +788,16 @@ export function* layoutGraphSteps<I, T>(
         .flat()
         .filter((o) => o.x + o.w > n.lo && o.x < n.hi);
       const widest = Math.max(
-        ...[
-          ...model.nodes.get(n.key)!.incomingLinks,
-          ...model.nodes.get(n.key)!.outgoingLinks,
-        ].map((f) => linkWidth(f, scale)),
         0,
+        maxOf(
+          [
+            ...model.nodes.get(n.key)!.incomingLinks,
+            ...model.nodes.get(n.key)!.outgoingLinks,
+          ].map((f) => linkWidth(f, scale)),
+        ),
       );
       const first = nearer.length
-        ? Math.min(...nearer.map((o) => o.x + o.w / 2 - o.footprint / 2))
+        ? minOf(nearer.map((o) => o.x + o.w / 2 - o.footprint / 2))
         : n.x;
       n.corridor = Math.max(PAD + widest / 2, first - widest / 2 - 10);
     }
@@ -806,6 +829,16 @@ export function* layoutGraphSteps<I, T>(
     labelHidden: false,
   }));
   const positions = new Map(links.map((f, i) => [f.key, i]));
+  const linksByFrom = new Map<string, LinkGeometry[]>(),
+    linksByTo = new Map<string, LinkGeometry[]>();
+  for (const f of links) {
+    const from = linksByFrom.get(f.from);
+    if (from) from.push(f);
+    else linksByFrom.set(f.from, [f]);
+    const to = linksByTo.get(f.to);
+    if (to) to.push(f);
+    else linksByTo.set(f.to, [f]);
+  }
   const portGroups: {
     node: NodeGeometry;
     out: boolean;
@@ -814,9 +847,8 @@ export function* layoutGraphSteps<I, T>(
   for (const n of nodes)
     for (const out of [true, false]) {
       yield;
-      const connectedLinks = links.filter(
-        (f) => (out ? f.from : f.to) === n.key,
-      );
+      const byNode = out ? linksByFrom : linksByTo;
+      const connectedLinks = [...(byNode.get(n.key) ?? [])];
       const opposite = (f: LinkGeometry) => byKey.get(out ? f.to : f.from)!;
       // Incoming edge links retain their source's left-to-right order when
       // rows wrap. A detour corridor is not the source position: sorting by
@@ -996,7 +1028,7 @@ export function* layoutGraphSteps<I, T>(
     const inner = flows.reduce((a, b) =>
       direction * a.start.y > direction * b.start.y ? a : b,
     );
-    const minX = Math.min(...members.map((n) => n.corridor!));
+    const minX = minOf(members.map((n) => n.corridor!));
     const firstEnd = {
       x: minX,
       y: side === 'bottom' ? centralTop + centralHeight : centralTop,
@@ -1258,8 +1290,8 @@ export function* layoutGraphSteps<I, T>(
           ribbonOverlap(f.route, f.width, other.route, other.width) > 0.05,
       );
       if (!conflicting.length) continue;
-      const arrivalX = Math.min(
-        ...conflicting.map((other) => {
+      const arrivalX = minOf(
+        conflicting.map((other) => {
           // A detoured or curved input need not follow its source's x or
           // nominal corridor. Find its actual envelope near this approach.
           const padding = (f.width + other.width) / 2 + 16;
