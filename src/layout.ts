@@ -1,5 +1,5 @@
 import type { ResolvedGraph } from './model.js';
-import { nodeColor } from './model.js';
+import { nodeColor, validColor } from './model.js';
 import { SankeyInputError } from './types.js';
 import {
   avoidObstacles,
@@ -798,7 +798,7 @@ export function* layoutGraphSteps<I, T>(
     width: linkWidth(f, scale),
     startWidth: endpointWidth(f, true, scale),
     endWidth: endpointWidth(f, false, scale),
-    color: nodeColor(f.to, f.color ?? byKey.get(f.to)!.color),
+    color: validColor(f.color) ? f.color : byKey.get(f.to)!.color,
     start: { x: 0, y: 0 },
     end: { x: 0, y: 0 },
     route: null as unknown as Route,

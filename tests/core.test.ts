@@ -672,6 +672,64 @@ test('layout is deterministic and does not mutate deeply frozen input', () => {
   assert.equal(JSON.stringify(full), before);
   assert.equal(nodeColor('stable'), nodeColor('stable'));
 });
+test('invalid link colors fall back to the destination geometry color', () => {
+  const previous = Object.getOwnPropertyDescriptor(globalThis, 'CSS');
+  Object.defineProperty(globalThis, 'CSS', {
+    configurable: true,
+    value: {
+      supports: (_property: string, value: string) =>
+        value === '#0f766e' || value === '#123456',
+    },
+  });
+  try {
+    const graph: SankeyGraph = {
+      stages: ['source', 'target'],
+      nodes: [
+        { key: 'source-a', title: 'Source A', placement: { stage: 'source' } },
+        {
+          key: 'target-a',
+          title: 'Target A',
+          color: '#0f766e',
+          placement: { stage: 'target' },
+        },
+        { key: 'source-b', title: 'Source B', placement: { stage: 'source' } },
+        {
+          key: 'target-b',
+          title: 'Target B',
+          color: '#b91c1c',
+          placement: { stage: 'target' },
+        },
+      ],
+      links: [
+        {
+          key: 'invalid-color',
+          from: 'source-a',
+          to: 'target-a',
+          amount: 100,
+          color: 'not-a-css-color',
+        },
+        {
+          key: 'valid-color',
+          from: 'source-b',
+          to: 'target-b',
+          amount: 100,
+          color: '#123456',
+        },
+      ],
+    };
+    const scene = layoutGraph(resolveGraph(graph), { width: 900 }),
+      target = scene.nodes.find((node) => node.key === 'target-a')!,
+      invalid = scene.links.find((link) => link.key === 'invalid-color')!,
+      valid = scene.links.find((link) => link.key === 'valid-color')!;
+    assert.equal(target.color, '#0f766e');
+    assert.equal(invalid.color, target.color);
+    assert.notEqual(invalid.color, nodeColor('target-a'));
+    assert.equal(valid.color, '#123456');
+  } finally {
+    if (previous) Object.defineProperty(globalThis, 'CSS', previous);
+    else Reflect.deleteProperty(globalThis, 'CSS');
+  }
+});
 test('an invalid plot height fails instead of producing broken SVG', () => {
   assert.throws(
     () => layoutGraph(resolveGraph(base), { width: 800, plotHeight: NaN }),

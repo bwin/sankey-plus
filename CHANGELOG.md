@@ -23,6 +23,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ### Fixed
 
+- Links with an unsupported CSS color now inherit their destination node's resolved color instead of hashing the destination key. Supported link colors still win.
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
 
 ## [2.0.0] - 2026-11-01

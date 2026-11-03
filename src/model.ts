@@ -449,12 +449,13 @@ const palette = [
   '#8b8849',
   '#64778d',
 ];
+export function validColor(value: string | undefined): value is string {
+  return (
+    !!value && (typeof CSS === 'undefined' || CSS.supports('color', value))
+  );
+}
 export function nodeColor(key: string, supplied?: string) {
-  if (
-    supplied &&
-    (typeof CSS === 'undefined' || CSS.supports('color', supplied))
-  )
-    return supplied;
+  if (validColor(supplied)) return supplied;
   let hash = 2166136261;
   for (const char of key) hash = Math.imul(hash ^ char.charCodeAt(0), 16777619);
   return palette[(hash >>> 0) % palette.length];
