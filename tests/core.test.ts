@@ -1041,7 +1041,9 @@ test('the obstacle fixture exercises detour routing and the width retry with sta
   assert.equal(scene.links.length, 84);
   assert.ok(scene.links.every((f) => !/NaN|Infinity/.test(f.route.path)));
   assert.equal(JSON.stringify(graph), before);
-  // Unresolved collisions grow the canvas beyond the requested width.
+  // Unresolved collisions grow the canvas beyond the requested width. The width
+  // and counts below are pinned values: after an intended change to retry
+  // widths, label measurement or routing, review the new scene and update them.
   assert.equal(scene.width, 1380);
   assert.deepEqual(scene.diagnostics, {
     crossings: 377,

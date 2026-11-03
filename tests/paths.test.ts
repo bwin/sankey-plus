@@ -511,11 +511,17 @@ test('indexed detour search matches the full obstacle scan', () => {
         avoidObstacles(start, end, boxes, bounds, bendCost, false),
         `trial ${trial}, bend cost ${bendCost}`,
       );
+      // An endpoint inside a box returns null before any search, so those
+      // trials say nothing about the index and are not counted as failures.
+      if (boxes.some((b) => inside(start, b) || inside(end, b))) continue;
       if (indexed) routed++;
       else unrouted++;
     }
   }
   // Both outcomes must occur so the comparison covers routes and failures.
   assert.ok(routed > 100, `${routed} searches found a route`);
-  assert.ok(unrouted > 20, `${unrouted} searches found no route`);
+  assert.ok(
+    unrouted > 20,
+    `${unrouted} searches found no route after searching`,
+  );
 });
