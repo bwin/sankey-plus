@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { resolveGraph } from '../src/model.js';
+import { resolveUnits } from '../src/units.js';
 import { validateGraph } from '../src/validate.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
 import { intersects, pointAt, insidePolygon } from '../src/paths.js';
@@ -13,6 +14,7 @@ import {
 import {
   SankeyInputError,
   type SankeyGraph,
+  type SankeyIssue,
   type SankeyIssueCode,
   type SankeyAmountContext,
 } from '../src/types.js';
@@ -453,6 +455,170 @@ test('unitless node totals report the node rather than blaming link units', () =
       { code: 'invalid-unit', nodeKey: 'a', linkKey: undefined },
     ],
   );
+});
+
+test('each scalar-total node receives its own unitless issue', () => {
+  const g: SankeyGraph = {
+    stages: ['source', 'target'],
+    nodes: [
+      {
+        key: 'source-node',
+        title: 'Source',
+        total: 10,
+        placement: { stage: 'source' },
+      },
+      {
+        key: 'target-node',
+        title: 'Target',
+        total: 20,
+        placement: { stage: 'target' },
+      },
+    ],
+    links: [
+      {
+        key: 'flow',
+        from: 'source-node',
+        to: 'target-node',
+        amount: 5,
+        inputUnit: 'USD',
+        outputUnit: 'USD',
+      },
+    ],
+  };
+  assert.deepEqual(
+    validateGraph(g)
+      .filter(({ code }) => code === 'invalid-unit')
+      .map(({ nodeKey }) => nodeKey),
+    ['source-node', 'target-node'],
+  );
+});
+
+test('duplicate scalar-total keys produce one unitless issue', () => {
+  const g: SankeyGraph = {
+    stages: ['a'],
+    nodes: [
+      { key: 'dup', title: 'One', total: 10, placement: { stage: 'a' } },
+      { key: 'dup', title: 'Two', total: 20, placement: { stage: 'a' } },
+      {
+        key: 'named',
+        title: 'Named',
+        totals: { USD: 5 },
+        placement: { stage: 'a' },
+      },
+    ],
+    links: [],
+  };
+  assert.deepEqual(
+    validateGraph(g)
+      .filter(({ code }) => code === 'invalid-unit')
+      .map(({ nodeKey }) => nodeKey),
+    ['dup'],
+  );
+});
+
+test('a destination scalar total is attributed to the destination node', () => {
+  const g: SankeyGraph = {
+    stages: ['source', 'target'],
+    nodes: [
+      { key: 'source-node', title: 'Source', placement: { stage: 'source' } },
+      {
+        key: 'target-node',
+        title: 'Target',
+        total: 500,
+        placement: { stage: 'target' },
+      },
+    ],
+    links: [
+      {
+        key: 'flow',
+        from: 'source-node',
+        to: 'target-node',
+        amount: 400,
+        inputUnit: 'USD',
+        outputUnit: 'USD',
+      },
+    ],
+  };
+  const issues = validateGraph(g).filter(({ code }) => code === 'invalid-unit');
+  assert.deepEqual(
+    issues.map(({ nodeKey }) => nodeKey),
+    ['target-node'],
+  );
+  assert.match(issues[0].message, /target-node/);
+});
+
+test('a scalar total with totals keeps incompatible-totals without unitless guidance', () => {
+  const g: SankeyGraph = {
+    stages: ['source', 'target'],
+    nodes: [
+      {
+        key: 'source-node',
+        title: 'Source',
+        total: 100,
+        totals: { USD: 100 },
+        placement: { stage: 'source' },
+      },
+      { key: 'target-node', title: 'Target', placement: { stage: 'target' } },
+    ],
+    links: [
+      {
+        key: 'flow',
+        from: 'source-node',
+        to: 'target-node',
+        amount: 50,
+        inputUnit: 'USD',
+        outputUnit: 'USD',
+      },
+    ],
+  };
+  assert.deepEqual(
+    validateGraph(g).map(({ code, nodeKey }) => ({ code, nodeKey })),
+    [{ code: 'incompatible-totals', nodeKey: 'source-node' }],
+  );
+});
+
+test('non-string node keys do not throw TypeError from unit resolution', () => {
+  const keys: unknown[] = [Symbol('node'), Object.create(null)];
+  for (const key of keys) {
+    const g = {
+      stages: ['a'],
+      nodes: [
+        {
+          key,
+          title: 'Malformed',
+          total: 10,
+          placement: { stage: 'a' },
+        },
+        {
+          key: 'named',
+          title: 'Named',
+          totals: { USD: 5 },
+          placement: { stage: 'a' },
+        },
+      ],
+      links: [],
+    } as unknown as SankeyGraph;
+    const issues: SankeyIssue[] = [];
+    assert.doesNotThrow(() => resolveUnits(g, issues));
+    assert.ok(
+      issues.some(
+        (issue) => issue.code === 'invalid-unit' && issue.nodeKey === undefined,
+      ),
+    );
+    assert.throws(
+      () => resolveGraph(g),
+      (error: unknown) =>
+        error instanceof SankeyInputError &&
+        error.issues.some(
+          (issue) =>
+            issue.code === 'invalid-unit' && issue.nodeKey === undefined,
+        ),
+    );
+    assert.deepEqual(
+      validateGraph(g).map((issue) => issue.code),
+      ['invalid-graph'],
+    );
+  }
 });
 
 test('unitless link units keep the graph-level link guidance', () => {

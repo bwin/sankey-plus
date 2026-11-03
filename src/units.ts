@@ -13,7 +13,8 @@ const close = (a: number, b: number) =>
 export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
   const units = new Set<string>();
   let unitlessLinks = false;
-  const unitlessNodeTotals: string[] = [];
+  let unitlessNodeTotalWithInvalidKey = false;
+  const unitlessNodeTotals = new Set<string>();
   const register = (unit: unknown, context: Partial<SankeyIssue>) => {
     if (unit === undefined) return;
     if (!validUnit(unit))
@@ -34,7 +35,10 @@ export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
   }
   for (const node of graph.nodes) {
     if (node.total !== undefined) {
-      if (graph.defaultUnit === undefined) unitlessNodeTotals.push(node.key);
+      if (graph.defaultUnit === undefined && node.totals === undefined) {
+        if (typeof node.key === 'string') unitlessNodeTotals.add(node.key);
+        else unitlessNodeTotalWithInvalidKey = true;
+      }
       register(graph.defaultUnit, { nodeKey: node.key });
     }
     for (const unit of Object.keys(node.totals ?? {}))
@@ -46,13 +50,20 @@ export function resolveUnits(graph: SankeyGraph, issues: SankeyIssue[]) {
       message:
         'Unitless amounts cannot be mixed with named units. Give every link explicit inputUnit and outputUnit values.',
     });
-  if (units.size)
+  if (units.size) {
     for (const nodeKey of unitlessNodeTotals)
       issues.push({
         code: 'invalid-unit',
         message: `Unitless total on ${nodeKey} cannot be mixed with named units. Set graph.defaultUnit or use totals with named units.`,
         nodeKey,
       });
+    if (unitlessNodeTotalWithInvalidKey)
+      issues.push({
+        code: 'invalid-unit',
+        message:
+          'A unitless node total cannot be mixed with named units. Set graph.defaultUnit or use totals with named units.',
+      });
+  }
   const layoutUnit = graph.defaultUnit ?? units.values().next().value;
   type Edge = { unit: string; rate: number; original: SankeyConversionRate };
   const adjacency = new Map<string, Edge[]>();
