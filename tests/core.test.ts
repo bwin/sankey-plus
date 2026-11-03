@@ -24,7 +24,7 @@ import {
   type SankeyGraph,
   type SankeyIssueCode,
 } from '../src/types.js';
-import { stressGraph } from '../fixtures/stress.js';
+import { obstacleGraph, stressGraph } from '../fixtures/stress.js';
 const full = JSON.parse(
   readFileSync(
     new URL('../../demo/feature-demo.json', import.meta.url),
@@ -1139,6 +1139,43 @@ test('crossing-reduction trials reach later port groups after a large group', ()
   assert.ok(
     first.start.y > second.start.y,
     'the later group still reverses a worse initial port order',
+  );
+});
+
+test('the obstacle fixture exercises detour routing and the width retry with stable diagnostics', () => {
+  const graph = obstacleGraph(),
+    before = JSON.stringify(graph),
+    scene = layoutGraph(resolveGraph(graph), { width: 1300 });
+  assert.equal(scene.nodes.length, 96);
+  assert.equal(scene.links.length, 84);
+  assert.ok(scene.links.every((f) => !/NaN|Infinity/.test(f.route.path)));
+  assert.equal(JSON.stringify(graph), before);
+  // Unresolved collisions grow the canvas beyond the requested width. The width
+  // and counts below are pinned values: after an intended change to retry
+  // widths, label measurement or routing, review the new scene and update them.
+  assert.equal(scene.width, 1380);
+  assert.deepEqual(scene.diagnostics, {
+    crossings: 377,
+    obstacleCollisions: 11,
+  });
+  // Ordinary stage curves have no exactly horizontal or vertical runs. Detours
+  // found by the obstacle search leave long axis-aligned runs on their routes.
+  const run = (
+    f: (typeof scene.links)[number],
+    axis: 'x' | 'y',
+    length: number,
+  ) =>
+    f.route.points.some((p, i) => {
+      const q = f.route.points[i - 1];
+      return (
+        i > 0 &&
+        (axis === 'x' ? p.y === q.y : p.x === q.x) &&
+        Math.abs(axis === 'x' ? p.x - q.x : p.y - q.y) >= length
+      );
+    });
+  assert.ok(
+    scene.links.filter((f) => run(f, 'x', 20) && run(f, 'y', 10)).length > 0,
+    'at least one route follows an obstacle detour',
   );
 });
 
