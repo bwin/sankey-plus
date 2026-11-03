@@ -4,46 +4,116 @@
 
 [Open the live demo](https://bwin.github.io/sankey-plus/) or [run it locally](development.md). Every example is a normal tab; Left/Right arrows change tabs and Home/End reach the first/last. Use the Canvas selector to try narrow layouts, the external selection control to select independently of clicks, and the custom-label toggle to compare presentation.
 
-| Example | What to inspect |
-| --- | --- |
-| Distribution | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata. |
-| Stages | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare. |
-| World trade | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors. |
-| Currencies | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
-| Wide range | 200–500,000-unit transfers with a 4px minimum visible thickness; exact amounts stay in labels and tooltips. |
-| Four-sided flow | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps. |
-| Fan-out / Top fan-out | Separate ordered turns below and above the main sequence. |
-| Fan-in | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total. |
-| Many edge nodes | Twelve destinations wrapping into rows with separate lanes. |
-| Partial allocation | A 1,000-unit node with a 500-unit transfer; no unused edge bands. |
-| Parallel links | Three distinct ribbons between the same pair of nodes, each independently inspectable and selectable. |
-| Stress test | The same 100-node/300-link graph as the command-line stress benchmark. Dense crossings are expected. |
-| Empty | No data and no chart SVG. |
+| Example               | What to inspect                                                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Distribution          | Medium-complexity flow, partial totals, dark theme, and link tooltips with both endpoint nodes and metadata.                                                     |
+| Inspection bridge     | External `highlight` on the Distribution graph, with a live `onInspectChange` subject/modality readout and independent selection.                                |
+| Linked table          | A focusable node/link table that drives chart emphasis and mirrors chart inspection back into the active row, without changing selection.                        |
+| Stages                | Explicit Collect → Prepare → Deliver columns, node-array order within each column, and a forward link that skips Prepare.                                        |
+| Shares                | Resolved source and target percentages in link labels and tooltips; each share uses its endpoint total in the link's own unit.                                   |
+| World trade           | Exporting/importing countries, totals per good, top reserve releases and bottom inventory outflows. Illustrative USD billions with consistent commodity colors.  |
+| Currencies            | Separate currency balances, explicit input/output currencies, USD-valued widths, equal-value conversion and a 2.5% taper, top reserve and bottom retained funds. |
+| Layout overlay        | Distribution with stage headings and a rounded Process A callout from the public layout snapshot, plus diagnostics and SVG download.                             |
+| Wide range            | 200–500,000-unit transfers with a 4px minimum visible thickness; exact amounts stay in labels and tooltips.                                                      |
+| Transitions           | Two allocation states for the same graph; use Swap data to crossfade 500 ↔ 750 units without interpolating geometry.                                             |
+| Four-sided flow       | Multiple top/bottom nodes, both directions and a mixed-role edge relay. Recovery retains its slot when its source wraps.                                         |
+| Fan-out / Top fan-out | Separate ordered turns below and above the main sequence.                                                                                                        |
+| Fan-in                | Three unequal inputs converging on one bottom node, with reversed arrival order and a derived total.                                                             |
+| Many edge nodes       | Twelve destinations wrapping into rows with separate lanes.                                                                                                      |
+| Partial allocation    | A 1,000-unit node with a 500-unit transfer; no unused edge bands.                                                                                                |
+| Validation            | Non-throwing `validateGraph` issues for valid, cycle, unknown-endpoint and total-too-small variants. Invalid variants never reach the chart.                     |
+| Headroom              | The same 1,000/500 allocation with a hatched unallocated half and a headroom label.                                                                              |
+| Parallel links        | Three distinct ribbons between the same pair of nodes, each independently inspectable and selectable.                                                            |
+| Stress test           | The same 100-node/300-link graph as the command-line stress benchmark. Dense crossings are expected.                                                             |
+| Empty                 | No data and no chart SVG.                                                                                                                                        |
 
 All examples share custom labels/tooltips, node/link activation, host-controlled selection and keyboard inspection. The stress demo's measured browser text and two-line labels can produce different geometry from the CPU benchmark. Its timing readout includes scheduling and frame waits; see [development](development.md).
+
+## Inspection bridge
+
+The Inspection bridge tab reuses the Distribution graph. Its host panel passes a chosen node as `highlight`, so that node, its incident links and their endpoints are emphasized without a pointer. Hover, focus or tap the diagram to see `onInspectChange` report the subject key and `pointer`, `keyboard` or `touch`; dismissal reports `none`. Pointer hover updates the readout visually without queuing a live announcement; keyboard, touch and dismissal are announced politely. When an internal inspection and the external highlight are both active, their one-hop sets are unioned. The selection control remains independent and can select a link while a different node stays externally emphasized.
+
+## Linked table
+
+The Linked table tab also reuses the Distribution graph, but renders every node and link as a keyboard-focusable row below the chart. The two views are linked in both directions, and neither direction changes the controlled selection.
+
+- **Table to chart.** Hovering or focusing a node row contributes that node to `highlight`; hovering or focusing a link row contributes the link. The chart emphasizes the subject and its one-hop neighborhood exactly as it does for internal inspection. Hover and focus are tracked separately: moving the pointer away restores a focused row rather than clearing both contributions. Escape clears both row contributions without changing page focus or selection.
+- **Chart to table.** Hovering, focusing or tapping a chart node or link fires `onInspectChange`. The matching table row becomes current. For keyboard and touch inspection, if that row lies below the table's scroll viewport, the table scrolls it into view while leaving the page scroll position alone. Pointer inspection does not move the table, so the hovered chart stays stable.
+- External `highlight` is emphasis only and does not fire `onInspectChange`. The table therefore keeps separate `hovered` and `focused` state, while the chart's reported inspection remains separate. If both are active, the chart unions their one-hop sets.
+- **Selection stays independent.** Table hover does not select anything. Use chart clicks or the external selection control; the selected subject keeps its own outline even while rows and chart emphasis move.
+
+The demo keeps one active-row style and exposes `data-table-hover`, `data-table-focus`, `data-table-active` and `data-chart-active` when an integration needs to distinguish which surface started the emphasis. The table has a scrollable body and sticky header; every row is focusable, while the chart retains its single roving tab stop. Each row's accessible name includes its kind, subject, placement and value. A visually hidden polite status announces keyboard and touch inspections and clearing, while pointer updates stay quiet.
+
+```tsx
+const [hovered, setHovered] = useState<SankeySubject | null>(null);
+const [focused, setFocused] = useState<SankeySubject | null>(null);
+const [inspection, setInspection] = useState<SankeyInspection | null>(null);
+const active = hovered ?? focused;
+
+useEffect(() => onHighlightChange(active), [active, onHighlightChange]);
+
+<SankeyDiagram
+  graph={graph}
+  highlight={highlight}
+  onInspectChange={setInspection}
+  selection={selection}
+  onNodeClick={(facts) => setSelection({ kind: 'node', key: facts.node.key })}
+/>;
+
+<tr
+  tabIndex={0}
+  data-table-hover={hovered?.key === node.key ? 'true' : 'false'}
+  data-table-focus={focused?.key === node.key ? 'true' : 'false'}
+  data-table-active={active?.key === node.key ? 'true' : 'false'}
+  data-chart-active={
+    inspection?.subject.kind === 'node' && inspection.subject.key === node.key
+      ? 'true'
+      : 'false'
+  }
+  onMouseEnter={() => setHovered({ kind: 'node', key: node.key })}
+  onMouseLeave={() => setHovered(null)}
+  onFocus={() => setFocused({ kind: 'node', key: node.key })}
+  onBlur={() => setFocused(null)}
+  onKeyDown={(event) => {
+    if (event.key !== 'Escape') return;
+    setHovered(null);
+    setFocused(null);
+  }}
+>
+  {/* subject, placement and value cells */}
+</tr>;
+```
+
+Link rows use the same wiring with `{ kind: 'link', key: link.key }`. Compare both `kind` and `key` for each subject. Attach `onInspectChange` when the host needs the chart-to-table direction; attaching it while a subject is already inspected replays that subject once.
 
 ## Explicit stages
 
 The [Stages fixture](https://github.com/bwin/sankey-plus/blob/master/demo/stages.json) deliberately interleaves nodes from different stages in its node array. The stage array still fixes the three columns:
 
 ```ts
-stages: ['collect', 'prepare', 'deliver']
+stages: ['collect', 'prepare', 'deliver'];
 ```
 
 Within Prepare, `prepare-b` appears before `prepare-a`, so B stays above A. The gold 100-unit `bypass` link goes directly from Collect A to Deliver A without shifting either stage. Stage keys identify columns; they do not create built-in headings. Same-stage and backward links are invalid. See [stages and order](api.md#stages-and-order).
 
 ![Stages with shared columns and a gold link skipping the middle stage](../screenshots/docs-stages.jpg)
 
+## Shares
+
+The [Shares example](../demo/fixtures.ts) reuses the Distribution graph with a formatter that appends resolved endpoint shares. The 350-unit Input A → Process A link is **35% of its source** (350 of 1,000) and **39% of its destination** (350 of Process A's 900). Link labels show the source share; tooltips show both endpoint shares alongside the formatted amounts.
+
+`fromTotal` and `toTotal` come from each node's resolved balance in the link's `inputUnit` and `outputUnit`, so shares compare like units even when the graph uses several currencies or a different layout unit. Node amounts, converted values and transfer rates keep their normal formatting. [Share field semantics](units.md#callback-and-presentation-fields).
+
 ## World trade
 
 The [World trade fixture](../demo/trade.json) has 18 nodes and 26 links across `exporters`, `global-goods` and `importers`, plus two top and two bottom nodes. It uses **invented annual values in USD billions**, not actual trade statistics. The four center nodes aggregate the goods available from current exports and opening warehouse stocks:
 
-| Good | Current exports | Opening stocks released (top) | Total available | Current imports | Held for next year (bottom) |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Grain | $100 bn | $20 bn | $120 bn | $120 bn | — |
-| Energy | $160 bn | $30 bn | $190 bn | $190 bn | — |
-| Machinery | $240 bn | — | $240 bn | $215 bn | $25 bn |
-| Electronics | $300 bn | — | $300 bn | $285 bn | $15 bn |
+| Good        | Current exports | Opening stocks released (top) | Total available | Current imports | Held for next year (bottom) |
+| ----------- | --------------: | ----------------------------: | --------------: | --------------: | --------------------------: |
+| Grain       |         $100 bn |                        $20 bn |         $120 bn |         $120 bn |                           — |
+| Energy      |         $160 bn |                        $30 bn |         $190 bn |         $190 bn |                           — |
+| Machinery   |         $240 bn |                             — |         $240 bn |         $215 bn |                      $25 bn |
+| Electronics |         $300 bn |                             — |         $300 bn |         $285 bn |                      $15 bn |
 
 The top nodes release previously exported grain and energy from storage; these are not new exports by the countries on the left. The bottom nodes hold some current machinery and electronics exports in trade warehouses for delivery next year; these are excluded from current imports on the right. This is a simplified stock-flow example at a common value basis, not an accounting model for official trade statistics.
 
@@ -70,6 +140,12 @@ Inspect either conversion link to see its actual input/output amounts and transf
 
 ![Actual transfer amounts and rate separated from reference valuation](../screenshots/docs-currency-tooltip.jpg)
 
+## Layout overlay
+
+The Layout overlay tab reuses the Distribution graph and passes a `renderOverlay` function from [demo/layout-overlay.tsx](https://github.com/bwin/sankey-plus/blob/master/demo/layout-overlay.tsx). The overlay reads the public snapshot and draws stage headings above the three columns plus a rounded callout around `process-a`. It uses theme variables only, so it remains legible without participating in hit testing or accessibility.
+
+The footer reports the snapshot's `crossings` and `obstacleCollisions`, refreshed by `onLayout` only for this tab; switching examples clears the readout so it never shows another graph's diagnostics. Both values come from the completed scene and should be shown as diagnostics, not treated as errors for dense graphs. The footer also clones the live `<svg>` obtained through the imperative handle, injects theme variables and label/canvas styles, and downloads a self-contained file. The overlay is decorative: labels, tooltips, selection and keyboard navigation still come from the diagram itself. See [snapshot fields](api.md#snapshot-fields) and [snapshots and overlays](layout-and-interaction.md#snapshots-and-overlays).
+
 ## Wide range
 
 The [Wide range fixture](../demo/wide-range.json) has 9 nodes and 8 links with amounts of **200, 2,000, 25,000 and 500,000 units**. Three sources and a top reserve release feed Distribution, which passes 527,200 units to three destinations and a bottom retained balance.
@@ -79,6 +155,24 @@ This example sets **`minLinkWidth={4}`**. Large ribbons follow the value scale; 
 The library defaults to `minLinkWidth={0}`, retaining the original [proportional rendering](../screenshots/docs-wide-range-proportional.jpg). [Minimum-width semantics](api.md#quantities).
 
 ![Wide range with a 4px minimum thickness](../screenshots/docs-wide-range-minimum.jpg)
+
+## Validation
+
+The [Validation example](https://github.com/bwin/sankey-plus/blob/master/demo/validation-panel.tsx) runs `validateGraph` on four variants of the [simple fixture](../demo/fixtures.ts): a valid graph, a directed cycle, an unknown link endpoint and a total that is too small for its outgoing transfer. Choosing a variant lists every returned issue with its `code`, `message` and affected node or link key.
+
+Only the valid graph is passed to the demo's chart. The invalid variants are preflight examples and never reach `SankeyDiagram`, so this demo does not need an error boundary. The component still throws `SankeyInputError` for invalid render input in normal use; see [non-throwing validation](api.md#non-throwing-validation).
+
+## Headroom
+
+The Headroom example reuses the 1,000-unit available / 500-unit allocated graph and enables `showHeadroom`. The bottom half of the Available bar is hatched, and its label adds **50% headroom**. Allocated is fully explained by its incoming transfer, so it has no hatch and is labelled **Fully allocated**.
+
+The hatch is a drawing aid only. Available still totals 1,000, the transfer remains 500, and the destination total stays 500. Headroom is limited to declared or partially declared pure sources and sinks; fully derived totals and mixed-direction relays are not hatched, because their combined gap may mix units or roles. With `minLinkWidth`, the displayed port widths are subtracted from the quantitative `total * scale`; a floor-expanded stack consumes the bar rather than creating extra unused capacity, and hatches below 0.5 CSS pixels are omitted. [Headroom semantics](api.md#headroom).
+
+## Transitions
+
+The [Transitions example](../demo/fixtures.ts) reuses the simple two-stage graph with a second variant where the allocation is **750 instead of 500 units**. Nodes and stages are unchanged. Use **Swap data** in the chart footer to replace the graph; the completed 500-unit scene crossfades into the completed 750-unit scene over **320 ms**.
+
+The widths are not tweened. The old drawing fades out while the new drawing fades in, so there is no intermediate geometry or node movement. `transition={false}` (the default) updates directly. `duration: 0` disables the effect for one diagram, and `prefers-reduced-motion: reduce` skips it. Changing the Canvas width or the selected node can also affect the next crossfade because a new completed scene or refreshed snapshot is used. See [scene transitions](api.md#scene-transitions).
 
 ## Fan-in
 
@@ -92,10 +186,28 @@ The [Parallel links fixture](https://github.com/bwin/sankey-plus/blob/master/dem
 
 ```ts
 links: [
-  { key: 'main', from: 'source', to: 'destination', amount: 300, color: '#168e9d' },
-  { key: 'secondary', from: 'source', to: 'destination', amount: 150, color: '#c58a29' },
-  { key: 'small', from: 'source', to: 'destination', amount: 50, color: '#8170b4' },
-]
+  {
+    key: 'main',
+    from: 'source',
+    to: 'destination',
+    amount: 300,
+    color: '#168e9d',
+  },
+  {
+    key: 'secondary',
+    from: 'source',
+    to: 'destination',
+    amount: 150,
+    color: '#c58a29',
+  },
+  {
+    key: 'small',
+    from: 'source',
+    to: 'destination',
+    amount: 50,
+    color: '#8170b4',
+  },
+];
 ```
 
 Inspect a node to emphasize all three links. Inspect a single ribbon to emphasize only it and its two endpoints. Click a ribbon or use the external selection control to select it; the demo includes each amount in the selection labels to distinguish these links. They are not aggregated into one transfer.

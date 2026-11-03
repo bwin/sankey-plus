@@ -29,16 +29,27 @@
 - Preserve keyboard activation, visible-label hit testing, native wheel scrolling and container-local horizontal overflow.
 - Arbitrary graphs may retain crossings. Do not hide collision diagnostics, reduce search budgets or change geometry merely to improve benchmark numbers.
 
+## Visual changes and screenshots
+
+- Any PR that changes rendered output, default styling, or the demo's visible behavior must include screenshots in the PR description.
+- Include at least one screenshot of the diagram from the example added or changed. Crop to the chart rather than the whole page when possible.
+- Add one or two detail screenshots when they clarify the feature, such as a tooltip, hover/highlight state, wrapped layout, dark theme, or a mid-transition frame.
+- State the viewport width and theme, and what each screenshot demonstrates. If the change is animated or otherwise not fully captured by a still, include the closest static evidence and describe the motion and duration.
+- Commit screenshots under `screenshots/` and reference them from the PR description; do not paste local-only files. A non-visual change does not need screenshots.
+
 ## Development and verification
 
 Work on `dev` (or feature branches merged into `dev`). `master` is the default branch and represents the latest npm release; do not push ordinary development or documentation updates directly to it. Follow `docs/releasing.md`: update `CHANGELOG.md`, prepare on `dev`, merge locally into `master`, verify/publish the tested archive, then atomically push `master` and its version tag and create the GitHub release. Merge the release back into `dev` and return there after releasing. CI checks both branches, but only `master` deploys the live demo.
 
-From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits.
+From the repository root, install with `npm ci`. `npm run dev` builds and serves the demo at `http://127.0.0.1:5178/`. There is no watcher: rebuild and refresh after edits. Run `npm run format` before committing; Prettier uses its default 80-column width and 2-space indentation, with single quotes and `endOfLine: auto` as the only overrides. The compact stylesheets are excluded. `npm run test:browser` needs `npx playwright install chromium` once per checkout.
 
 ```sh
 npm run typecheck
+npm run lint
+npm run format:check
 npm test
 npm run build
+npm run test:browser
 npm run verify:package
 npm run stress
 npm run benchmark

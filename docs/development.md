@@ -22,10 +22,17 @@ The development command builds once and starts the server at **http://127.0.0.1:
 
 ```sh
 npm run typecheck
+npm run lint
+npm run format:check
 npm test
 npm run build
+npm run test:browser
 npm run verify:package
 ```
+
+`npm run test:browser` runs the Chromium Playwright smoke tests against the demo. Install the browser once with `npx playwright install chromium`; the test builds and serves the demo with `npm run dev` itself.
+
+`npm run format` rewrites the repository with Prettier; CI uses the non-writing `npm run format:check`. Prettier uses its default 80-column width and 2-space indentation; single quotes and `endOfLine: auto` are the only overrides. The compact stylesheets are excluded.
 
 `verify:package` requires a completed build. It packs the archive, installs it into `.tests/package-verify/consumer`, and checks the declarations, runtime exports and stylesheet from that fresh consumer.
 
@@ -46,11 +53,9 @@ The Stress test demo uses that same graph with the normal interactive renderer, 
 
 Node 22 was used for verification. React 19.2 was used for the demo; the library declares React/React DOM 18.2 or later as peer dependencies.
 
-
-
 ## Automatic demo deployment
 
-[The demo workflow](https://github.com/bwin/sankey-plus/blob/master/.github/workflows/demo.yml) checks pushes to `dev` and `master`, plus pull requests targeting `master`. It can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, runs the tests, builds the library/demo and, on `master` only, uploads `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed. Development branches run checks without publishing the demo.
+[The demo workflow](https://github.com/bwin/sankey-plus/blob/master/.github/workflows/demo.yml) checks pushes to `dev` and `master`, plus pull requests targeting `dev` or `master`. It can also be started manually from GitHub Actions. It installs the locked dependencies with Node 22, checks formatting, runs the linter and tests, builds the library/demo, runs the browser smoke test and, on `master` only, uploads `demo-dist/` as the Pages artifact. Deployment waits for the build to succeed. Development branches run checks without publishing the demo.
 
 The repository's Pages publishing source is **GitHub Actions**. The `github-pages` environment accepts only `master` deployments; only that job has Pages write and identity-token permissions. No personal access token or npm publishing secret is stored in the workflow. Generated files stay out of Git.
 
@@ -58,20 +63,20 @@ The live demo tracks `master`, the latest released version. Its relative asset U
 
 ## Source organization
 
-| File | Responsibility |
-| --- | --- |
-| `src/types.ts` | Public types and structured errors |
-| `src/model.ts` | Validation, adjacency, totals, one-hop emphasis |
-| `src/layout.ts` | Stage geometry, packing, ports and route allocation |
-| `src/layout-task.ts` | Cooperative main-thread scheduling and cancellation |
-| `src/paths.ts` | Curves, obstacle routing and hit-test geometry |
-| `src/presentation.ts` | Quantity formatting and accessible descriptions |
-| `src/SankeyDiagram.tsx` | Rendering, interactions, selection and tooltip |
-| `src/style.css` | Appearance and theme tokens |
-| `demo/fixtures.ts` | Generic examples and routing demonstrations |
-| `demo/distribution.json` | Medium-complexity distribution example |
+| File                     | Responsibility                                        |
+| ------------------------ | ----------------------------------------------------- |
+| `src/types.ts`           | Public types and structured errors                    |
+| `src/model.ts`           | Validation, adjacency, totals, one-hop emphasis       |
+| `src/layout.ts`          | Stage geometry, packing, ports and route allocation   |
+| `src/layout-task.ts`     | Cooperative main-thread scheduling and cancellation   |
+| `src/paths.ts`           | Curves, obstacle routing and hit-test geometry        |
+| `src/presentation.ts`    | Quantity formatting and accessible descriptions       |
+| `src/SankeyDiagram.tsx`  | Rendering, interactions, selection and tooltip        |
+| `src/style.css`          | Appearance and theme tokens                           |
+| `demo/fixtures.ts`       | Generic examples and routing demonstrations           |
+| `demo/distribution.json` | Medium-complexity distribution example                |
 | `demo/feature-demo.json` | Full neutral example, including mixed-role edge nodes |
-| `tests/core.test.ts` | Data, geometry and emphasis regressions |
+| `tests/core.test.ts`     | Data, geometry and emphasis regressions               |
 
 `dist/` contains the compiled library, declarations and stylesheet. `demo-dist/` contains a self-contained browser build. Build/test scripts use TypeScript and Rollup in-process; no native compiler subprocess is needed.
 

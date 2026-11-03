@@ -1,9 +1,5 @@
 {
-  "stages": [
-    "transactions",
-    "statements",
-    "invoices"
-  ],
+  "stages": ["transactions", "statements", "invoices"],
   "nodes": [
     {
       "key": "T-45678901",

@@ -23,14 +23,24 @@ import '@bwin/sankey-plus/style.css';
 const graph: SankeyGraph = {
   stages: ['input', 'output'],
   nodes: [
-    { key: 'source', title: 'Available', total: 1000, placement: { stage: 'input' } },
+    {
+      key: 'source',
+      title: 'Available',
+      total: 1000,
+      placement: { stage: 'input' },
+    },
     { key: 'target', title: 'Allocated', placement: { stage: 'output' } },
   ],
   links: [{ key: 'allocation', from: 'source', to: 'target', amount: 500 }],
 };
 
 export default function Example() {
-  return <SankeyDiagram graph={graph} accessibleName="Available and allocated amounts" />;
+  return (
+    <SankeyDiagram
+      graph={graph}
+      accessibleName="Available and allocated amounts"
+    />
+  );
 }
 ```
 
@@ -39,21 +49,26 @@ The source keeps its total of 1,000 while transferring only 500. Give the diagra
 ## Features
 
 - Ordered stage columns plus multiple top/bottom nodes, with wrapping on narrow canvases.
-- One-hop hover highlighting, keyboard navigation, node/link clicks and externally controlled selection.
+- One-hop hover highlighting, external `highlight` emphasis with inspection callbacks for linked tables and cross-chart views, keyboard navigation, node/link clicks and externally controlled selection.
+- Read-only layout snapshots, a typed ref for SVG export and programmatic focus, plus non-interactive SVG overlays for annotations.
 - Custom labels, tooltips with both connected nodes, typed metadata and light/dark theme tokens.
+- Resolved source and target shares on link facts for percentage labels and tooltips, using each endpoint's own unit total.
+- Optional crossfade between completed scenes when data changes, with reduced-motion support; geometry is not morphed or interpolated.
 - Common value scaling and explicit totals larger than their connected transfers.
+- Non-throwing `validateGraph` preflight for untrusted JSON and form data: it returns all semantic issues for structurally well-shaped graphs and `invalid-graph` for malformed structure before rendering.
+- Optional headroom hatching for declared partial source/sink capacity; mixed-direction relays stay unhatched.
 
 ## Guides
 
-| Guide | Covers |
-| --- | --- |
-| [Getting started](https://github.com/bwin/sankey-plus/blob/master/docs/getting-started.md) | Integration, click handlers, selection and sizing |
-| [API reference](https://github.com/bwin/sankey-plus/blob/master/docs/api.md) | Props, graph data, stages, callback contexts and validation |
-| [Customization](https://github.com/bwin/sankey-plus/blob/master/docs/customization.md) | Labels, endpoint tooltips, formatting and themes |
-| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/master/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits |
-| [Examples](https://github.com/bwin/sankey-plus/blob/master/docs/examples.md) | What each interactive demo demonstrates |
-| [Development](https://github.com/bwin/sankey-plus/blob/master/docs/development.md) | Local setup, tests, builds and stress commands |
-| [Releasing](https://github.com/bwin/sankey-plus/blob/master/docs/releasing.md) | Changelog, dev → master, package verification, npm and GitHub releases |
+| Guide                                                                                                    | Covers                                                                 |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [Getting started](https://github.com/bwin/sankey-plus/blob/master/docs/getting-started.md)               | Integration, click handlers, selection and sizing                      |
+| [API reference](https://github.com/bwin/sankey-plus/blob/master/docs/api.md)                             | Props, graph data, stages, callback contexts and validation            |
+| [Customization](https://github.com/bwin/sankey-plus/blob/master/docs/customization.md)                   | Labels, endpoint tooltips, formatting and themes                       |
+| [Layout and interaction](https://github.com/bwin/sankey-plus/blob/master/docs/layout-and-interaction.md) | Routing, wrapping, hover, keyboard behavior and limits                 |
+| [Examples](https://github.com/bwin/sankey-plus/blob/master/docs/examples.md)                             | What each interactive demo demonstrates                                |
+| [Development](https://github.com/bwin/sankey-plus/blob/master/docs/development.md)                       | Local setup, tests, builds and stress commands                         |
+| [Releasing](https://github.com/bwin/sankey-plus/blob/master/docs/releasing.md)                           | Changelog, dev → master, package verification, npm and GitHub releases |
 
 Layout yields in main-thread chunks; individual helpers and SVG rendering can still block. Arbitrary graphs are not guaranteed to be crossing-free. See [performance](https://github.com/bwin/sankey-plus/blob/master/docs/performance.md) and [verification](https://github.com/bwin/sankey-plus/blob/master/docs/verification.md) for measurements and tested coverage. `master` contains the latest npm release; ongoing development happens on `dev`.
 

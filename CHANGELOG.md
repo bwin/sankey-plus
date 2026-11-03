@@ -4,6 +4,41 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-11-03
+
+### Added
+
+- Link facts expose `fromTotal`, `toTotal`, `fromShare` and `toShare`, resolved in the link's input/output units, so labels and tooltips can show percentage shares without re-deriving endpoint totals. Add a Shares demo built on the Distribution graph.
+- Optional `highlight` and `onInspectChange` props: external one-hop emphasis unions with internal inspection, and a deduplicated callback reports the inspected subject and pointer/keyboard/touch modality without changing selection. Attaching the callback while a subject is inspected replays that subject once.
+- Inspection bridge example tab with a node highlight picker and a live inspection callback readout.
+- Linked table example with separately tracked hover/focus rows that drive external one-hop emphasis and mirror chart inspection back into the active row. Keyboard and touch inspection reveal off-screen rows, and each row has an accessible name with a live inspection status, while selection stays independently controlled.
+- Playwright coverage for external highlight, inspection readout, dismissal, selection independence and tab stops on the Inspection bridge example.
+- Optional `showHeadroom` hatching for declared partial source/sink capacity, with `minLinkWidth`-aware placement and theme-derived colors. Mixed-direction relays and derived totals are omitted.
+- Optional `transition` crossfade between completed scenes, with configurable duration and easing, reduced-motion support and a `duration: 0` opt-out. Path geometry is not interpolated.
+- Transitions example that swaps 500- and 750-unit allocation states with a 320 ms crossfade.
+- Public read-only layout snapshots with node/link geometry, label boxes, stage positions, central plot and edge bands, layout-unit node scalars and collision diagnostics.
+- `onLayout` completion callback and `renderOverlay` for non-interactive SVG annotations, both using the same typed read-only snapshot.
+- Typed `SankeyDiagramHandle` ref access for `getLayout()`, `getSvgElement()` and `focusSubject()`, including a generic forwardRef declaration that remains usable without a ref.
+- Layout overlay example with stage headings, a rounded node callout, diagnostics readout and SVG download.
+- Non-throwing `validateGraph(graph: unknown)` preflight that returns all semantic `SankeyIssue` values for structurally well-shaped graphs and `invalid-graph` for malformed top-level or nested entries, without weakening the component's throw-on-invalid rendering behavior.
+- Validation demo tab with valid, cycle, unknown-endpoint and total-too-small variants, showing returned issue codes, messages and affected keys.
+
+### Changed
+
+- Obstacle detour searches index boxes by the grid rows and columns they span and use typed arrays for search state, roughly halving layout time on graphs whose routes need repeated detours. Scenes, diagnostics and search budgets are unchanged.
+- Mark the package as side-effect-free except for its stylesheet, so bundlers can skip the single runtime bundle when none of its exports are used. The stylesheet remains an explicit import.
+- Declare Node.js 20.19 or later in `engines`.
+
+### Fixed
+
+- The fixed crossing-reduction trial budget is spread across eligible port groups instead of being consumed by the first groups.
+- Links with an unsupported CSS color now inherit their destination node's resolved color instead of hashing the destination key. Supported link colors still win.
+- Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
+- Layout no longer spreads argument lists over potentially unbounded link, node, route and label collections. Port construction now uses precomputed node indexes and link groups instead of per-node `indexOf`/`filter` scans.
+- Default node colors hash full Unicode code points, so keys containing astral characters may change to a different palette color.
+- Unitless node totals are reported on the affected node with guidance to set `graph.defaultUnit` or use `totals` with named units, instead of only emitting the graph-level link-unit message.
+- Programmatic and assistive-technology clicks on the diagram background no longer open details for whichever subject happens to sit at the default viewport coordinates. Detail-zero clicks on a subject control still inspect and activate it.
+
 ## [2.0.0] - 2026-11-01
 
 ### Breaking changes
@@ -69,7 +104,8 @@ The public component props and exported TypeScript API remain compatible with 1.
 - Custom labels/tooltips, one-hop inspection, controlled selection, click callbacks and keyboard navigation.
 - Responsive edge wrapping, routing/collision diagnostics, React 18.2+ peer support, MIT license and author metadata for Benjamin Winkler | bwin.
 
-[Unreleased]: https://github.com/bwin/sankey-plus/compare/v2.0.0...dev
+[Unreleased]: https://github.com/bwin/sankey-plus/compare/v2.1.0...dev
+[2.1.0]: https://github.com/bwin/sankey-plus/compare/v2.0.0...v2.1.0
 [2.0.0]: https://github.com/bwin/sankey-plus/compare/v1.1.0...v2.0.0
 [1.1.0]: https://github.com/bwin/sankey-plus/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/bwin/sankey-plus/tree/v1.0.0

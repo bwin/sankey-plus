@@ -1,41 +1,221 @@
 {
   "stages": ["supply", "processing", "delivery"],
   "nodes": [
-    { "key": "supply-a", "title": "Supply A", "placement": { "stage": "supply" }, "total": 1500, "color": "#4464dc" },
-    { "key": "supply-b", "title": "Supply B", "placement": { "stage": "supply" }, "total": 1000, "color": "#c58a29", "meta": { "note": "Only 500 of the total 1,000 has outgoing connections." } },
-    { "key": "process-a", "title": "Process A", "placement": { "stage": "processing" }, "total": 1000, "color": "#168e9d" },
-    { "key": "process-b", "title": "Process B", "placement": { "stage": "processing" }, "total": 500, "color": "#6c62bd" },
-    { "key": "outcome-a", "title": "Outcome A", "placement": { "stage": "delivery" }, "total": 1000, "color": "#d76c91" },
-    { "key": "outcome-b", "title": "Outcome B", "placement": { "stage": "delivery" }, "color": "#4b9293" },
-    { "key": "outcome-c", "title": "Outcome C", "placement": { "stage": "delivery" }, "color": "#8a7abf" },
-    { "key": "reserve", "title": "Reserve", "placement": { "edge": "top" }, "total": 500, "color": "#d29432" },
-    { "key": "supplement", "title": "Supplement", "placement": { "edge": "top" }, "color": "#488dba" },
-    { "key": "archive", "title": "Archive", "placement": { "edge": "top" }, "color": "#727d92" },
-    { "key": "unassigned", "title": "Unassigned", "placement": { "edge": "bottom" }, "color": "#687385" },
-    { "key": "carry-in", "title": "Carry-in", "placement": { "edge": "bottom" }, "total": 1000, "color": "#ba6750" },
-    { "key": "recovery", "title": "Recovery", "placement": { "edge": "bottom" }, "color": "#3b9c85" },
-    { "key": "adjustment", "title": "Adjustment", "placement": { "edge": "bottom" }, "color": "#b95c84" },
-    { "key": "loss", "title": "Loss", "placement": { "edge": "bottom" }, "color": "#899469" }
+    {
+      "key": "supply-a",
+      "title": "Supply A",
+      "placement": { "stage": "supply" },
+      "total": 1500,
+      "color": "#4464dc"
+    },
+    {
+      "key": "supply-b",
+      "title": "Supply B",
+      "placement": { "stage": "supply" },
+      "total": 1000,
+      "color": "#c58a29",
+      "meta": {
+        "note": "Only 500 of the total 1,000 has outgoing connections."
+      }
+    },
+    {
+      "key": "process-a",
+      "title": "Process A",
+      "placement": { "stage": "processing" },
+      "total": 1000,
+      "color": "#168e9d"
+    },
+    {
+      "key": "process-b",
+      "title": "Process B",
+      "placement": { "stage": "processing" },
+      "total": 500,
+      "color": "#6c62bd"
+    },
+    {
+      "key": "outcome-a",
+      "title": "Outcome A",
+      "placement": { "stage": "delivery" },
+      "total": 1000,
+      "color": "#d76c91"
+    },
+    {
+      "key": "outcome-b",
+      "title": "Outcome B",
+      "placement": { "stage": "delivery" },
+      "color": "#4b9293"
+    },
+    {
+      "key": "outcome-c",
+      "title": "Outcome C",
+      "placement": { "stage": "delivery" },
+      "color": "#8a7abf"
+    },
+    {
+      "key": "reserve",
+      "title": "Reserve",
+      "placement": { "edge": "top" },
+      "total": 500,
+      "color": "#d29432"
+    },
+    {
+      "key": "supplement",
+      "title": "Supplement",
+      "placement": { "edge": "top" },
+      "color": "#488dba"
+    },
+    {
+      "key": "archive",
+      "title": "Archive",
+      "placement": { "edge": "top" },
+      "color": "#727d92"
+    },
+    {
+      "key": "unassigned",
+      "title": "Unassigned",
+      "placement": { "edge": "bottom" },
+      "color": "#687385"
+    },
+    {
+      "key": "carry-in",
+      "title": "Carry-in",
+      "placement": { "edge": "bottom" },
+      "total": 1000,
+      "color": "#ba6750"
+    },
+    {
+      "key": "recovery",
+      "title": "Recovery",
+      "placement": { "edge": "bottom" },
+      "color": "#3b9c85"
+    },
+    {
+      "key": "adjustment",
+      "title": "Adjustment",
+      "placement": { "edge": "bottom" },
+      "color": "#b95c84"
+    },
+    {
+      "key": "loss",
+      "title": "Loss",
+      "placement": { "edge": "bottom" },
+      "color": "#899469"
+    }
   ],
   "links": [
-    { "key": "reserve-process", "from": "reserve", "to": "process-a", "amount": 250 },
-    { "key": "supply-a-process-a", "from": "supply-a", "to": "process-a", "amount": 500 },
-    { "key": "supply-a-process-b", "from": "supply-a", "to": "process-b", "amount": 300 },
-    { "key": "supply-a-reserve", "from": "supply-a", "to": "reserve", "amount": 100 },
-    { "key": "supply-a-unassigned", "from": "supply-a", "to": "unassigned", "amount": 600 },
-    { "key": "supply-b-process-a", "from": "supply-b", "to": "process-a", "amount": 250 },
-    { "key": "supply-b-unassigned", "from": "supply-b", "to": "unassigned", "amount": 250 },
-    { "key": "supplement-process", "from": "supplement", "to": "process-b", "amount": 200 },
-    { "key": "process-a-outcome", "from": "process-a", "to": "outcome-a", "amount": 100 },
-    { "key": "process-a-archive", "from": "process-a", "to": "archive", "amount": 100 },
-    { "key": "process-a-loss", "from": "process-a", "to": "loss", "amount": 100 },
-    { "key": "process-b-outcome-b", "from": "process-b", "to": "outcome-b", "amount": 200 },
-    { "key": "process-b-outcome-c", "from": "process-b", "to": "outcome-c", "amount": 100 },
-    { "key": "process-b-loss", "from": "process-b", "to": "loss", "amount": 50 },
-    { "key": "reserve-carry", "from": "reserve", "to": "carry-in", "amount": 50 },
-    { "key": "carry-outcome-b", "from": "carry-in", "to": "outcome-b", "amount": 250 },
-    { "key": "carry-outcome-c", "from": "carry-in", "to": "outcome-c", "amount": 700 },
-    { "key": "recovery-outcome", "from": "recovery", "to": "outcome-c", "amount": 50 },
-    { "key": "adjustment-outcome", "from": "adjustment", "to": "outcome-a", "amount": 900 }
+    {
+      "key": "reserve-process",
+      "from": "reserve",
+      "to": "process-a",
+      "amount": 250
+    },
+    {
+      "key": "supply-a-process-a",
+      "from": "supply-a",
+      "to": "process-a",
+      "amount": 500
+    },
+    {
+      "key": "supply-a-process-b",
+      "from": "supply-a",
+      "to": "process-b",
+      "amount": 300
+    },
+    {
+      "key": "supply-a-reserve",
+      "from": "supply-a",
+      "to": "reserve",
+      "amount": 100
+    },
+    {
+      "key": "supply-a-unassigned",
+      "from": "supply-a",
+      "to": "unassigned",
+      "amount": 600
+    },
+    {
+      "key": "supply-b-process-a",
+      "from": "supply-b",
+      "to": "process-a",
+      "amount": 250
+    },
+    {
+      "key": "supply-b-unassigned",
+      "from": "supply-b",
+      "to": "unassigned",
+      "amount": 250
+    },
+    {
+      "key": "supplement-process",
+      "from": "supplement",
+      "to": "process-b",
+      "amount": 200
+    },
+    {
+      "key": "process-a-outcome",
+      "from": "process-a",
+      "to": "outcome-a",
+      "amount": 100
+    },
+    {
+      "key": "process-a-archive",
+      "from": "process-a",
+      "to": "archive",
+      "amount": 100
+    },
+    {
+      "key": "process-a-loss",
+      "from": "process-a",
+      "to": "loss",
+      "amount": 100
+    },
+    {
+      "key": "process-b-outcome-b",
+      "from": "process-b",
+      "to": "outcome-b",
+      "amount": 200
+    },
+    {
+      "key": "process-b-outcome-c",
+      "from": "process-b",
+      "to": "outcome-c",
+      "amount": 100
+    },
+    {
+      "key": "process-b-loss",
+      "from": "process-b",
+      "to": "loss",
+      "amount": 50
+    },
+    {
+      "key": "reserve-carry",
+      "from": "reserve",
+      "to": "carry-in",
+      "amount": 50
+    },
+    {
+      "key": "carry-outcome-b",
+      "from": "carry-in",
+      "to": "outcome-b",
+      "amount": 250
+    },
+    {
+      "key": "carry-outcome-c",
+      "from": "carry-in",
+      "to": "outcome-c",
+      "amount": 700
+    },
+    {
+      "key": "recovery-outcome",
+      "from": "recovery",
+      "to": "outcome-c",
+      "amount": 50
+    },
+    {
+      "key": "adjustment-outcome",
+      "from": "adjustment",
+      "to": "outcome-a",
+      "amount": 900
+    }
   ]
 }

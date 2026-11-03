@@ -4,39 +4,54 @@
 
 ## Labels and tooltips
 
-Default labels, tooltips and accessible descriptions use the runtime locale. Pass a stable `formatAmount` callback when output must be identical on a server and in a browser with a different locale.
+Default labels, tooltips and accessible descriptions use the runtime locale. Pass a stable `formatAmount` callback when formatted output must stay consistent across renders and after hydration. Pin the locale explicitly when server and browser environments can differ.
 
 ```tsx
+import {
+  SankeyDiagram,
+  type SankeyAmountContext,
+  type SankeyPresentation,
+} from '@bwin/sankey-plus';
+
+const formatAmount = (value: number, context: SankeyAmountContext): string => {
+  // context.field: total / incoming / outgoing / amount
+  // context.surface: label / tooltip / accessible
+  return `${value.toLocaleString('en-US')} units`;
+};
+
+const getLabel = (view: SankeyPresentation): string | readonly string[] =>
+  view.kind === 'node'
+    ? [view.node.title, `${view.text.total} total`]
+    : view.text.amount;
+
 <SankeyDiagram
   graph={graph}
   accessibleName="Allocation flow"
-  formatAmount={(value, context) => {
-    // context.field: total / incoming / outgoing / amount
-    // context.surface: label / tooltip / accessible
-    return `${value.toLocaleString()} units`;
-  }}
-  getLabel={(view) => view.kind === 'node'
-    ? [view.node.title, `${view.text.total} total`]
-    : view.text.amount
+  formatAmount={formatAmount}
+  getLabel={getLabel}
+  renderTooltip={(view) =>
+    view.kind === 'node' ? (
+      <>
+        <strong className="flow-tip-title">{view.node.title}</strong>
+        <dl>
+          <dt>Total</dt>
+          <dd>{view.text.total}</dd>
+          <dt>Incoming</dt>
+          <dd>{view.text.incoming}</dd>
+          <dt>Outgoing</dt>
+          <dd>{view.text.outgoing}</dd>
+        </dl>
+      </>
+    ) : (
+      <>
+        <strong className="flow-tip-title">
+          {view.fromNode.title} → {view.toNode.title}
+        </strong>
+        <span>{view.text.amount}</span>
+      </>
+    )
   }
-  renderTooltip={(view) => view.kind === 'node' ? (
-    <>
-      <strong className="flow-tip-title">{view.node.title}</strong>
-      <dl>
-        <dt>Total</dt><dd>{view.text.total}</dd>
-        <dt>Incoming</dt><dd>{view.text.incoming}</dd>
-        <dt>Outgoing</dt><dd>{view.text.outgoing}</dd>
-      </dl>
-    </>
-  ) : (
-    <>
-      <strong className="flow-tip-title">
-        {view.fromNode.title} → {view.toNode.title}
-      </strong>
-      <span>{view.text.amount}</span>
-    </>
-  )}
-/>
+/>;
 ```
 
 Labels use measured text and horizontal truncation. Arrays retain all lines, including per-unit balances and a converted total; layout reserves additional vertical space for longer node labels. Link labels avoid bars and other labels; a label with no suitable space is hidden until its link is inspected. Tooltips and accessible descriptions retain the full information. See [units and conversion](units.md) for native amounts, converted widths, `text.totals`, `text.converted` and conversion-rate equations. Custom callbacks own their content: use those structured fields when showing a multi-unit node instead of only `text.total`.
@@ -60,7 +75,7 @@ Tooltip placement, viewport clamping, dismissal and accessible association are i
 
 ## Theme and colors
 
-The component inherits the font family, uses 12-pixel chart text, and exposes four theme tokens. Scope overrides on the component's class:
+The component inherits the font family, uses 12-pixel chart text, and exposes six theme tokens. Scope overrides on the component's class:
 
 ```css
 .my-flow {
@@ -68,12 +83,18 @@ The component inherits the font family, uses 12-pixel chart text, and exposes fo
   --flow-text: #24334a;
   --flow-muted-text: #68758b;
   --flow-focus: #2644af;
+  --flow-headroom: var(--flow-muted-text);
+  --flow-headroom-track: color-mix(
+    in srgb,
+    var(--flow-surface) 86%,
+    var(--flow-muted-text)
+  );
 }
 ```
 
 Provide `color` on nodes/links as needed. Otherwise nodes receive a stable palette color based on their key; links inherit their destination color. Unsupported CSS colors fall back to the palette. No application-specific theme provider is needed.
 
-Distribution demonstrates a dark surface using these same tokens: `--flow-surface: #101b2d`, `--flow-text: #e4ebf6`, `--flow-muted-text: #a4b1c7` and `--flow-focus: #bac8ff`. The tooltip inherits the diagram's tokens even though it is portaled to the document body. Other examples retain their light surface.
+Distribution demonstrates a dark surface using these same tokens: `--flow-surface: #101b2d`, `--flow-text: #e4ebf6`, `--flow-muted-text: #a4b1c7` and `--flow-focus: #bac8ff`. The default headroom tokens follow those overrides: the hatch line uses `--flow-muted-text`, and the track mixes 86% of `--flow-surface` with it, so the overlay stays dark rather than becoming a near-white block. Override `--flow-headroom` or `--flow-headroom-track` directly for stronger contrast. The tooltip inherits the diagram's tokens even though it is portaled to the document body. Other examples retain their light surface.
 
 ## Stable callbacks
 

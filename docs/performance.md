@@ -14,13 +14,13 @@ Timing covers `resolveGraph` and `layoutGraph`, including route selection, obsta
 
 Node 22.17.0, median of ten calls after the first call in each case:
 
-| Fixture | Before | After |
-| --- | ---: | ---: |
-| 100 nodes / 300 links | 745.4 ms | 124.4 ms |
-| Original allocation fixture, 1,440 px | 23.6 ms | 22.6 ms |
-| Original allocation fixture, 360 px | 90.0 ms | 53.3 ms |
-| Four-sided fixture, 1,126 px | 45.8 ms | 39.1 ms |
-| Twelve wrapped destinations, 600 px | 19.2 ms | 3.0 ms |
+| Fixture                               |   Before |    After |
+| ------------------------------------- | -------: | -------: |
+| 100 nodes / 300 links                 | 745.4 ms | 124.4 ms |
+| Original allocation fixture, 1,440 px |  23.6 ms |  22.6 ms |
+| Original allocation fixture, 360 px   |  90.0 ms |  53.3 ms |
+| Four-sided fixture, 1,126 px          |  45.8 ms |  39.1 ms |
+| Twelve wrapped destinations, 600 px   |  19.2 ms |   3.0 ms |
 
 The first stress calculation took 789.0 ms before and 230.1 ms after in these Node processes. First-call numbers include JIT warm-up and vary between runs. The non-stress fixtures use two-line node labels; the stress fixture matches its automated test's default labels.
 
@@ -38,7 +38,13 @@ The initial sampling profile showed obstacle/segment intersection checks as the 
 - Reuse each link's unrelated node/label obstacles within one layout attempt.
 - Use numeric visibility-grid edge keys and reuse search directions instead of creating strings and arrays for each search step.
 
+- Test each visibility-grid edge only against boxes whose open row or column range contains it, and keep search state in typed arrays. An axis-aligned segment cannot hit any other box, so results are identical.
+
 Crossing and obstacle diagnostics remain enabled. This improvement does not come from skipping checks or reducing the routing search budget.
+
+## Collision-heavy layouts
+
+The stress graph never leaves a route colliding with a bar or label, so it does not reach the detour search or the width-retry loop. The `obstacle-8x12` case (eight columns of twelve long-titled nodes, about a third of the links skipping a column) does: an unresolved collision re-runs the whole layout at up to six widths, and each pass repeats the detour searches. In Node on one machine its median fell from 4,294 ms to 1,882 ms with byte-identical scenes (same hash) across all six benchmark cases. That is still far slower than the stress graph; the repeated whole-layout retries are the remaining cost, and graphs with many unresolved collisions can take many seconds.
 
 ## Correctness and reproduction
 
