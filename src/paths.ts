@@ -576,6 +576,8 @@ export function avoidObstacles(
   obstacles: Rect[],
   bounds: Rect,
   bendCost = 24,
+  /** Internal: false tests every box on every edge, as a reference for the row/column index. */
+  indexed = true,
 ): Point[] | null {
   const relevant = obstacles.filter((r) => intersects(r, bounds));
   if (relevant.some((r) => inside(start, r) || inside(end, r))) return null;
@@ -624,7 +626,7 @@ export function avoidObstacles(
     }
     return lo;
   };
-  for (const r of relevant) {
+  for (const r of indexed ? relevant : []) {
     const maxY = r.y + r.h - 1e-5,
       maxX = r.x + r.w - 1e-5;
     for (let i = firstAbove(ys, r.y + 1e-5); i < ny && ys[i] < maxY; i++)
@@ -700,7 +702,11 @@ export function avoidObstacles(
         from.y = ay;
         to.x = bx;
         to.y = by;
-        const candidates = dir === 1 ? rowBoxes[y] : columnBoxes[x];
+        const candidates = !indexed
+          ? relevant
+          : dir === 1
+            ? rowBoxes[y]
+            : columnBoxes[x];
         blocked[edge] = candidates.some((r) => segmentHits(from, to, r))
           ? 2
           : 1;

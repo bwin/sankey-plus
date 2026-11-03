@@ -445,3 +445,77 @@ test('a detour goes around a wall and no route exists past a column that spans t
   );
   assert.equal(sealed, null);
 });
+
+test('indexed detour search matches the full obstacle scan', () => {
+  let seed = 17;
+  const random = (max: number) => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return Math.floor((seed / 2 ** 32) * max);
+  };
+  const gaps = [0, 1e-5, 0.05, 0.1, 0.2, 1];
+  let routed = 0,
+    unrouted = 0;
+  for (let trial = 0; trial < 200; trial++) {
+    const bounds = { x: 0, y: 0, w: 120 + random(100), h: 120 + random(100) };
+    const start = { x: 3, y: 5 + random(bounds.h - 10) },
+      end = { x: bounds.w - 3, y: 5 + random(bounds.h - 10) };
+    const boxes: Rect[] = [];
+    for (let i = 0, count = 3 + random(14); i < count; i++) {
+      const previous = boxes.at(-1);
+      const kind = random(6);
+      let box: Rect;
+      if (kind === 0)
+        // Epsilon and zero-size boxes never block an axis-aligned edge.
+        box = {
+          x: 10 + random(bounds.w - 20),
+          y: random(bounds.h),
+          w: 1e-6,
+          h: 1e-6,
+        };
+      else if (kind === 1 && previous)
+        // Close neighbors put one box's grid lines just inside another's range.
+        box = {
+          x: previous.x + random(20) - 5,
+          y: previous.y + previous.h + gaps[random(gaps.length)],
+          w: 5 + random(25),
+          h: 5 + random(25),
+        };
+      else if (kind === 2 && previous)
+        box = {
+          x: previous.x + previous.w + gaps[random(gaps.length)],
+          y: previous.y + random(20) - 5,
+          w: 5 + random(25),
+          h: 5 + random(25),
+        };
+      else if (kind === 3)
+        // Edges exactly on the bounds, on the start/end rows, and past the bounds.
+        box = {
+          x: 10 + random(bounds.w - 20),
+          y: [0, start.y, end.y, -10][random(4)],
+          w: 5 + random(25),
+          h: [bounds.h, 10, 30, bounds.h + 20][random(4)],
+        };
+      else
+        box = {
+          x: 10 + random(bounds.w - 20),
+          y: random(bounds.h),
+          w: 4 + random(30),
+          h: 4 + random(40),
+        };
+      boxes.push(box);
+    }
+    for (const bendCost of [24, 5]) {
+      const indexed = avoidObstacles(start, end, boxes, bounds, bendCost);
+      assert.deepEqual(
+        indexed,
+        avoidObstacles(start, end, boxes, bounds, bendCost, false),
+        `trial ${trial}, bend cost ${bendCost}`,
+      );
+      if (indexed) routed++;
+      else unrouted++;
+    }
+  }
+  // Both outcomes must occur so the comparison covers routes and failures.
+  assert.ok(routed > 100, `${routed} searches found a route`);
+  assert.ok(unrouted > 20, `${unrouted} searches found no route`);
+});
