@@ -54,6 +54,42 @@ test('changing graphs clears an active keyboard inspection', async ({
   expect(errors).toEqual([]);
 });
 
+test('programmatic clicks only inspect through a subject control', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await page.goto('/');
+  await waitForRender(page);
+
+  const subject = page.locator('[data-flow-subject][data-kind="node"]').first();
+  await expect(subject).toBeVisible({ timeout: 15_000 });
+  await subject.evaluate((el) =>
+    el.scrollIntoView({ block: 'center', inline: 'center' }),
+  );
+  await expect(subject).toBeInViewport({ ratio: 1 });
+  const box = await subject.boundingBox();
+  if (!box) throw new Error('Subject has no layout box.');
+  const click = {
+    detail: 0,
+    button: 0,
+    clientX: box.x + box.width / 2,
+    clientY: box.y + box.height / 2,
+  };
+
+  // The target is the SVG background even though the coordinates point at the
+  // subject, so detail-zero clicks must not use those coordinates for locating.
+  const canvas = page.locator('svg.flow-canvas[role="group"]');
+  await canvas.dispatchEvent('click', click);
+  await expect(page.getByRole('tooltip')).toBeHidden();
+  await expect(page.locator('[data-emphasis="faded"]')).toHaveCount(0);
+
+  // Assistive activation dispatches detail-zero clicks on the subject control.
+  await subject.dispatchEvent('click', click);
+  await expect(page.getByRole('tooltip')).toBeVisible();
+
+  expect(errors).toEqual([]);
+});
+
 test('pointer inspection opens the details', async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto('/');

@@ -24,6 +24,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 ### Fixed
 
 - Edge-node placement validation no longer spreads large stage arrays, so graphs with very many incident links validate without a `RangeError`.
+- Programmatic and assistive-technology clicks on the diagram background no longer open details for whichever subject happens to sit at the default viewport coordinates. Detail-zero clicks on a subject control still inspect and activate it.
 
 ## [2.0.0] - 2026-11-01
 

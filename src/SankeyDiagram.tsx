@@ -854,11 +854,13 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
       '[data-flow-subject]',
     );
     const subject =
-      e.detail === 0 && control
-        ? {
-            kind: control.dataset.kind as SankeySubject['kind'],
-            key: control.dataset.key!,
-          }
+      e.detail === 0
+        ? control
+          ? {
+              kind: control.dataset.kind as SankeySubject['kind'],
+              key: control.dataset.key!,
+            }
+          : null
         : locate(e);
     const touch = gesture.current?.type === 'touch';
     gesture.current = null;
