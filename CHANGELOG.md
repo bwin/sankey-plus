@@ -34,6 +34,7 @@ Notable changes to `@bwin/sankey-plus`. Versions follow semantic versioning. See
 - Layout no longer spreads argument lists over potentially unbounded link, node, route and label collections. Port construction now uses precomputed node indexes and link groups instead of per-node `indexOf`/`filter` scans.
 - Default node colors hash full Unicode code points, so keys containing astral characters may change to a different palette color.
 - Unitless node totals are reported on the affected node with guidance to set `graph.defaultUnit` or use `totals` with named units, instead of only emitting the graph-level link-unit message.
+- Programmatic and assistive-technology clicks on the diagram background no longer open details for whichever subject happens to sit at the default viewport coordinates. Detail-zero clicks on a subject control still inspect and activate it.
 
 ## [2.0.0] - 2026-11-01
 
