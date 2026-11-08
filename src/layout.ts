@@ -381,12 +381,14 @@ export function* layoutGraphSteps<I, T>(
     minimum: number,
     available: number,
     factor: number,
-    message: string,
+    target: string,
   ) => {
     if (minimum <= available) return null;
     const nextWidth = width + (minimum - available + 1) * slots * factor;
     if (!Number.isFinite(nextWidth) || nextWidth > MAX_EXTENT)
-      throw invalidNumber(message);
+      throw invalidNumber(
+        `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of ${target}.`,
+      );
     return nextWidth;
   };
   const limits = new Map<
@@ -417,12 +419,7 @@ export function* layoutGraphSteps<I, T>(
       const available = Math.max(8, hi - lo - 28),
         minimum = nodeSize(n, 0);
       // Even a zero value scale cannot fit this edge's port stack.
-      const nextWidth = widthForMinimum(
-        minimum,
-        available,
-        2,
-        `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of edge links.`,
-      );
+      const nextWidth = widthForMinimum(minimum, available, 2, 'edge links');
       if (nextWidth !== null)
         return yield* layoutGraphSteps(
           model,
@@ -486,7 +483,7 @@ export function* layoutGraphSteps<I, T>(
             minimum,
             channelWidth,
             4,
-            `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of wrapped fan links.`,
+            'wrapped fan links',
           );
           if (nextWidth !== null)
             return yield* layoutGraphSteps(

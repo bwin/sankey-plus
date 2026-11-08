@@ -6,10 +6,11 @@ import {
   emphasis,
   nodeColor,
   subjectExists,
+  subjectList,
 } from '../src/model.js';
 import { validateGraph } from '../src/validate.js';
 import { layoutGraph, hitTest } from '../src/layout.js';
-import { defaultLabel, presentation } from '../src/presentation.js';
+import { defaultLabel, presentation, same } from '../src/presentation.js';
 import {
   crossings,
   distanceToRoute,
@@ -19,7 +20,11 @@ import {
   ribbonBounds,
   routeCollisions,
 } from '../src/paths.js';
-import { SankeyInputError, type SankeyGraph } from '../src/types.js';
+import {
+  SankeyInputError,
+  type SankeyGraph,
+  type SankeySubject,
+} from '../src/types.js';
 import { obstacleGraph, stressGraph } from '../fixtures/stress.js';
 import { error } from './helpers.js';
 const full = JSON.parse(
@@ -386,6 +391,28 @@ test('subject retention rejects subjects missing from the current model', () => 
   assert.equal(subjectExists(model, { kind: 'link', key: 'ab' }), true);
   assert.equal(subjectExists(model, { kind: 'link', key: 'missing' }), false);
   assert.equal(subjectExists(model, null), false);
+  assert.equal(subjectExists(model, undefined), false);
+});
+test('subject normalization and identity treat absence as no subject', () => {
+  assert.deepEqual(subjectList(null), []);
+  assert.deepEqual(subjectList(undefined), []);
+  assert.deepEqual(subjectList({ kind: 'node', key: 'a' }), [
+    { kind: 'node', key: 'a' },
+  ]);
+  const node: SankeySubject = { kind: 'node', key: 'a' };
+  assert.equal(same(node, node), true);
+  assert.equal(same(node, { kind: 'link', key: 'a' }), false);
+  assert.equal(same(node, { kind: 'node', key: 'b' }), false);
+  assert.equal(same(null, null), false);
+  assert.equal(same(undefined, undefined), false);
+  assert.equal(same(undefined, null), false);
+});
+test('emphasis fails fast on malformed subject entries', () => {
+  const model = resolveGraph(base);
+  assert.throws(
+    () => emphasis(model, [null] as unknown as SankeySubject[]),
+    TypeError,
+  );
 });
 test('hover is exactly one hop, not the induced subgraph of strong nodes', () => {
   const model = resolveGraph(full),

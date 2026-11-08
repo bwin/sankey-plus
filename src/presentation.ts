@@ -308,7 +308,7 @@ export const identity = (s: SankeySubject) => JSON.stringify([s.kind, s.key]);
 export const same = (
   a: SankeySubject | null | undefined,
   b: SankeySubject | null | undefined,
-) => a?.kind === b?.kind && a?.key === b?.key;
+) => a != null && b != null && a.kind === b.kind && a.key === b.key;
 /** Resolve replay-on-attach and identity-change dedupe for one inspection report. */
 export function inspectionReport(
   reported: string | null,
