@@ -389,6 +389,16 @@ export function resolveGraph<I, T>(
     ],
   };
 }
+/** Normalize one subject or a list into a stable readonly list. */
+export function subjectList(
+  subject: SankeySubject | readonly SankeySubject[] | null | undefined,
+): readonly SankeySubject[] {
+  return subject == null
+    ? []
+    : Array.isArray(subject)
+      ? (subject as readonly SankeySubject[])
+      : [subject as SankeySubject];
+}
 export function subjectExists<I, T>(
   model: ResolvedGraph<I, T>,
   subject: SankeySubject | null | undefined,
@@ -407,15 +417,8 @@ export function emphasis<I, T>(
 ) {
   const nodes = new Set<string>(),
     links = new Set<string>();
-  const subjects = !subject
-    ? []
-    : Array.isArray(subject)
-      ? (subject as readonly SankeySubject[])
-      : [subject as SankeySubject];
-  const valid = subjects.filter((item) =>
-    item.kind === 'node'
-      ? model.nodes.has(item.key)
-      : model.links.has(item.key),
+  const valid = subjectList(subject).filter((item) =>
+    subjectExists(model, item),
   );
   if (!valid.length) {
     for (const k of model.nodes.keys()) nodes.add(k);

@@ -15,6 +15,11 @@ export interface Route {
   length: number;
 }
 const near = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y) < 1e-5;
+const side = (p: Point, q: Point, r: Point) =>
+  (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
+const crosses = (p: Point, q: Point, r: Point, s: Point) =>
+  side(p, q, r) * side(p, q, s) < -1e-7 &&
+  side(r, s, p) * side(r, s, q) < -1e-7;
 export const inside = (p: Point, r: Rect) =>
   p.x > r.x + 1e-5 &&
   p.x < r.x + r.w - 1e-5 &&
@@ -505,8 +510,6 @@ export function routeCollisions(
 }
 export function crossings(a: Route, b: Route): number {
   if (!intersects(a.bounds, b.bounds)) return 0;
-  const side = (p: Point, q: Point, r: Point) =>
-    (q.x - p.x) * (r.y - p.y) - (q.y - p.y) * (r.x - p.x);
   const monotoneX = (points: Point[]): number => {
     let direction = 0;
     for (let i = 1; i < points.length; i++) {
@@ -535,13 +538,7 @@ export function crossings(a: Route, b: Route): number {
         aMax = Math.max(p.x, q.x);
       const bMin = Math.min(r.x, s.x),
         bMax = Math.max(r.x, s.x);
-      if (
-        aMax >= bMin &&
-        bMax >= aMin &&
-        side(p, q, r) * side(p, q, s) < -1e-7 &&
-        side(r, s, p) * side(r, s, q) < -1e-7
-      )
-        return 1;
+      if (aMax >= bMin && bMax >= aMin && crosses(p, q, r, s)) return 1;
       // Equal interval ends can only meet at endpoints, or along
       // collinear vertical segments; neither counts as a crossing.
       if (aMax <= bMax) i += aDirection;
@@ -568,11 +565,7 @@ export function crossings(a: Route, b: Route): number {
         (r.y > maxY && s.y > maxY)
       )
         continue;
-      if (
-        side(p, q, r) * side(p, q, s) < -1e-7 &&
-        side(r, s, p) * side(r, s, q) < -1e-7
-      )
-        return 1;
+      if (crosses(p, q, r, s)) return 1;
     }
   }
   return 0;

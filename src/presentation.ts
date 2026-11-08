@@ -40,6 +40,14 @@ function scopeHashReference(value: string, prefix: string) {
   const match = /^(?:#|&#0*35;|&#x0*23;)/i.exec(value);
   return match ? `#${prefix}${value.slice(match[0].length)}` : value;
 }
+function scopeGhostAttribute(name: string, value: string, prefix: string) {
+  const lower = name.toLowerCase();
+  return lower === 'id'
+    ? `${prefix}${value}`
+    : lower === 'href' || lower === 'xlink:href'
+      ? scopeHashReference(value, prefix)
+      : scopeUrlReferences(value, prefix);
+}
 function scopeUrlReferences(value: string, prefix: string) {
   return value.replace(/url\(([^)]*)\)/gi, (token, body: string) => {
     const decoded = decodeAttributeReferences(body).trim(),
@@ -63,10 +71,7 @@ function scopeGhostMarkupWithDom(markup: string, prefix: string) {
     for (const attribute of Array.from(element.attributes)) {
       const name = attribute.name.toLowerCase();
       if (name === 'id' || name === 'tabindex') continue;
-      attribute.value =
-        name === 'href' || name === 'xlink:href'
-          ? scopeHashReference(attribute.value, prefix)
-          : scopeUrlReferences(attribute.value, prefix);
+      attribute.value = scopeGhostAttribute(name, attribute.value, prefix);
     }
   }
   return root.innerHTML;
@@ -131,10 +136,7 @@ function scopeGhostTag(tag: string, prefix: string) {
     }
     const lower = attributeName.toLowerCase();
     if (lower === 'tabindex') continue;
-    if (lower === 'id') value = prefix + value;
-    else if (lower === 'href' || lower === 'xlink:href')
-      value = scopeHashReference(value, prefix);
-    else value = scopeUrlReferences(value, prefix);
+    value = scopeGhostAttribute(lower, value, prefix);
     result +=
       tag.slice(attributeStart, nameStart) +
       attributeName +
@@ -185,6 +187,8 @@ export function scopeGhostMarkup(markup: string, prefix: string) {
 const numeric = new Intl.NumberFormat(undefined, {
   maximumSignificantDigits: 15,
 });
+const fallbackAmount = (value: number, unit: string | undefined) =>
+  `${numeric.format(value)}${unit ? ` ${unit}` : ''}`;
 export function presentation<I, T>(
   model: ResolvedGraph<I, T>,
   subject: SankeySubject,
@@ -206,7 +210,7 @@ export function presentation<I, T>(
               unit: row.unit,
               isConverted,
             })
-          : `${numeric.format(row[field])}${row.unit ? ` ${row.unit}` : ''}`;
+          : fallbackAmount(row[field], row.unit);
       return {
         unit: row.unit,
         total: number('total'),
@@ -233,7 +237,7 @@ export function presentation<I, T>(
   ) =>
     format
       ? format(amount, { ...facts, field, surface, unit, isConverted })
-      : `${numeric.format(amount)}${unit ? ` ${unit}` : ''}`;
+      : fallbackAmount(amount, unit);
   return {
     ...facts,
     text: {
@@ -301,8 +305,10 @@ export function defaultLabel(
   ];
 }
 export const identity = (s: SankeySubject) => JSON.stringify([s.kind, s.key]);
-export const same = (a: SankeySubject | null, b: SankeySubject | null) =>
-  a?.kind === b?.kind && a?.key === b?.key;
+export const same = (
+  a: SankeySubject | null | undefined,
+  b: SankeySubject | null | undefined,
+) => a?.kind === b?.kind && a?.key === b?.key;
 /** Resolve replay-on-attach and identity-change dedupe for one inspection report. */
 export function inspectionReport(
   reported: string | null,

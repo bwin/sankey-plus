@@ -19,12 +19,9 @@ import {
   ribbonBounds,
   routeCollisions,
 } from '../src/paths.js';
-import {
-  SankeyInputError,
-  type SankeyGraph,
-  type SankeyIssueCode,
-} from '../src/types.js';
+import { SankeyInputError, type SankeyGraph } from '../src/types.js';
 import { obstacleGraph, stressGraph } from '../fixtures/stress.js';
+import { error } from './helpers.js';
 const full = JSON.parse(
   readFileSync(
     new URL('../../demo/feature-demo.json', import.meta.url),
@@ -44,13 +41,6 @@ const base: SankeyGraph = {
   ],
   links: [{ key: 'ab', from: 'a', to: 'b', amount: 500 }],
 };
-const error = (graph: SankeyGraph, code: SankeyIssueCode) =>
-  assert.throws(
-    () => resolveGraph(graph),
-    (e: unknown) =>
-      e instanceof SankeyInputError &&
-      e.issues.some((issue) => issue.code === code),
-  );
 function fan(edge: 'top' | 'bottom' = 'bottom', count = 3): SankeyGraph {
   return {
     stages: ['a'],

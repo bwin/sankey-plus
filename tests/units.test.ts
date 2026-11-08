@@ -15,9 +15,9 @@ import {
   SankeyInputError,
   type SankeyGraph,
   type SankeyIssue,
-  type SankeyIssueCode,
   type SankeyAmountContext,
 } from '../src/types.js';
+import { error } from './helpers.js';
 
 const graph: SankeyGraph = {
   defaultUnit: 'USD',
@@ -70,12 +70,6 @@ const graph: SankeyGraph = {
 };
 const approx = (actual: number, expected: number) =>
   assert.ok(Math.abs(actual - expected) < 1e-8, `${actual} ≠ ${expected}`);
-const error = (g: SankeyGraph, code: SankeyIssueCode) =>
-  assert.throws(
-    () => resolveGraph(g),
-    (e: unknown) =>
-      e instanceof SankeyInputError && e.issues.some((i) => i.code === code),
-  );
 
 const fx = (rate = 4000): SankeyGraph => ({
   defaultUnit: 'USD',
