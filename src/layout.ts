@@ -89,6 +89,8 @@ const PAD = 24,
 const LANE_GAP = 4;
 /** Upper bound that keeps every SVG coordinate well inside browser float precision. */
 const MAX_EXTENT = 10_000_000;
+const invalidNumber = (message: string) =>
+  new SankeyInputError([{ code: 'invalid-number', message }]);
 const clamp = (n: number, a: number, b: number) => Math.max(a, Math.min(b, n));
 const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 // Keep bounds checks out of the argument list so large graphs cannot exceed
@@ -212,23 +214,17 @@ export function* layoutGraphSteps<I, T>(
     lineHeight <= 0 ||
     lineHeight > MAX_EXTENT
   )
-    throw new SankeyInputError([
-      {
-        code: 'invalid-number',
-        message: `Layout width, plotHeight and lineHeight must be finite, positive and at most ${MAX_EXTENT} pixels.`,
-      },
-    ]);
+    throw invalidNumber(
+      `Layout width, plotHeight and lineHeight must be finite, positive and at most ${MAX_EXTENT} pixels.`,
+    );
   if (
     !Number.isFinite(minLinkWidth) ||
     minLinkWidth < 0 ||
     minLinkWidth > MAX_EXTENT
   )
-    throw new SankeyInputError([
-      {
-        code: 'invalid-number',
-        message: `minLinkWidth must be finite, between 0 and ${MAX_EXTENT} pixels.`,
-      },
-    ]);
+    throw invalidNumber(
+      `minLinkWidth must be finite, between 0 and ${MAX_EXTENT} pixels.`,
+    );
   yield;
   // Scoring revisits the same route pairs during port swaps and diagnostics.
   // Routes are replaced, never mutated, during one layout attempt. Keep this
@@ -295,12 +291,9 @@ export function* layoutGraphSteps<I, T>(
   const minWidth = stages.length ? 2 * PAD + BAR + slots * 112 : 180;
   const width = Math.max(requested, minWidth);
   if (!Number.isFinite(width) || width > MAX_EXTENT)
-    throw new SankeyInputError([
-      {
-        code: 'invalid-number',
-        message: `The layout needs more than ${MAX_EXTENT} pixels of width. Reduce the number of stages.`,
-      },
-    ]);
+    throw invalidNumber(
+      `The layout needs more than ${MAX_EXTENT} pixels of width. Reduce the number of stages.`,
+    );
   const step = (width - 2 * PAD - BAR) / slots;
   const axis = (index: number) =>
     stages.length === 1 && !leftExtra && !rightExtra
@@ -355,12 +348,9 @@ export function* layoutGraphSteps<I, T>(
     ),
   );
   if (!Number.isFinite(centralHeight) || centralHeight > MAX_EXTENT)
-    throw new SankeyInputError([
-      {
-        code: 'invalid-number',
-        message: `The layout needs more than ${MAX_EXTENT} pixels of height. Reduce plotHeight, minLinkWidth or the number of nodes.`,
-      },
-    ]);
+    throw invalidNumber(
+      `The layout needs more than ${MAX_EXTENT} pixels of height. Reduce plotHeight, minLinkWidth or the number of nodes.`,
+    );
   let scale = Infinity;
   for (const stage of stages) {
     const total = sum(stage.map(geomTotal));
@@ -385,6 +375,21 @@ export function* layoutGraphSteps<I, T>(
       else hi = mid;
     }
     scale = lo;
+  };
+  /** Grow the canvas when a fixed pixel floor cannot fit at any value scale. */
+  const widthForMinimum = (
+    minimum: number,
+    available: number,
+    factor: number,
+    target: string,
+  ) => {
+    if (minimum <= available) return null;
+    const nextWidth = width + (minimum - available + 1) * slots * factor;
+    if (!Number.isFinite(nextWidth) || nextWidth > MAX_EXTENT)
+      throw invalidNumber(
+        `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of ${target}.`,
+      );
+    return nextWidth;
   };
   const limits = new Map<
     string,
@@ -413,22 +418,14 @@ export function* layoutGraphSteps<I, T>(
     if (minLinkWidth > 0) {
       const available = Math.max(8, hi - lo - 28),
         minimum = nodeSize(n, 0);
-      if (minimum > available) {
-        // Even a zero value scale cannot fit this edge's port stack.
-        const nextWidth = width + (minimum - available + 1) * slots * 2;
-        if (!Number.isFinite(nextWidth) || nextWidth > MAX_EXTENT)
-          throw new SankeyInputError([
-            {
-              code: 'invalid-number',
-              message: `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of edge links.`,
-            },
-          ]);
+      // Even a zero value scale cannot fit this edge's port stack.
+      const nextWidth = widthForMinimum(minimum, available, 2, 'edge links');
+      if (nextWidth !== null)
         return yield* layoutGraphSteps(
           model,
           { ...options, width: nextWidth },
           attempt,
         );
-      }
       fitScale((valueScale) => nodeSize(n, valueScale), available);
     } else if (geomTotal(n) > 0)
       scale = Math.min(scale, Math.max(8, hi - lo - 28) / geomTotal(n));
@@ -482,21 +479,18 @@ export function* layoutGraphSteps<I, T>(
         );
         if (minLinkWidth > 0) {
           const minimum = links.length * minLinkWidth;
-          if (minimum > channelWidth) {
-            const nextWidth = width + (minimum - channelWidth + 1) * slots * 4;
-            if (!Number.isFinite(nextWidth) || nextWidth > MAX_EXTENT)
-              throw new SankeyInputError([
-                {
-                  code: 'invalid-number',
-                  message: `The layout needs more than ${MAX_EXTENT} pixels of width to fit minLinkWidth. Reduce minLinkWidth or the number of wrapped fan links.`,
-                },
-              ]);
+          const nextWidth = widthForMinimum(
+            minimum,
+            channelWidth,
+            4,
+            'wrapped fan links',
+          );
+          if (nextWidth !== null)
             return yield* layoutGraphSteps(
               model,
               { ...options, width: nextWidth },
               attempt,
             );
-          }
           fitScale(
             (valueScale) => sum(links.map((f) => linkWidth(f, valueScale))),
             channelWidth,
@@ -756,12 +750,9 @@ export function* layoutGraphSteps<I, T>(
     centralTop = PAD + topBand,
     height = PAD + topBand + centralHeight + bottomBand + PAD;
   if (!Number.isFinite(height) || height > MAX_EXTENT)
-    throw new SankeyInputError([
-      {
-        code: 'invalid-number',
-        message: `The layout needs more than ${MAX_EXTENT} pixels of height. Reduce plotHeight, minLinkWidth or the number of edge nodes.`,
-      },
-    ]);
+    throw invalidNumber(
+      `The layout needs more than ${MAX_EXTENT} pixels of height. Reduce plotHeight, minLinkWidth or the number of edge nodes.`,
+    );
   for (const n of nodes) {
     if (!n.edge) {
       n.y += centralTop;

@@ -12,12 +12,13 @@ import tradeData from './trade.json';
 import currenciesData from './currencies.json';
 import wideRangeData from './wide-range.json';
 import { renderOverlay } from './layout-overlay.js';
+import { formatValue } from './format.js';
 import { stressGraph } from '../fixtures/stress.js';
 export const fullGraph = full as SankeyGraph;
 export const distribution = distributionData as SankeyGraph;
 const tradeAmount = (value: number) => `$${value.toLocaleString('en-US')} bn`;
 const formatAmount = (value: number, context: SankeyAmountContext) => {
-  const formatted = `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${context.unit ?? 'units'}`;
+  const formatted = formatValue(value, context.unit);
   if (
     context.kind !== 'link' ||
     context.isConverted ||

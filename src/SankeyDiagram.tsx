@@ -18,7 +18,7 @@ import {
   type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { emphasis, resolveGraph, subjectExists } from './model.js';
+import { emphasis, resolveGraph, subjectExists, subjectList } from './model.js';
 import {
   hitTest,
   layoutGraphSteps,
@@ -51,40 +51,34 @@ import type {
 } from './types.js';
 const useBrowserLayoutEffect =
   typeof window === 'undefined' ? useEffect : useLayoutEffect;
+type Anchor = {
+  x: number;
+  y: number;
+};
 type Inspection = SankeyInspection & {
-  anchor: {
-    x: number;
-    y: number;
-  };
+  anchor: Anchor;
   pinned: boolean;
 };
-function subjectList(
-  subject: SankeySubject | readonly SankeySubject[] | null | undefined,
-): readonly SankeySubject[] {
-  return subject == null
-    ? []
-    : Array.isArray(subject)
-      ? (subject as readonly SankeySubject[])
-      : [subject as SankeySubject];
-}
-type SceneSnapshot = {
+type SceneCapture = {
+  markup: string;
+  width: number;
+  height: number;
+  font: string;
+};
+type SceneSnapshot = SceneCapture & {
   scene: Scene;
   selection: string;
   highlight: string;
-  markup: string;
-  width: number;
-  height: number;
-  font: string;
 };
-type SceneGhost = {
+type SceneGhost = SceneCapture & {
   id: number;
-  markup: string;
-  width: number;
-  height: number;
-  font: string;
   duration: number;
   easing: string;
 };
+function anchorAt(element: Element): Anchor {
+  const box = element.getBoundingClientRect();
+  return { x: box.right, y: box.top + box.height / 2 };
+}
 function Text({
   box,
   ...props
@@ -110,6 +104,26 @@ function Text({
     </text>
   );
 }
+function BalanceRows({
+  total,
+  incoming,
+  outgoing,
+}: {
+  readonly total: string;
+  readonly incoming: string;
+  readonly outgoing: string;
+}) {
+  return (
+    <dl>
+      <dt>Total</dt>
+      <dd>{total}</dd>
+      <dt>Incoming</dt>
+      <dd>{incoming}</dd>
+      <dt>Outgoing</dt>
+      <dd>{outgoing}</dd>
+    </dl>
+  );
+}
 function DefaultDetails({ view }: { view: SankeyPresentation }) {
   return (
     <>
@@ -130,27 +144,21 @@ function DefaultDetails({ view }: { view: SankeyPresentation }) {
                   </span>
                 </strong>
               )}
-              <dl>
-                <dt>Total</dt>
-                <dd>{row.total}</dd>
-                <dt>Incoming</dt>
-                <dd>{row.incoming}</dd>
-                <dt>Outgoing</dt>
-                <dd>{row.outgoing}</dd>
-              </dl>
+              <BalanceRows
+                total={row.total}
+                incoming={row.incoming}
+                outgoing={row.outgoing}
+              />
             </div>
           ))}
           {showConverted(view) && (
             <div className="flow-tip-balance flow-tip-combined">
               <strong>Combined in {view.converted!.unit}</strong>
-              <dl>
-                <dt>Total</dt>
-                <dd>{view.text.converted!.total}</dd>
-                <dt>Incoming</dt>
-                <dd>{view.text.converted!.incoming}</dd>
-                <dt>Outgoing</dt>
-                <dd>{view.text.converted!.outgoing}</dd>
-              </dl>
+              <BalanceRows
+                total={view.text.converted!.total}
+                incoming={view.text.converted!.incoming}
+                outgoing={view.text.converted!.outgoing}
+              />
             </div>
           )}
         </>
@@ -190,17 +198,14 @@ function DefaultDetails({ view }: { view: SankeyPresentation }) {
   );
 }
 type DetailsHandle = {
-  move: (anchor: { x: number; y: number }) => void;
+  move: (anchor: Anchor) => void;
   contains: (node: Node | null) => boolean;
 };
 const Details = forwardRef<
   DetailsHandle,
   {
     id: string;
-    anchor: {
-      x: number;
-      y: number;
-    };
+    anchor: Anchor;
     children: ReactNode;
     theme: CSSProperties;
     onPointerEnter: () => void;
@@ -376,10 +381,13 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
     );
     return { nodes, links };
   }, [model]);
-  const indexOf = (subject: SankeySubject) =>
-    subject.kind === 'node'
-      ? (subjectIndex.nodes.get(subject.key) ?? -1)
-      : (subjectIndex.links.get(subject.key) ?? -1);
+  const indexOf = useCallback(
+    (subject: SankeySubject) =>
+      subject.kind === 'node'
+        ? (subjectIndex.nodes.get(subject.key) ?? -1)
+        : (subjectIndex.links.get(subject.key) ?? -1),
+    [subjectIndex],
+  );
   useBrowserLayoutEffect(() => {
     const el = root.current;
     if (!el) return;
@@ -614,18 +622,15 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
       if (!exists(subject)) return false;
       const control = controls.current.get(identity(subject));
       if (!control) return false;
-      const index =
-        subject.kind === 'node'
-          ? subjectIndex.nodes.get(subject.key)
-          : subjectIndex.links.get(subject.key);
-      if (index === undefined) return false;
+      const index = indexOf(subject);
+      if (index < 0) return false;
       input.current = 'keyboard';
       suppressed.current = null;
       setRoving(index);
       control.focus({ preventScroll: true });
       return true;
     },
-    [exists, subjectIndex],
+    [exists, indexOf],
   );
   focusSubjectRef.current = focusSubject;
   useImperativeHandle(
@@ -681,11 +686,9 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
   function repositionInspection() {
     setInspection((old) => {
       if (!old || old.modality === 'pointer') return null;
-      const box = controls.current
-        .get(identity(old.subject))
-        ?.getBoundingClientRect();
-      if (!box) return null;
-      const anchor = { x: box.right, y: box.top + box.height / 2 };
+      const control = controls.current.get(identity(old.subject));
+      if (!control) return null;
+      const anchor = anchorAt(control);
       lastAnchor.current = anchor;
       return Math.abs(anchor.x - old.anchor.x) +
         Math.abs(anchor.y - old.anchor.y) <
@@ -916,8 +919,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
       if (e.repeat) return;
       lastKeyboard.current = performance.now();
       suppressed.current = null;
-      const r = e.currentTarget.getBoundingClientRect();
-      inspect(subject, r.right, r.top + r.height / 2, 'keyboard', true);
+      const anchor = anchorAt(e.currentTarget);
+      inspect(subject, anchor.x, anchor.y, 'keyboard', true);
       activate(subject, e);
     }
   }
@@ -968,8 +971,8 @@ function SankeyDiagramRender<I = unknown, T = unknown>(
           return;
         setKeyboardFocus(subject);
         suppressed.current = null;
-        const r = e.currentTarget.getBoundingClientRect();
-        inspect(subject, r.right, r.top + r.height / 2, 'keyboard');
+        const anchor = anchorAt(e.currentTarget);
+        inspect(subject, anchor.x, anchor.y, 'keyboard');
       },
       style: { outline: 'none' } as CSSProperties,
     };

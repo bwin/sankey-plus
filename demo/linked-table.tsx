@@ -6,13 +6,9 @@ import type {
   SankeySubject,
 } from '../src/index.js';
 import { resolveGraph } from '../src/model.js';
+import { same as sameSubject } from '../src/presentation.js';
+import { formatValue as format } from './format.js';
 import './linked-table.css';
-
-const format = (value: number, unit?: string) =>
-  `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${unit ?? 'units'}`;
-
-const sameSubject = (a: SankeySubject | null | undefined, b: SankeySubject) =>
-  !!a && a.kind === b.kind && a.key === b.key;
 
 const placementLabel = (placement: SankeyPlacement) =>
   placement.stage !== undefined ? placement.stage : `Edge · ${placement.edge}`;

@@ -12,14 +12,14 @@ import {
   type SankeyLayout,
 } from '../src/index.js';
 import { examples } from './fixtures.js';
+import { formatQuantity as format } from './format.js';
+import { showConverted } from '../src/presentation.js';
 import { ValidationPanel } from './validation-panel.js';
 import { InspectionPanel } from './inspection-panel.js';
 import { LinkedTable } from './linked-table.js';
 import { useExampleTiming } from './useExampleTiming.js';
 import './demo.css';
 import '../src/style.css';
-const format = (value: number, context?: { unit?: string }) =>
-  `${value.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${context?.unit ?? 'units'}`;
 const nodeName = (node: SankeyNode, graph: SankeyGraph) =>
   graph.nodes.some(
     (other) => other.key !== node.key && other.title === node.title,
@@ -36,9 +36,6 @@ const title = (view: SankeyPresentation) =>
   view.kind === 'node'
     ? view.node.title
     : `${view.fromNode.title} → ${view.toNode.title}`;
-const hasCombined = (view: Extract<SankeyPresentation, { kind: 'node' }>) =>
-  !!view.converted &&
-  (view.totals.length > 1 || view.totals[0]?.unit !== view.converted.unit);
 const labels = (view: SankeyPresentation) =>
   view.kind === 'node'
     ? [
@@ -46,7 +43,7 @@ const labels = (view: SankeyPresentation) =>
         ...view.text.totals.map(
           (row) => `${row.total}${row.unit ? '' : ' total'}`,
         ),
-        ...(hasCombined(view) ? [`Σ ${view.text.converted!.total}`] : []),
+        ...(showConverted(view) ? [`Σ ${view.text.converted!.total}`] : []),
       ]
     : view.input.unit !== view.output.unit ||
         view.input.amount !== view.output.amount
@@ -124,7 +121,7 @@ const details = (
           </dl>
         </div>
       ))}
-      {hasCombined(view) && (
+      {showConverted(view) && (
         <div className="flow-tip-balance flow-tip-combined">
           <strong>Combined in {view.converted!.unit}</strong>
           <dl>
